@@ -143,7 +143,7 @@ const Navbar = () => {
                     Working Days:
                   </span>
                   {" "}
-                  Monday to Friday
+                  Monday to Friday 
                 </p>
 
               </div>
