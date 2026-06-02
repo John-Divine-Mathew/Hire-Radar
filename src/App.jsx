@@ -10,6 +10,11 @@ function App() {
         <li>TWO</li>
         <li>THREE</li>
       </ul>
+      <ol>
+        <li>ONE</li>
+        <li>TWO</li>
+        <li>THREE</li>
+      </ol>
       
     </div>
   )
