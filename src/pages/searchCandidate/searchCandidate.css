@@ -1,26 +1,79 @@
-    .filterbar{
+.filterbar{
     display: flex;
     flex-direction: row;
-    width: 80vw;
-    background-color: hsla(0, 81%, 77%, 0.646);
-    /*justify-content: space-between;
-    align-items: center;
-    padding: 10px;
-    border-bottom: 1px solid #ddd;*/
+    width: 85vw;
+    padding: 20px;
+    justify-content: flex-start;
+    gap: 10px;
 }
 .searchbar{
     display:flex;
     flex-direction: row;
     justify-content: space-between;
-    width: 80vw;
-    background-color: hsla(190, 81%, 77%, 0.646);
+    padding: 30px;
 }
 .searchbarcontainer{
     display:flex;
     flex-direction: column;
-    border-bottom: 1px solid #000000;
+    border-bottom: 1px solid hsl(0, 0%, 25%);
 }
 .mainpage{
     display:flex;
     flex-direction: column;
+    width: 85vw;
+    height: 100vh;
+}
+.searchbarinput{
+    padding: 5px;
+    justify-content:center;
+    align-items: center;
+    margin-left: 50px;
+}
+button.searchButton{
+    background-color: hsl(242, 100%, 10%);
+    color: hsla(0, 0%, 100%, 0.700);
+    padding: 5px;
+    border: none;
+    cursor: pointer;
+    height: 50px;
+    width: 100px;
+    font-size: 20px;
+}
+button.filterButton{
+    margin-right: 50px;
+    border-radius: 5px;
+    color: hsl(0, 0%, 25%);
+    font-size:medium;
+    font-weight: bold;
+    padding: 5px;
+    border:none;
+    cursor: pointer;
+    height: 50px;
+    width: 100px;
+    font-size:20px;
+    font-weight: bold;
+    box-shadow: 1px 1px 5px hsl(0, 0%, 50%);
+}
+button.filterButton:hover,button.filterListItem:hover{
+    background-color: hsl(0, 0%, 85%);
+}
+input.Input{
+    height: 50px;
+    width: 500px;
+    font-size: 20px;
+}
+.filterListItem{
+    display: flex;
+    flex-direction: row;
+    justify-content:flex-start;
+    align-items: center;
+    color: hsl(0, 0%, 25%);
+    gap: 5px;
+    padding: 15px;
+    cursor: pointer;
+    border-radius: 5px;
+    box-shadow: 1px 1px 5px gray;
+}
+p.filterbarp{
+    color: hsl(0, 0%, 25%);
 }

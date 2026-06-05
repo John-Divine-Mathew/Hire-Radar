@@ -3,7 +3,7 @@ import {House, Atom, Search, Bookmark, ChartSpline, History, MessageSquareMore, 
 
 function Sidebar(){
 
-    const iconSize = 40;
+    const iconSize = 35;
     return(
         <div className='sidebar'>
                 <ul className="sidebartitle">

@@ -1,4 +1,4 @@
-import Sidebar from '../components/sideBar/sideBar.jsx'
+import Sidebar from '../../components/sideBar/sideBar.jsx'
 import '../App.css'
 
 function CandidateProfile(){
