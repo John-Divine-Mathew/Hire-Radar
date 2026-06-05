@@ -1,0 +1,26 @@
+    .filterbar{
+    display: flex;
+    flex-direction: row;
+    width: 80vw;
+    background-color: hsla(0, 81%, 77%, 0.646);
+    /*justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    border-bottom: 1px solid #ddd;*/
+}
+.searchbar{
+    display:flex;
+    flex-direction: row;
+    justify-content: space-between;
+    width: 80vw;
+    background-color: hsla(190, 81%, 77%, 0.646);
+}
+.searchbarcontainer{
+    display:flex;
+    flex-direction: column;
+    border-bottom: 1px solid #000000;
+}
+.mainpage{
+    display:flex;
+    flex-direction: column;
+}
