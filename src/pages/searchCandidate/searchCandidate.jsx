@@ -36,3 +36,27 @@ function SearchCandidatePage(){
 }
 
 export default SearchCandidatePage;
+
+
+/*
+
+
+<>
+    <div>
+        <div>
+            <div></div>
+            <div>
+                <div></div>
+                <div></div>
+                <div></div>
+            </div>
+        </div>
+        <div>
+            <div></div>
+            <div></div>
+            <div></div>
+        </div>
+    </div>
+</>
+
+*/
