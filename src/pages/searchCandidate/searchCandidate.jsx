@@ -2,6 +2,7 @@ import Sidebar from '../../components/sideBar/sideBar.jsx';
 import '../../App.css';
 import './searchCandidate.css';
 import {ChevronDown} from 'lucide-react';
+import RenderList from '../../components/renderList/renderList.jsx';
 
 function SearchCandidatePage(){
 
@@ -36,27 +37,3 @@ function SearchCandidatePage(){
 }
 
 export default SearchCandidatePage;
-
-
-/*
-
-
-<>
-    <div>
-        <div>
-            <div></div>
-            <div>
-                <div></div>
-                <div></div>
-                <div></div>
-            </div>
-        </div>
-        <div>
-            <div></div>
-            <div></div>
-            <div></div>
-        </div>
-    </div>
-</>
-
-*/
