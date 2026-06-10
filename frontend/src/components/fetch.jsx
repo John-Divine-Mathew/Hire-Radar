@@ -15,9 +15,5 @@ function FetchListData(){
     useEffect(()=>{
         getListData();
     },[]);
-
-    return(
-        <p>Text renders ?</p>
-    );
 }
 export default FetchListData;
