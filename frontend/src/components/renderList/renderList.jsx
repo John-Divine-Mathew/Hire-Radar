@@ -1,4 +1,6 @@
-import {User} from 'Lucide-react';
+import { User } from 'lucide-react';
+
+////props
 
 function RenderList(){
     return(

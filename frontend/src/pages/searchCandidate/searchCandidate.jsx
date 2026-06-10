@@ -3,6 +3,7 @@ import '../../App.css';
 import './searchCandidate.css';
 import {ChevronDown} from 'lucide-react';
 import RenderList from '../../components/renderList/renderList.jsx';
+import FetchListData from '../../components/fetch.jsx';
 
 function SearchCandidatePage(){
 
@@ -30,7 +31,9 @@ function SearchCandidatePage(){
                     </div>
                     <div></div>
                     <div className='renderlistdiv'>
-                        <ul>{<li></li>}</ul> {/*render lists*/}
+                        <FetchListData />
+
+                        {/*<ul>{<li></li>}</ul> {/*render lists*}/*/}
                     </div>
                 </div>
             </div>);

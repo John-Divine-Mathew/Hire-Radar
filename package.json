@@ -1,0 +1,26 @@
+{
+  "name": "hirotec-hire-radar",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "backend": "npm start --prefix backend",
+    "frontend": "npm run dev --prefix frontend",
+    "dev": "concurrently \"npm run backend\" \"npm run frontend\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/John-Divine-Mathew/Hirotec-Hire-Radar.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/John-Divine-Mathew/Hirotec-Hire-Radar/issues"
+  },
+  "homepage": "https://github.com/John-Divine-Mathew/Hirotec-Hire-Radar#readme",
+  "dependencies": {
+    "concurrently": "^10.0.3"
+  }
+}
