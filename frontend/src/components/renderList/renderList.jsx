@@ -1,30 +1,42 @@
 import { User } from 'lucide-react';
-
-////props
+import PropTypes from "prop-types";
+import './renderList.css';
 
 function RenderList(){
+
     return(
-        <div className='renderListDiv'>
-            <div>
-                <div className='cndIcon'><User /></div>
-                <div className='cndDetails'> 
-                    <p></p>
-                    <ul className='detailsList'>
-                        <li></li>
-                        <li></li>
-                        <li></li>
-                        <li></li>
-                    </ul>
-                    <ul className='skillsList'></ul>
+            <li className='renderListItem'>
+                <div className='profileDiv'>
+                    <div className='cndIcon'><User size={40}/></div>
+                    <div className='cndDetails'> 
+                        <p className='nameP'>NAME</p>
+                        <ul className='detailsList'>
+                            <li className='detailsListItem'>Designation</li>
+                            <li className='detailsListItem'>Location</li>
+                            <li className='detailsListItem'>Experience</li>
+                            <li className='detailsListItem'>Status</li>
+                        </ul>
+                        <ul className='skillsList'>
+                            <li className='skillListItem'>Skill 1</li>
+                            <li className='skillListItem'>Skill 2</li>
+                            <li className='skillListItem'>Skill 3</li>
+                        </ul>
+                    </div>
                 </div>
-            </div>
-            <div>
-                <p>Match Score</p>
-                <p></p>
-                <button>View Profile</button>
-            </div>
-        </div>
+                <ul className='cndScoreView'>
+                    <li>Match Score</li>
+                    <li>80%</li>
+                    <li><button className='profileButton'>View Profile</button></li>
+                </ul>
+            </li>
     );
+
+}
+
+RenderList.propTypes = {
+
+}
+RenderList.defaultProps = {
 
 }
 

@@ -1,0 +1,70 @@
+
+.renderListItem{
+    margin: 1vh;
+    padding: 2.5vh;
+    height: 20vh;
+    width: 80vw;
+    /* background-color: hsl(34, 78%, 91%); */
+    border-radius: 10px;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 1px 1px 2px hsl(0, 0%, 50%);
+}
+.profileDiv{
+    padding: 0.5vh;
+    display: flex;
+    flex-direction: row;
+    height: 15vh;
+}
+.cndIcon{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 15vh;
+    width: 15vh;
+    border-radius: 50%;
+    background-color: hsl(34, 78%, 81%);
+}
+.cndDetails{
+    display: flex;
+    flex-direction: column;
+    justify-content: space-evenly;
+    align-items: start;
+    padding: 0.5vh;
+}
+.detailsList,.skillsList{
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+}
+.nameP{
+    font-size: 2.5vh;
+    color: black;
+    padding-left: 5vh;
+}
+.skillListItem,.detailsListItem{
+    font-size: 2vh;
+    padding: 0.5vh;
+    margin-left: 1.5vh;
+    margin-right: 1.5vh;
+}
+.profileButton{
+    background-color: hsl(242, 100%, 10%);
+    color: hsla(0, 0%, 100%, 0.700);
+    padding: 5px;
+    border: none;
+    cursor: pointer;
+    height: 6vh;
+    width: 8vw;
+    font-size: 2vh;
+}
+.cndScoreView{
+    display: flex;
+    flex-direction: column;
+    justify-content: space-evenly;
+    height: 15vh;
+    align-items: center;
+}
