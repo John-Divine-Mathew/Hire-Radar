@@ -4,14 +4,14 @@
     background-color: hsl(242, 100%, 10%);
     display: flex;
     flex-direction: column;
-    gap: 2vh;
+    gap: 5vh;
 }
 .sidebartitle{
     color: hsla(0, 0%, 100%, 0.700);
     align-items: center;
     justify-content: space-evenly;
-    padding-top: 2.5vh;
-    padding-bottom: 2.5vh;
+    padding-top: 3vh;
+    padding-bottom: 3vh;
 }
 
 .listitem{
@@ -33,12 +33,12 @@ button.listitem:hover{
 }
 p{
     color: hsla(0, 0%, 100%, 0.700);
-    font-size:medium;
+    font-size:2vh;
     font-weight: bold;
 }
 
 p.headingP {
-    font-size:x-large;
+    font-size:3vh;
 }
 .sidebarlist{
     display: flex;
