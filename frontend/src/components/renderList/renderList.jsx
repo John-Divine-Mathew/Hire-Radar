@@ -1,17 +1,35 @@
 import { Bookmark, User } from 'lucide-react';
-import PropTypes from "prop-types";
 import './renderList.css';
+import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+    
 
-function RenderList(props){
-    const cndArray = props.Array;
+function RenderList(){
+    const nav = useNavigate();
+    const navigateCandidateProfile = ()=>{
+        nav('/candidateProfile');
+    }
+
+    const [list,setList] = useState([]);
+    const getListData = async()=>{
+        try {
+            const response = await fetch("http://localhost:5000/hireRadar/emptempsave"); // default get req
+            const jsonData = await response.json();
+            setList(jsonData);
+        } catch (err) {
+            console.error(err.message);
+        }
+    }
+    useEffect(()=>{
+        getListData();
+    },[]);    
 
     return(
         <div className='renderListDiv'><ul>
-
-            {cndArray.map((i)=>(
-                <li className='renderListItem'>
+            {list.map((i)=>(
+                <li  key={i.cndid} className='renderListItem'>
                     <div className='profileDiv'>
-                        <div className='cndIcon'><User size={40}/></div>
+                        <div className='cndIcon'><img src={i.cndphoto} alt={i.cndname}/></div>
                         <div className='cndDetails'> 
                             <p className='nameP'>{i.cndname}</p>
                             <ul className='detailsList'>
@@ -30,7 +48,7 @@ function RenderList(props){
                         <ul className='cndScoreView'>
                             <li>Match Score</li>
                             <li>80%</li>
-                            <li><button className='profileButton'>View Profile</button></li>
+                            <li><button className='profileButton' onClick={navigateCandidateProfile}>View Profile</button></li>
                         </ul>
                     </div>
                 </li>
@@ -38,13 +56,6 @@ function RenderList(props){
 
         </ul></div>
     );
-
-}
-
-RenderList.propTypes = {
-
-}
-RenderList.defaultProps = {
 
 }
 

@@ -1,3 +1,9 @@
+.mainDiv{
+  display: flex;
+  flex-direction: row;
+  height: 100dvh;
+  width: 100dvw;
+}
 .filterbar{
     display: flex;
     flex-direction: row;
@@ -79,6 +85,6 @@ input.Input{
     border-radius: 5px;
     box-shadow: 1px 1px 5px gray;
 }
-p.filterbarp{
+.filterbarp{
     color: hsl(0, 0%, 25%);
 }
