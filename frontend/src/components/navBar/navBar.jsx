@@ -1,7 +1,15 @@
 import React, { useState } from "react";
+import { useNavigate } from 'react-router-dom';
 
 const Navbar = () => {
 
+  const nav = useNavigate();
+  const navigateSearchCandidate = ()=>{
+    nav('/searchCandidate');
+  }
+  const navigateHome = ()=>{
+    nav('/home');
+  }
   // Modal State
 
   const [showSupport, setShowSupport] = useState(false);
@@ -26,7 +34,7 @@ const Navbar = () => {
 
         <div className="flex items-center gap-8 text-gray-700 font-medium">
 
-          <a
+          <a onClick={navigateHome}
             href="#"
             className="hover:text-purple-700 transition duration-300"
           >
@@ -64,8 +72,9 @@ const Navbar = () => {
 
           <button
             className="bg-purple-700 hover:bg-purple-800 text-white px-6 py-2 rounded-lg transition duration-300"
+            onClick={navigateSearchCandidate}
           >
-            Login
+            Pages
           </button>
 
         </div>
