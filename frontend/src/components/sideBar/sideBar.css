@@ -31,14 +31,16 @@
 button.listitem:hover{
     background-color: hsl(242, 100%, 15%);
 }
-p{
+.buttonP{
     color: hsla(0, 0%, 100%, 0.700);
     font-size:2vh;
     font-weight: bold;
 }
 
-p.headingP {
+.headingP {
+    color: hsla(0, 0%, 100%, 0.700);
     font-size:3vh;
+    font-weight: bold;
 }
 .sidebarlist{
     display: flex;
