@@ -1,9 +1,10 @@
 import Sidebar from '../../components/sideBar/sideBar.jsx';
-import '../../App.css';
 import './searchCandidate.css';
 import {ChevronDown} from 'lucide-react';
+import RenderList from '../../components/renderList/renderList.jsx';
 
 function SearchCandidatePage(){
+
 
     return( <div className='mainDiv'>
                 <div><Sidebar /></div>
@@ -27,10 +28,7 @@ function SearchCandidatePage(){
                             </ul>
                         </div>
                     </div>
-                    <div></div>
-                    <div className='renderlistdiv'>
-                        <ul>{<li></li>}</ul> {/*render lists*/}
-                    </div>
+                    <RenderList />
                 </div>
             </div>);
 }

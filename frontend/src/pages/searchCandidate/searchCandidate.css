@@ -1,10 +1,19 @@
+.mainDiv{
+  display: flex;
+  flex-direction: row;
+  height: 100dvh;
+  width: 100dvw;
+}
 .filterbar{
     display: flex;
     flex-direction: row;
     width: 85vw;
-    padding: 20px;
+    padding-top: 2.5vh;
+    padding-bottom: 2.5vh;
+    padding-right: 2.5vw;
+    padding-left: 2.5vw;
     justify-content: flex-start;
-    gap: 10px;
+    gap: 1vw;
 }
 .searchbar{
     display:flex;
@@ -16,6 +25,8 @@
     display:flex;
     flex-direction: column;
     border-bottom: 1px solid hsl(0, 0%, 25%);
+    height: 25vh;
+    width: 85vw;
 }
 .mainpage{
     display:flex;
@@ -24,10 +35,10 @@
     height: 100vh;
 }
 .searchbarinput{
-    padding: 5px;
+    padding: 1vh;
     justify-content:center;
     align-items: center;
-    margin-left: 50px;
+    margin-left: 4.5vw;
 }
 button.searchButton{
     background-color: hsl(242, 100%, 10%);
@@ -35,22 +46,22 @@ button.searchButton{
     padding: 5px;
     border: none;
     cursor: pointer;
-    height: 50px;
-    width: 100px;
-    font-size: 20px;
+    height: 6vh;
+    width: 6vw;
+    font-size: 2.25vh;
 }
 button.filterButton{
-    margin-right: 50px;
+    margin-right: 4.5vw;
     border-radius: 5px;
     color: hsl(0, 0%, 25%);
     font-size:medium;
     font-weight: bold;
-    padding: 5px;
+    padding: 1vh;
     border:none;
     cursor: pointer;
-    height: 50px;
-    width: 100px;
-    font-size:20px;
+    height: 6.5vh;
+    width: 6.5vw;
+    font-size:2.25vh;
     font-weight: bold;
     box-shadow: 1px 1px 5px hsl(0, 0%, 50%);
 }
@@ -58,9 +69,9 @@ button.filterButton:hover,button.filterListItem:hover{
     background-color: hsl(0, 0%, 85%);
 }
 input.Input{
-    height: 50px;
-    width: 500px;
-    font-size: 20px;
+    height: 6vh;
+    width: 35vw;
+    font-size: 2.25vh;
 }
 .filterListItem{
     display: flex;
@@ -68,12 +79,12 @@ input.Input{
     justify-content:flex-start;
     align-items: center;
     color: hsl(0, 0%, 25%);
-    gap: 5px;
-    padding: 15px;
+    gap: .75vw;
+    padding: 1.5vh;
     cursor: pointer;
     border-radius: 5px;
     box-shadow: 1px 1px 5px gray;
 }
-p.filterbarp{
+.filterbarp{
     color: hsl(0, 0%, 25%);
 }
