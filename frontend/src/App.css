@@ -182,10 +182,3 @@
     border-right-color: var(--border);
   }
 }
-
-.mainDiv{
-  display: flex;
-  flex-direction: row;
-  height: 100dvh;
-  width: 100dvw;
-}
