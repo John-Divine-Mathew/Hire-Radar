@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import RenderList from '../renderList/renderList.jsx';
-import './fetch.css';
 
 function FetchListData(){
     
@@ -23,12 +22,13 @@ function FetchListData(){
     //console.log(list);
 
     return(
-            <div className='renderListDiv'><ul>
-                {list.map((i)=>(
-                    <RenderList key={i.cndid} name={i.cndname} role={i.cndrole} location={i.cndlocation} status={i.cndstatus} 
-                    experience={i.cndexperience} skills={i.cndskills} />
-                ))}
-            </ul></div>
+            <RenderList Array={list}/>
+            // <div className='renderListDiv'><ul>
+            //     {list.map((i)=>(
+            //         <RenderList key={i.cndid} name={i.cndname} role={i.cndrole} location={i.cndlocation} status={i.cndstatus} 
+            //         experience={i.cndexperience} skills={i.cndskills} />
+            //     ))}
+            // </ul></div>
     );
 }
 export default FetchListData;

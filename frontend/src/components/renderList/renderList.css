@@ -1,4 +1,14 @@
-
+.renderListDiv{
+    padding: 1.5vw;
+    height: 75vh;
+    width: 85vw;
+    /* background-color: antiquewhite; */
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;      
+    overflow-x: hidden;
+    scroll-behavior: smooth;
+}
 .renderListItem{
     margin: 1vh;
     padding: 2.5vh;
@@ -67,4 +77,20 @@
     justify-content: space-evenly;
     height: 15vh;
     align-items: center;
+}
+.profileEndDiv{
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: top;
+    padding: 1vh;
+
+}
+.saveButton{
+    align-self: center;
+    margin: 4vh;
+    color: hsl(0, 0%, 0%);
+}
+.saveButton:hover{
+    color: hsl(0, 0%, 50%);
 }
