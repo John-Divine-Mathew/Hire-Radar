@@ -1,37 +1,197 @@
-.mainDiv{
+.mainDiv {
   display: flex;
   flex-direction: row;
   height: 100dvh;
   width: 100dvw;
 }
-.mainpage{
-    display:flex;
+
+.mainpage {
+    display: flex;
     flex-direction: column;
     width: 85vw;
     height: 100vh;
 }
-.buttonDiv{
-    height: 5vh;
+
+.buttonDiv {
+    height: 8vh;
     width: 85vw;
-    background-color: hsl(208, 41%, 71%);
     align-items: center;
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    padding-left: 2vw;
 }
-.btsButton{
+
+.btsButton {
     display: flex;
     flex-direction: row;
     align-items: center;
-    padding: 1vh;
+    gap: 1vw;
+    padding: 0.5vh 1vh;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: hsl(208, 41%, 40%);
+    font-size: 2.2vh;
+    font-weight: 500;
 }
-.profilePic{
+
+.profilePic {
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 15vh;
-    width: 15vh;
+    height: 18vh;
+    width: 18vh;
     border-radius: 50%;
-    background-color: hsl(157, 77%, 81%);
     border: none;
+    object-fit: cover;
 }
-.topDiv{
-    padding: 2vh;
+
+.topDiv {
+    padding: 3vh 3vw;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    width: 85vw;
+    height: auto;
+    height: 35vh;
+}
+
+.profileDiv {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: flex-start;
+    gap: 3vw;
+    padding: 0;
+    width: auto;
+}
+
+.profileUL {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5vh;
+    padding: 0;
+    list-style: none;
+}
+
+.profileLi {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 2vw;
+    margin: 0;
+}
+
+.profileLP {
+    font-size: 1.8vh;
+    font-weight: 500;
+    color: hsl(0, 0%, 20%);
+    margin: 0;
+}
+
+.matchDiv {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 1vh;
+}
+
+.matchScore {
+    font-size: 3vh;
+    font-weight: bold;
+    color: hsl(0, 0%, 0%);
+}
+
+.matchLabel {
+    font-size: 1.8vh;
+    color: hsl(0, 0%, 50%);
+}
+
+.middleDiv {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+    width: 85vw;
+    height: auto;
+    border-bottom: 1px solid hsl(0, 0%, 85%);
+    padding: 0 3vw;
+    height: 10vh;
+}
+
+.profileListItem {
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    cursor: pointer;
+    padding: 2vh 1.5vw;
+    color: hsl(0, 0%, 40%);
+    font-size: 1.8vh;
+    transition: all 0.3s ease;
+}
+
+.profileListItem:hover {
+    color: hsl(242, 100%, 10%);
+}
+
+.profileListItem:active {
+    border-bottom-color: hsl(242, 100%, 50%);
+    color: hsl(242, 100%, 50%);
+}
+
+.profileP {
+    margin: 0;
+    font-weight: 500;
+}
+
+.bottomDiv {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    gap: 5vw;
+    width: 85vw;
+    padding: 3vh 3vw;
+    overflow-y: auto;
+    height: 49vh;
+    align-items: center;
+}
+
+.bottomDiv > div {
+    flex: 1;
+}
+
+.bottomDiv h3 {
+    font-size: 2.2vh;
+    font-weight: bold;
+    color: hsl(0, 0%, 0%);
+    margin-bottom: 1.5vh;
+    margin-top: 0;
+}
+
+.bottomDiv p {
+    font-size: 1.8vh;
+    color: hsl(0, 0%, 40%);
+    line-height: 1.6;
+}
+
+.skillsList {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 1vw;
+    padding: 0;
+    margin: 0;
+    list-style: none;
+}
+
+.skillsList li {
+    padding: 0.8vh 1.2vw;
+    border-radius: 4px;
+    font-size: 1.6vh;
+    color: hsl(0, 0%, 30%);
+    border: 1px solid hsl(0, 0%, 80%);
 }

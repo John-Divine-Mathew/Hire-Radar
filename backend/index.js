@@ -7,7 +7,7 @@ app.use(cors());
 app.use(express.json());
 
 
-app.get("/hireRadar/emptempsave",async(req,res)=>{
+app.get("/hireRadar/cndtempsave",async(req,res)=>{
     try{
         const allData = await pool.query("select * from cndtempsave");
         res.json(allData.rows);
@@ -17,12 +17,12 @@ app.get("/hireRadar/emptempsave",async(req,res)=>{
 });
 
 
-app.get("/hireRadar/emptempsave/:userid", async(req,res)=>{
+app.get("/hireRadar/cndtempsave/:cndid", async(req,res)=>{
     try{
-        const {userid} = req.params;
+        const {cndid} = req.params;
         //console.log(userid);
-        const oneData = await pool.query("select * from cndtempsave where userid = $1",[userid]);
-        res.json(oneData.rows);
+        const oneData = await pool.query("select * from cndtempsave where cndid = $1",[cndid]);
+        res.json(oneData.rows[0]);
     }catch(err){
         console.error(err.message);
     }

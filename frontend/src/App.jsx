@@ -13,7 +13,7 @@ function App() {
         <Route path='/candidateProfile' element={<CandidateProfile />} />
       </Routes>
     </BrowserRouter>
-    // <ProfileOverview />
+    // <CandidateProfile />
   );
 }
 
