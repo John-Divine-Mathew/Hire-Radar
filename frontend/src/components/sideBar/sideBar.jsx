@@ -12,7 +12,6 @@ function Sidebar(){
         nav('/searchCandidate');
     }
 
-
     const iconSize = 30;
     return(
         <div className='sidebar'>
