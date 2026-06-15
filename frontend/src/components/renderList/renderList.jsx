@@ -2,18 +2,15 @@ import { Bookmark, User } from 'lucide-react';
 import './renderList.css';
 import { useNavigate } from 'react-router-dom';
 import React, { useState, useEffect } from 'react';
+import { v4 as uuid } from "uuid";
     
 
 function RenderList(){
-    const nav = useNavigate();
-    const navigateCandidateProfile = ()=>{
-        nav('/candidateProfile');
-    }
 
     const [list,setList] = useState([]);
     const getListData = async()=>{
         try {
-            const response = await fetch("http://localhost:5000/hireRadar/emptempsave"); // default get req
+            const response = await fetch("http://localhost:5000/hireRadar/cndtempsave"); // default get req
             const jsonData = await response.json();
             setList(jsonData);
         } catch (err) {
@@ -22,7 +19,14 @@ function RenderList(){
     }
     useEffect(()=>{
         getListData();
-    },[]);    
+    },[]);
+    
+    
+    const nav = useNavigate();
+    function navigateCandidateProfile(id){
+        nav('/candidateProfile',{state:id});
+    }
+
 
     return(
         <div className='renderListDiv'><ul>
@@ -39,7 +43,7 @@ function RenderList(){
                                 <li className='detailsListItem'>{i.cndstatus}</li>
                             </ul>
                             <ul className='skillsList'>
-                                {i.cndskills.split(',').map((s)=>(<li className='skillListItem'>{s}</li>))}
+                                {i.cndskills.split(',').map((s)=>(<li key={uuid()}className='skillListItem'>{s}</li>))}
                             </ul>
                         </div>
                     </div>
@@ -48,7 +52,7 @@ function RenderList(){
                         <ul className='cndScoreView'>
                             <li>Match Score</li>
                             <li>80%</li>
-                            <li><button className='profileButton' onClick={navigateCandidateProfile}>View Profile</button></li>
+                            <li><button className='profileButton' onClick={()=>navigateCandidateProfile(i.cndid)}>View Profile</button></li>
                         </ul>
                     </div>
                 </li>

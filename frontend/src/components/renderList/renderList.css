@@ -35,7 +35,7 @@
     height: 15vh;
     width: 15vh;
     border-radius: 50%;
-    background-color: hsl(34, 78%, 81%);
+    background-color: hsl(0, 0%, 90%);
 }
 .cndDetails{
     display: flex;
@@ -55,12 +55,13 @@
     color: black;
     padding-left: 5vh;
 }
-.skillListItem,.detailsListItem{
+.detailsListItem{
     font-size: 2vh;
     padding: 0.5vh;
     margin-left: 1.5vh;
     margin-right: 1.5vh;
 }
+/* .skillListItem */
 .profileButton{
     background-color: hsl(242, 100%, 10%);
     color: hsla(0, 0%, 100%, 0.700);
