@@ -11,6 +11,9 @@ function Sidebar(){
     const navigateSearchCandidate = ()=>{
         nav('/searchCandidate');
     }
+    const navigateAnalytics = ()=>{
+        nav('/analytics');
+    }
 
     const iconSize = 30;
     return(
@@ -22,7 +25,7 @@ function Sidebar(){
                     <li><button className='listitem'><House size={iconSize} /><p className='buttonP'>Dashboard</p></button></li>
                     <li><button className='listitem' onClick={navigateSearchCandidate}><Search size={iconSize} /><p className='buttonP'>Search Candidate</p></button></li>
                     <li><button className='listitem'><Bookmark size={iconSize} /><p className='buttonP'>Saved Candidates</p></button></li>
-                    <li><button className='listitem'><ChartSpline size={iconSize} /><p className='buttonP'>Analytics</p></button></li>
+                    <li><button className='listitem' onClick={navigateAnalytics}><ChartSpline size={iconSize} /><p className='buttonP'>Analytics</p></button></li>
                     <li><button className='listitem'><History size={iconSize} /><p className='buttonP'>Search History</p></button></li>
                     <li><button className='listitem'><ClipboardPen size={iconSize} /><p className='buttonP'>Assessment</p></button></li>
                     <li><button className='listitem'><MessageSquareMore size={iconSize} /><p className='buttonP'>Messages</p></button></li>
