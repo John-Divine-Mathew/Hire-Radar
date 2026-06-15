@@ -10,6 +10,9 @@ const Navbar = () => {
   const navigateHome = ()=>{
     nav('/home');
   }
+    const navigateAssessment = ()=>{
+    nav('/assessment');
+  }
   // Modal State
 
   const [showSupport, setShowSupport] = useState(false);
@@ -66,7 +69,7 @@ const Navbar = () => {
 
         </div>
 
-        {/* Login Button */}
+        {/*  HR Login Button */}
 
         <div>
 
@@ -74,11 +77,20 @@ const Navbar = () => {
             className="bg-purple-700 hover:bg-purple-800 text-white px-6 py-2 rounded-lg transition duration-300"
             onClick={navigateSearchCandidate}
           >
-            Pages
+            HR Login 
           </button>
 
         </div>
 
+      {/* User Login Button */}
+
+      <div>
+        <button 
+        className="bg-purple-700 hover:bg-purple-800 text-white px-6 py-2 rounded-lg transition duration-300"
+        onClick={navigateAssessment}>
+          User Login 
+        </button>
+      </div>
       </nav>
 
       {/* Support Modal */}

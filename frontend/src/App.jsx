@@ -3,6 +3,7 @@ import Home from "./pages/Home";
 import SearchCandidatePage from "./pages/searchCandidate/searchCandidate.jsx";
 import CandidateProfile from "./pages/candidateProfile/candidateProfile.jsx";
 import Analytics from "./pages/Analytics/analytics.jsx";
+import Assessment from "./pages/Assessment/Assessment.jsx";
 
 function App() {
   return (
@@ -13,6 +14,7 @@ function App() {
         <Route path='/searchCandidate' element={<SearchCandidatePage />} />
         <Route path='/candidateProfile' element={<CandidateProfile />} />
         <Route path='/analytics' element={<Analytics />} />
+        <Route path='/assessment' element={<Assessment />} />
       </Routes>
     </BrowserRouter>
     // <CandidateProfile />
