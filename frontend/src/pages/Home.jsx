@@ -47,35 +47,6 @@ const Home = () => {
 
       </section>
 
-      {/* Statistics */}
-
-      <section className="max-w-7xl mx-auto px-10 py-16">
-
-        <div className="grid md:grid-cols-4 gap-6">
-
-          <div className="bg-white shadow-lg rounded-xl p-6 text-center">
-            <h3 className="text-4xl font-bold text-purple-700">10K+</h3>
-            <p className="text-gray-600 mt-2">Candidates</p>
-          </div>
-
-          <div className="bg-white shadow-lg rounded-xl p-6 text-center">
-            <h3 className="text-4xl font-bold text-purple-700">500+</h3>
-            <p className="text-gray-600 mt-2">Recruiters</p>
-          </div>
-
-          <div className="bg-white shadow-lg rounded-xl p-6 text-center">
-            <h3 className="text-4xl font-bold text-purple-700">200+</h3>
-            <p className="text-gray-600 mt-2">Companies</p>
-          </div>
-
-          <div className="bg-white shadow-lg rounded-xl p-6 text-center">
-            <h3 className="text-4xl font-bold text-purple-700">95%</h3>
-            <p className="text-gray-600 mt-2">Hiring Accuracy</p>
-          </div>
-
-        </div>
-
-      </section>
 
       {/* About Section */}
 
