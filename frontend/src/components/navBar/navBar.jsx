@@ -4,8 +4,8 @@ import { useNavigate } from 'react-router-dom';
 const Navbar = () => {
 
   const nav = useNavigate();
-  const navigateSearchCandidate = ()=>{
-    nav('/searchCandidate');
+  const navigateDashboard = ()=>{
+    nav('/dashboard');
   }
   const navigateHome = ()=>{
     nav('/home');
@@ -72,7 +72,7 @@ const Navbar = () => {
 
           <button
             className="bg-purple-700 hover:bg-purple-800 text-white px-6 py-2 rounded-lg transition duration-300"
-            onClick={navigateSearchCandidate}
+            onClick={navigateDashboard}
           >
             Pages
           </button>
