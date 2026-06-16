@@ -1,6 +1,6 @@
 import Sidebar from '../../components/sideBar/sideBar.jsx';
 import './searchCandidate.css';
-import {ChevronDown} from 'lucide-react';
+import { ChevronDown, Funnel } from 'lucide-react';
 import RenderList from '../../components/renderList/renderList.jsx';
 
 function SearchCandidatePage(){
@@ -15,7 +15,7 @@ function SearchCandidatePage(){
                                 <input className='Input' type="text"></input>
                                 <button className='searchButton'>Search</button>
                             </div>
-                            <button className='filterButton'>Filters</button>
+                            <button className='filterButton'><Funnel /><p>Filters</p></button>
                         </div>
                         <div>
                             <ul className='filterbar'>
