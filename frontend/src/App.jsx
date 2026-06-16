@@ -3,7 +3,8 @@ import Home from "./pages/Home";
 import SearchCandidatePage from "./pages/searchCandidate/searchCandidate.jsx";
 import CandidateProfile from "./pages/candidateProfile/candidateProfile.jsx";
 import Analytics from "./pages/Analytics/analytics.jsx";
-import Assessment from "./pages/Assessment/Assessment.jsx";
+import Dashboard from "./pages/dashboard/dashboard.jsx";
+import SavedCadidates from './pages/savedCandidates/savedCandidates.jsx';
 
 function App() {
   return (
@@ -11,10 +12,11 @@ function App() {
       <Routes>
         <Route path='/' element={<Home />} />
         <Route path='/home' element={<Home />} />
+        <Route path='/dashboard' element={<Dashboard />} />
         <Route path='/searchCandidate' element={<SearchCandidatePage />} />
         <Route path='/candidateProfile' element={<CandidateProfile />} />
         <Route path='/analytics' element={<Analytics />} />
-        <Route path='/assessment' element={<Assessment />} />
+        <Route path='/savedCandidates' element={<SavedCadidates />} />
       </Routes>
     </BrowserRouter>
     // <CandidateProfile />
