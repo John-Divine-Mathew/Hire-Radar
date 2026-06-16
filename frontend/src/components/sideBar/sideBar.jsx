@@ -8,6 +8,9 @@ function Sidebar(){
     const navigateHome = ()=>{
         nav('/home');
     }
+    const navigateDashboard = ()=>{
+        nav('/dashboard');
+    }
     const navigateSearchCandidate = ()=>{
         nav('/searchCandidate');
     }
@@ -22,7 +25,7 @@ function Sidebar(){
                     <li><button className='listitem' onClick={navigateHome}><Atom size={50}/><p className='headingP'>Hire Radar</p></button></li>
                 </ul>
                 <ul className="sidebarlist">
-                    <li><button className='listitem'><House size={iconSize} /><p className='buttonP'>Dashboard</p></button></li>
+                    <li><button className='listitem' onClick={navigateDashboard}><House size={iconSize} /><p className='buttonP'>Dashboard</p></button></li>
                     <li><button className='listitem' onClick={navigateSearchCandidate}><Search size={iconSize} /><p className='buttonP'>Search Candidate</p></button></li>
                     <li><button className='listitem'><Bookmark size={iconSize} /><p className='buttonP'>Saved Candidates</p></button></li>
                     <li><button className='listitem' onClick={navigateAnalytics}><ChartSpline size={iconSize} /><p className='buttonP'>Analytics</p></button></li>
