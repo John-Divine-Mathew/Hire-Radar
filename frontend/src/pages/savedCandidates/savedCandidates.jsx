@@ -1,5 +1,5 @@
 import Sidebar from "../../components/sideBar/sideBar";
-import { FunnelPlus, FunnelX, Eye, MoreVertical } from "lucide-react";
+import { Funnel, FunnelX, Eye, MoreVertical } from "lucide-react";
 import { useState, useEffect } from "react";
 import './savedCandidates.css';
 import { format } from 'date-fns';
@@ -30,7 +30,7 @@ function SavedCandidates(){
                         <h2>Saved Candidates</h2>
                         <input type="text" placeholder="Search saved candidates..." className='Input'/>
                     </div>
-                    <button className='scFilterButton'><FunnelPlus size={25}/><p>Filter</p></button>
+                    <button className='scFilterButton'><Funnel size={25}/><p>Filter</p></button>
                 </div>
                 <div className='tableContainer'>
                     <table className='candidatesTable'>
