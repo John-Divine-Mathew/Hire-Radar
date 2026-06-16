@@ -7,5 +7,5 @@ body {
   margin: 0;
   padding: 0;
   font-family: Arial, Helvetica, sans-serif;
-  background: #f5f7ff;
+  background: hsl(0, 0%, 100%);
 }
