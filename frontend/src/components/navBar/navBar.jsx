@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 
 const Navbar = () => {
 
+
   const navigate = useNavigate();
 
   const [showSupport, setShowSupport] = useState(false);
@@ -10,18 +11,15 @@ const Navbar = () => {
   return (
     <>
       {/* Navbar */}
-      
+
       <nav className="sticky top-0 z-50 bg-white shadow-lg border-b">
 
         <div className="max-w-7xl mx-auto px-8 py-4 flex justify-between items-center">
 
           {/* Logo */}
-          <div className="flex items-center gap-4">
-            <img
-                    src="public/hirotec-logo.webp"
-                    alt="HIROTEC Logo"
-                    className="h-20 w-70 object-contain"
-                  />
+
+          <div>
+
             <h1 className="text-3xl font-extrabold text-purple-700 ">
               Hire-Radar
             </h1>
@@ -98,38 +96,7 @@ const Navbar = () => {
 
                 <p>mathewdivine95@gmail.com</p>
                 <p>vijayanandhaj@gmail.com</p>
-                <p>bharathsnehan@gmail.com</p>
-                <p>
-                  <span className="font-bold">
-                    Phone & WhatsApp:
-                  </span>
-                  {" "}
-                </p>
-                 <p>+91 9626749641,+91 7373774847,+91 7448540072</p>
-
-                <p>
-                  <span className="font-bold">
-                    Department:
-                  </span>
-                  {" "}
-                  Automation
-                </p>
-
-                <p>
-                  <span className="font-bold">
-                    Working Hours:
-                  </span>
-                  {" "}
-                  9:00 AM - 6:00 PM
-                </p>
-
-                <p>
-                  <span className="font-bold">
-                    Working Days:
-                  </span>
-                  {" "}
-                  Monday to Friday 
-                </p>
+                <p>bharathjeeva549@gmail.com</p>
               </div>
 
               <div>
@@ -158,7 +125,6 @@ const Navbar = () => {
                 <p>Monday - Friday</p>
                 <p>9:00 AM - 6:00 PM</p>
               </div>
-
             </div>
 
             <div className="flex justify-center mt-8">
