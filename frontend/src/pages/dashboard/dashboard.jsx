@@ -53,14 +53,10 @@ export default function Dashboard() {
             />
 
             <div className="bg-white rounded-lg border px-4 py-2 flex items-center gap-3">
-              <img
-                src="C:\Users\ELCOT\OneDrive\Pictures\Screenshots\Screenshot 2026-06-16 123628.png"
-                alt=""
-                className="w-10 h-10 rounded-full"
-              />
+              
               <div>
-                <p className="font-semibold">HR Admin</p>
-                <p className="text-xs text-gray-500">
+                <p className="font-semibold">HR admin</p>
+                <p className="text-xs text-black-500">
                   hr@company.com
                 </p>
               </div>
@@ -71,25 +67,25 @@ export default function Dashboard() {
         {/* Top Cards */}
         <div className="grid grid-cols-4 gap-5 mb-6">
           <div className="bg-white rounded-xl p-5 shadow-sm border">
-            <p className="text-gray-500">Total Searches</p>
+            <p className="text-purple-500">Total Searches</p>
             <h2 className="text-4xl font-bold mt-2">1,248</h2>
             <p className="text-green-500 mt-2">+18.5% this month</p>
           </div>
 
           <div className="bg-white rounded-xl p-5 shadow-sm border">
-            <p className="text-gray-500">Candidates Found</p>
+            <p className="text-purple-500">Candidates Found</p>
             <h2 className="text-4xl font-bold mt-2">8,732</h2>
             <p className="text-green-500 mt-2">+23.4% this month</p>
           </div>
 
           <div className="bg-white rounded-xl p-5 shadow-sm border">
-            <p className="text-gray-500">Saved Candidates</p>
+            <p className="text-purple-500">Saved Candidates</p>
             <h2 className="text-4xl font-bold mt-2">312</h2>
             <p className="text-green-500 mt-2">+15.3% this month</p>
           </div>
 
           <div className="bg-white rounded-xl p-5 shadow-sm border">
-            <p className="text-gray-500">Profile Views</p>
+            <p className="text-purple-500">Profile Views</p>
             <h2 className="text-4xl font-bold mt-2">2,152</h2>
             <p className="text-green-500 mt-2">+19.2% this month</p>
           </div>
@@ -101,7 +97,7 @@ export default function Dashboard() {
           {/* Chart */}
           <div className="col-span-5 bg-purple-100 p-5 rounded-xl border">
             <h2 className="font-bold text-lg mb-4">
-              Search Overview
+              Search Overview...
             </h2>
 
             <ResponsiveContainer width="100%" height={300}>
@@ -112,7 +108,7 @@ export default function Dashboard() {
                 <Line
                   type="monotone"
                   dataKey="value"
-                  stroke="#6D4AFF"
+                  stroke="#c41d9a"
                   strokeWidth={3}
                 />
               </LineChart>
@@ -160,16 +156,11 @@ export default function Dashboard() {
                 key={i}
                 className="flex items-center gap-3 mb-4"
               >
-                <img
-                  src={`https://i.pravatar.cc/40?img=${i + 1}`}
-                  alt=""
-                  className="w-10 h-10 rounded-full"
-                />
 
                 <div>
                   <p className="font-medium">{item}</p>
                   <p className="text-xs text-gray-500">
-                    15 May 2024
+                    15 june 2026
                   </p>
                 </div>
               </div>

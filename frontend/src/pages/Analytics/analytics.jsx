@@ -44,7 +44,7 @@ export default function Analytics() {
       <Sidebar />
 
       <div className="flex-1 min-h-screen bg-gray-100 p-6 overflow-x-hidden">
-        <h1 className="text-4xl font-bold text-gray-900 mb-6">
+        <h1 className="text-4xl font-bold text-black-900 mb-6">
           Analytics
         </h1>
 
@@ -58,9 +58,9 @@ export default function Analytics() {
           ].map(([title, value]) => (
             <div
               key={title}
-              className="bg-white p-5 rounded-lg border border-gray-200 shadow-sm"
+              className="bg-white p-5 rounded-lg border border-purple-200 shadow-sm"
             >
-              <h2 className="text-sm text-gray-500">{title}</h2>
+              <h2 className="text-sm text-purple-500">{title}</h2>
 
               <p className="text-3xl font-bold text-gray-900 mt-2">
                 {value}
