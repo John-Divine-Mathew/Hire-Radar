@@ -37,6 +37,16 @@ app.get("/hireRadar/cndpermsave",async(req,res)=>{
     }
 });
 
+app.get("/hireRadar/cndpermsave/:cndid", async(req,res)=>{
+    try{
+        const {cndid} = req.params;
+        const oneData = await pool.query("select * from cndpermsave where cndid = $1",[cndid]);
+        res.json(oneData.rows[0]);
+    }catch(err){
+        console.error(err.message);
+    }
+});
+
 
 app.listen(5000,()=>{
     console.log('Server has started on port 5000');
