@@ -95,6 +95,38 @@ const Navbar = () => {
 
                 <p>mathewdivine95@gmail.com</p>
                 <p>vijayanandhaj@gmail.com</p>
+                <p>bharathsnehan@gmail.com</p>
+                <p>
+                  <span className="font-bold">
+                    Phone & WhatsApp:
+                  </span>
+                  {" "}
+                </p>
+                 <p>+91 9626749641,+91 7373774847,+91 7448540072</p>
+
+                <p>
+                  <span className="font-bold">
+                    Department:
+                  </span>
+                  {" "}
+                  Automation
+                </p>
+
+                <p>
+                  <span className="font-bold">
+                    Working Hours:
+                  </span>
+                  {" "}
+                  9:00 AM - 6:00 PM
+                </p>
+
+                <p>
+                  <span className="font-bold">
+                    Working Days:
+                  </span>
+                  {" "}
+                  Monday to Friday 
+                </p>
               </div>
 
               <div>
