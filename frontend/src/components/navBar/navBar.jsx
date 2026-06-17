@@ -10,15 +10,18 @@ const Navbar = () => {
   return (
     <>
       {/* Navbar */}
-
+      
       <nav className="sticky top-0 z-50 bg-white shadow-lg border-b">
 
         <div className="max-w-7xl mx-auto px-8 py-4 flex justify-between items-center">
 
           {/* Logo */}
-
-          <div>
-
+          <div className="flex items-center gap-4">
+            <img
+                    src="public/hirotec-logo.webp"
+                    alt="HIROTEC Logo"
+                    className="h-20 w-70 object-contain"
+                  />
             <h1 className="text-3xl font-extrabold text-purple-700 ">
               Hire-Radar
             </h1>
