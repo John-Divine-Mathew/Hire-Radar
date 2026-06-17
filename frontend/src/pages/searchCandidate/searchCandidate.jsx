@@ -1,36 +1,54 @@
 import Sidebar from '../../components/sideBar/sideBar.jsx';
-import './searchCandidate.css';
 import { ChevronDown, Funnel } from 'lucide-react';
 import RenderList from '../../components/renderList/renderList.jsx';
 
 function SearchCandidatePage(){
-
-
-    return( <div className='mainDiv'>
-                <div><Sidebar /></div>
-                <div className='mainpage'>
-                    <div className='searchbarcontainer'>
-                        <div className='searchbar'>
-                            <div className='searchbarinput'>
-                                <input className='Input' type="text"></input>
-                                <button className='searchButton'>Search</button>
+    return( 
+        <div style={{ display: "flex", minHeight: "100vh" }}>
+            <Sidebar />
+            <div className="flex-1 min-h-screen bg-slate-50 p-6 overflow-x-hidden">
+                <div className="mb-8">
+                    <h1 className="text-4xl font-bold text-gray-900 mb-6">Search Candidates</h1>
+                    
+                    {/* Search and Filter Bar */}
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+                        <div className="flex flex-col gap-4">
+                            <div className="flex gap-4 items-center">
+                                <input 
+                                    className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-lg" 
+                                    type="text" 
+                                    placeholder="Search candidates by name, skills, location..."
+                                />
+                                <button className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-lg font-semibold transition duration-200">
+                                    Search
+                                </button>
+                                <button className="border border-gray-300 hover:bg-gray-50 text-gray-700 px-6 py-3 rounded-lg font-semibold flex items-center gap-2 transition duration-200">
+                                    <Funnel size={20} />
+                                    <span>Filters</span>
+                                </button>
                             </div>
-                            <button className='filterButton'><Funnel /><p>Filters</p></button>
-                        </div>
-                        <div>
-                            <ul className='filterbar'>
-                                <li><button className='filterListItem'><p className='filterbarp'>Experience</p><ChevronDown /></button></li>
-                                <li><button className='filterListItem'><p className='filterbarp'>Skills</p><ChevronDown /></button></li>
-                                <li><button className='filterListItem'><p className='filterbarp'>Location</p><ChevronDown /></button></li>
-                                <li><button className='filterListItem'><p className='filterbarp'>Education</p><ChevronDown /></button></li>
-                                <li><button className='filterListItem'><p className='filterbarp'>Availability</p><ChevronDown /></button></li>
-                                <li><button className='filterListItem'><p className='filterbarp'>More Filters</p><ChevronDown /></button></li>
-                            </ul>
+                            
+                            {/* Filter Tags */}
+                            <div className="flex flex-wrap gap-2 items-center">
+                                {['Experience', 'Skills', 'Location', 'Education', 'Availability', 'More Filters'].map((filter) => (
+                                    <button 
+                                        key={filter}
+                                        className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg flex items-center gap-2 transition duration-200 border border-gray-200"
+                                    >
+                                        <span className="text-sm font-medium">{filter}</span>
+                                        <ChevronDown size={16} />
+                                    </button>
+                                ))}
+                            </div>
                         </div>
                     </div>
-                    <RenderList />
                 </div>
-            </div>);
+                
+                {/* Candidates List */}
+                <RenderList />
+            </div>
+        </div>
+    );
 }
 
 export default SearchCandidatePage;

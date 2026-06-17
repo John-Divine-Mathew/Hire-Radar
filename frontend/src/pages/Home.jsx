@@ -3,7 +3,7 @@ import Navbar from "../components/navBar/navBar.jsx";
 
 const Home = () => {
   return (
-    <div className="bg-gray-50 min-h-screen">
+    <div className="bg-slate-50 min-h-screen">
 
       {/* Navbar */}
       <Navbar />

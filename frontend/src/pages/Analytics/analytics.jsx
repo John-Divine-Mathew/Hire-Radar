@@ -43,7 +43,7 @@ export default function Analytics() {
     <div style={{ display: "flex", minHeight: "100vh" }}>
       <Sidebar />
 
-      <div className="flex-1 min-h-screen bg-gray-100 p-6 overflow-x-hidden">
+      <div className="flex-1 min-h-screen bg-slate-50 p-6 overflow-x-hidden">
         <h1 className="text-4xl font-bold text-black-900 mb-6">
           Analytics
         </h1>

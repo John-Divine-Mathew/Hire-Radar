@@ -2,7 +2,6 @@ import Sidebar from '../../components/sideBar/sideBar.jsx';
 import { ChevronLeft, Link, Download } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import React,{ useState, useEffect } from 'react';
-import './candidateProfile.css';
 import { v4 as uuid } from "uuid";
 
 function CandidateProfile(){
@@ -10,18 +9,19 @@ function CandidateProfile(){
     const loc = useLocation();
     const id = loc.state.tempCndId ? String(loc.state.tempCndId) : String(loc.state.permCndId);
     const permSave = loc.state.tempCndId ? false : true ;
-    //console.log(`Fron permSave -> ${permSave}`);
 
     const [cndData,setCndData] = useState({});
     const getData = async()=>{
         try {
-            const response = await fetch(`http://localhost:5000/hireRadar/cndtempsave/${id}`);
+            const response = loc.state.tempCndId ? await fetch(`http://localhost:5000/hireRadar/cndtempsave/${id}`) : await fetch(`http://localhost:5000/hireRadar/cndpermsave/${id}`);
             const jsonData = await response.json();
             setCndData(jsonData);
         } catch (err) {
             console.error(err.message);
         }
     }
+    const cndskills = cndData.cndskills || '';
+    const skillsArray = cndskills ? cndskills.split(',').map(s => s.trim()).filter(Boolean) : [];
     useEffect(()=>{
         getData();
     },[]);
@@ -34,82 +34,124 @@ function CandidateProfile(){
         }
     }
 
-    return( <div className='mainDiv'>
-                <Sidebar />
-                <div className='mainpage'>
+    return( 
+        <div style={{ display: "flex", minHeight: "100vh" }}>
+            <Sidebar />
+            <div className="flex-1 min-h-screen bg-slate-50 p-6 overflow-x-hidden">
+                {/* Back Button */}
+                <button 
+                    onClick={()=>backFunc()}
+                    className="flex items-center gap-2 text-purple-600 hover:text-purple-800 font-semibold mb-6 transition duration-200"
+                >
+                    <ChevronLeft size={24}/>
+                    <span>Back to Search</span>
+                </button>
 
-
-                    {/* <p style={{"background-color:black"}}>{permSave? 'Saved Candidate':  null}</p> */}
-
-
-                    <div className='buttonDiv'><button className='btsButton' onClick={()=>backFunc()}><ChevronLeft size={24}/><p>Back to Search</p></button></div>
-                    <div className='topDiv'>
-                        <div className='profileDiv'>
-                            <img className='profilePic' src={cndData.cndphoto} alt={cndData.cndname} />
-                            <ul className='profileUL'>
-                                <li className='profileLi'><p className='profileLP' style={{fontSize: '2.5vh', fontWeight: 'bold'}}>{cndData.cndname}</p><span style={{backgroundColor: 'hsl(120, 100%, 25%)', color: 'white', padding: '0.5vh 1vw', borderRadius: '4px', fontSize: '1.4vh', fontWeight: 'bold'}}>{cndData.cndstatus}</span></li>
-                                <li className='profileLi'><p className='profileLP'>{cndData.cndrole}</p></li>
-                                <li className='profileLi'><p className='profileLP'>{`${cndData.cndexperience} of Experience`}</p><p className='profileLP'>{cndData.cndlocation}</p></li>
-                                <li className='profileLi'><button style={{background: 'none', border: 'none', cursor: 'pointer', color: 'hsl(242, 100%, 50%)', textDecoration: 'underline', fontSize: '1.8vh', padding: 0, display: 'flex', alignItems: 'center', gap: '0.5vw'}}><Link size={18}/>LinkedIn Profile</button>
-                                    <button style={{background: 'none', border: 'none', cursor: 'pointer', color: 'hsl(242, 100%, 50%)', textDecoration: 'underline', fontSize: '1.8vh', padding: 0, display: 'flex', alignItems: 'center', gap: '0.5vw'}}><Download size={18}/>Download Resume</button>
-                                </li>
-                            </ul>
+                {/* Profile Header Card */}
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 mb-6">
+                    <div className="flex gap-8 items-start">
+                        {/* Profile Image and Info */}
+                        <div className="flex gap-6 items-start flex-1">
+                            <img 
+                                className="h-32 w-32 rounded-full object-cover border-4 border-purple-200" 
+                                src={cndData.cndphoto} 
+                                alt={cndData.cndname} 
+                            />
+                            <div className="flex-1">
+                                <div className="flex items-center gap-3 mb-2">
+                                    <h1 className="text-3xl font-bold text-gray-900">{cndData.cndname}</h1>
+                                    <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-bold">
+                                        {cndData.cndstatus}
+                                    </span>
+                                </div>
+                                <p className="text-xl text-gray-700 font-semibold mb-1">{cndData.cndrole}</p>
+                                <p className="text-gray-600 mb-4">{cndData.cndexperience} of Experience • {cndData.cndlocation}</p>
+                                <div className="flex gap-4">
+                                    <button className="text-purple-600 hover:text-purple-800 font-semibold flex items-center gap-2 transition duration-200">
+                                        <Link size={18}/>
+                                        LinkedIn Profile
+                                    </button>
+                                    <button className="text-purple-600 hover:text-purple-800 font-semibold flex items-center gap-2 transition duration-200">
+                                        <Download size={18}/>
+                                        Download Resume
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-                        <div className='matchDiv'>
-                            <p className='matchLabel'>Match Score</p>
-                            <p className='matchScore'>92%</p>
-                            <div style={{fontSize: '1.6vh', color: 'hsl(120, 100%, 40%)', fontWeight: 'bold'}}>High Match</div>
-                            <p style={{fontSize: '1.6vh', color: 'hsl(0, 0%, 50%)', textAlign: 'center'}}>Great match for Design Engineer role</p>
+
+                        {/* Match Score Card */}
+                        <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-6 border border-purple-200 text-center">
+                            <p className="text-gray-600 text-sm font-medium mb-1">Match Score</p>
+                            <p className="text-5xl font-bold text-purple-600 mb-2">92%</p>
+                            <div className="text-green-600 font-bold mb-2">High Match</div>
+                            <p className="text-sm text-gray-700">Great match for Design Engineer role</p>
                         </div>
                     </div>
-                    <ul className='middleDiv'>
-                        <li><button className='profileListItem'><p className='profileP'>Overview</p></button></li>
-                        <li><button className='profileListItem'><p className='profileP'>Experience</p></button></li>
-                        <li><button className='profileListItem'><p className='profileP'>Education</p></button></li>
-                        <li><button className='profileListItem'><p className='profileP'>Skills</p></button></li>
-                        <li><button className='profileListItem'><p className='profileP'>Projects</p></button></li>
-                        <li><button className='profileListItem'><p className='profileP'>Resume</p></button></li>
-                        <li><button className='profileListItem'><p className='profileP'>Activity</p></button></li>
-                    </ul>
-                    <div className='bottomDiv'>
-                        <div>
-                            <h3>About</h3>
-                            <p>Mechanical Design Engineer with 3.6 years of experience in product design, 3D modeling, and engineering analysis. Skilled in SolidWorks, AutoCAD, CATIA, and ANSYS. Passionate about creating innovative and efficient designs.</p>
-                            <h3>Skills</h3>
-                            <ul className='skillsList'>
-                                <li>AutoCAD</li>
-                                <li>SolidWorks</li>
-                                <li>ANSYS</li>
-                                <li>CATIA</li>
-                                <li>Creo</li>
-                                <li>GD&T</li>
-                                <li>DFM</li>
-                                <li>3D Modeling</li>
-                                <li>Gaming</li>
-                            </ul>
-                        </div>
-                        <div>
-                            <h3>Experience</h3>
-                            <div style={{marginBottom: '2vh'}}>
-                                <div style={{display: 'flex', alignItems: 'center', gap: '0.5vw', marginBottom: '0.5vh'}}>
-                                    <span style={{fontSize: '1.8vh', fontWeight: 'bold', color: 'hsl(0, 0%, 0%)'}}>•</span>
-                                    <p style={{fontSize: '1.8vh', fontWeight: 'bold', color: 'hsl(0, 0%, 0%)', margin: 0}}>{cndData.cndrole}</p>
+                </div>
+
+                {/* Tabs/Navigation */}
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
+                    <div className="flex border-b border-gray-200 overflow-x-auto">
+                        {['Overview', 'Experience', 'Education', 'Skills', 'Projects', 'Resume', 'Activity'].map((tab) => (
+                            <button 
+                                key={tab}
+                                className="px-6 py-4 text-gray-700 font-semibold hover:text-purple-600 border-b-2 border-transparent hover:border-purple-600 transition duration-200 whitespace-nowrap"
+                            >
+                                {tab}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Content Section */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* About & Skills */}
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                        <h2 className="text-2xl font-bold text-gray-900 mb-4">About</h2>
+                        <p className="text-gray-700 leading-relaxed mb-6">
+                            Mechanical Design Engineer with 3.6 years of experience in product design, 3D modeling, and engineering analysis. Skilled in SolidWorks, AutoCAD, CATIA, and ANSYS. Passionate about creating innovative and efficient designs.
+                        </p>
+                        
+                        <h3 className="text-xl font-bold text-gray-900 mb-4">Skills</h3>
+                        <ul className="flex flex-wrap gap-2">
+                            {skillsArray.map((s)=>(
+                                <li key={uuid()} className="bg-white-100 text-purple-800 px-3 py-1 rounded-full text-sm font-medium">
+                                    {s}
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+
+                    {/* Experience */}
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                        <h2 className="text-2xl font-bold text-gray-900 mb-6">Experience</h2>
+                        
+                        <div className="mb-6">
+                            <div className="flex items-start gap-3 mb-2">
+                                <span className="text-xl font-bold text-gray-900 mt-1">•</span>
+                                <div>
+                                    <p className="text-lg font-bold text-gray-900">{cndData.cndrole}</p>
+                                    <p className="text-gray-600">ABC Technologies</p>
+                                    <p className="text-gray-500 text-sm">Jan 2022 – Present (2.6 yrs)</p>
                                 </div>
-                                <p style={{fontSize: '1.6vh', color: 'hsl(0, 0%, 40%)', margin: 0}}>ABC Technologies</p>
-                                <p style={{fontSize: '1.6vh', color: 'hsl(0, 0%, 40%)', margin: 0}}>Jan 2022 – Present (2.6 yrs)</p>
                             </div>
-                            <div>
-                                <div style={{display: 'flex', alignItems: 'center', gap: '0.5vw', marginBottom: '0.5vh'}}>
-                                    <span style={{fontSize: '1.8vh', fontWeight: 'bold', color: 'hsl(0, 0%, 0%)'}}>•</span>
-                                    <p style={{fontSize: '1.8vh', fontWeight: 'bold', color: 'hsl(0, 0%, 0%)', margin: 0}}>Junior Design Engineer</p>
+                        </div>
+
+                        <div>
+                            <div className="flex items-start gap-3 mb-2">
+                                <span className="text-xl font-bold text-gray-900 mt-1">•</span>
+                                <div>
+                                    <p className="text-lg font-bold text-gray-900">Junior Design Engineer</p>
+                                    <p className="text-gray-600">XYZ Solutions</p>
+                                    <p className="text-gray-500 text-sm">Jun 2020 – Dec 2021 (1.6 yrs)</p>
                                 </div>
-                                <p style={{fontSize: '1.6vh', color: 'hsl(0, 0%, 40%)', margin: 0}}>XYZ Solutions</p>
-                                <p style={{fontSize: '1.6vh', color: 'hsl(0, 0%, 40%)', margin: 0}}>Jun 2020 – Dec 2021 (1.6 yrs)</p>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>);
+            </div>
+        </div>
+    );
 }
 
 export default CandidateProfile;
