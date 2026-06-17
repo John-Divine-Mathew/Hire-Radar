@@ -108,7 +108,7 @@ export default function Dashboard() {
                 <Line
                   type="monotone"
                   dataKey="value"
-                  stroke="#c41d9a"
+                  stroke="#655ace"
                   strokeWidth={3}
                 />
               </LineChart>
