@@ -19,7 +19,7 @@ app.get("/hireRadar/cndtempsave",async(req,res)=>{
 
 app.get("/hireRadar/cndtempsave/:cndid", async(req,res)=>{
     try{
-        const {cndid} = req.params;
+        const { cndid } = req.params;
         //console.log(userid);
         const oneData = await pool.query("select * from cndtempsave where cndid = $1",[cndid]);
         res.json(oneData.rows[0]);
@@ -39,7 +39,7 @@ app.get("/hireRadar/cndpermsave",async(req,res)=>{
 
 app.get("/hireRadar/cndpermsave/:cndid", async(req,res)=>{
     try{
-        const {cndid} = req.params;
+        const { cndid } = req.params;
         const oneData = await pool.query("select * from cndpermsave where cndid = $1",[cndid]);
         res.json(oneData.rows[0]);
     }catch(err){
@@ -47,6 +47,46 @@ app.get("/hireRadar/cndpermsave/:cndid", async(req,res)=>{
     }
 });
 
+app.delete("/hireRadar/deleteCandidate/:cndid", async(req,res)=>{
+    try {
+        const { cndid } = req.params;
+        const deleteData = await pool.query("delete from cndpermsave where cndid = $1",[cndid]);
+        res.json('Deleted !');
+    } catch (err) {
+        console.log(err.message);
+    }
+});
+
+app.get("/hireRadar/cndpersonaldetails/:cndid", async(req,res)=>{
+    try{
+        const { cndid } = req.params;
+        const oneData = await pool.query("select * from cndpersonaldetails where cndid = $1",[cndid]);
+        res.json(oneData.rows[0]);
+    }catch(err){
+        console.error(err.message);
+    }
+});
+
+app.get("/hireRadar/cndworkdetails/:cndid", async(req,res)=>{
+    try{
+        const { cndid } = req.params;
+        const oneData = await pool.query("select * from cndworkdetails where cndid = $1",[cndid]);
+        res.json(oneData.rows[0]);
+    }catch(err){
+        console.error(err.message);
+    }
+});
+
+app.post("/hireRadar/insertCandidate", async(req,res)=>{
+    try {
+        const { date, name, email, phone, age, gender, role, skills, texp, experience, location, status } = req.body;
+        const newCndData = await pool.query("insert into cndpermsave(searchdate,cndname,cndemail,cndphone,cndage,cndgender,cndrole,cndskills,cndtotalexperience,cndexperience,cndlocation,cndstatus) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) returning *",
+            [date, name, email, phone, age, gender, role, skills, texp, experience, location, status ]);
+        res.json(newCndData);
+    } catch (err) {
+        console.error(err.message);
+    }
+});
 
 app.listen(5000,()=>{
     console.log('Server has started on port 5000');
