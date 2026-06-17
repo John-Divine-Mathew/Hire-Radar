@@ -6,6 +6,8 @@ import Analytics from "./pages/Analytics/analytics.jsx";
 import Dashboard from "./pages/dashboard/dashboard.jsx";
 import SavedCadidates from './pages/savedCandidates/savedCandidates.jsx';
 import AssessmentForm from './pages/Assessment/AssessmentForm.jsx';
+import AssessmentTest from "./pages/Assessment/AssessmentTest";
+
 
 function App() {
   return (
@@ -19,6 +21,8 @@ function App() {
         <Route path='/analytics' element={<Analytics />} />
         <Route path='/savedCandidates' element={<SavedCadidates />} />
         <Route path='/assessmentform' element={<AssessmentForm />} />
+        <Route path="/assessment-test" element={<AssessmentTest />} />
+        
       </Routes>
     </BrowserRouter>
     // <CandidateProfile />
