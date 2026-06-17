@@ -6,7 +6,11 @@ import './candidateProfile.css';
 import { v4 as uuid } from "uuid";
 
 function CandidateProfile(){
-    let id = '';
+    const nav = useNavigate();
+    const loc = useLocation();
+    const id = loc.state.tempCndId ? String(loc.state.tempCndId) : String(loc.state.permCndId);
+    const permSave = loc.state.tempCndId ? false : true ;
+    //console.log(`Fron permSave -> ${permSave}`);
 
     const [cndData,setCndData] = useState({});
     const getData = async()=>{
@@ -22,9 +26,6 @@ function CandidateProfile(){
         getData();
     },[]);
 
-    const nav = useNavigate();
-    const loc = useLocation();
-    id = String(loc.state);
     const backFunc = ()=>{
         if (loc.key === 'default') {
             nav('/');
@@ -32,11 +33,15 @@ function CandidateProfile(){
             nav(-1);
         }
     }
-    //console.log(cndData.cndskills); undefined -> skills
 
     return( <div className='mainDiv'>
                 <Sidebar />
                 <div className='mainpage'>
+
+
+                    {/* <p style={{"background-color:black"}}>{permSave? 'Saved Candidate':  null}</p> */}
+
+
                     <div className='buttonDiv'><button className='btsButton' onClick={()=>backFunc()}><ChevronLeft size={24}/><p>Back to Search</p></button></div>
                     <div className='topDiv'>
                         <div className='profileDiv'>
