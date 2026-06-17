@@ -95,7 +95,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-12 gap-5">
 
           {/* Chart */}
-          <div className="col-span-5 bg-purple-100 p-5 rounded-xl border">
+          <div className="col-span-5 bg-white p-5 rounded-xl border">
             <h2 className="font-bold text-lg mb-4">
               Search Overview...
             </h2>

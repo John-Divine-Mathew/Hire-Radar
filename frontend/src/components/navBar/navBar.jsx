@@ -1,81 +1,62 @@
 import React, { useState } from "react";
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from "react-router-dom";
 
 const Navbar = () => {
 
-  const nav = useNavigate();
-  const navigateSearchCandidate = ()=>{
-    nav('/searchCandidate');
-  }
-  const navigateHome = ()=>{
-    nav('/home');
-  }
-  // Modal State
+  const navigate = useNavigate();
 
   const [showSupport, setShowSupport] = useState(false);
 
   return (
-
     <>
-    
       {/* Navbar */}
 
-      <nav className="w-full bg-white shadow-md px-10 py-4 flex items-center justify-between">
+      <nav className="sticky top-0 z-50 bg-white shadow-lg border-b">
 
-        {/* Logo */}
+        <div className="max-w-7xl mx-auto px-8 py-4 flex justify-between items-center">
 
-        <div>
-          <h1 className="text-3xl font-bold text-purple-700">
-            Hire-Radar
-          </h1>
-        </div>
+          {/* Logo */}
 
-        {/* Menu */}
+          <div>
 
-        <div className="flex items-center gap-8 text-gray-700 font-medium">
+            <h1 className="text-3xl font-extrabold text-purple-700 ">
+              Hire-Radar
+            </h1>
 
-          <a onClick={navigateHome}
-            href="#"
-            className="hover:text-purple-700 transition duration-300"
-          >
-            Home
-          </a>
+          </div>
 
-          <a
-            href="#"
-            className="hover:text-purple-700 transition duration-300"
-          >
-            Features
-          </a>
+          {/* Buttons */}
 
-          <a
-            href="#"
-            className="hover:text-purple-700 transition duration-300"
-          >
-            About
-          </a>
+          <div className="flex items-center gap-4">
 
-          {/* Support Button */}
+            {/* Support */}
 
-          <button
-            onClick={() => setShowSupport(true)}
-            className="hover:text-purple-800 transition duration-300"
-          >
-            Support
-          </button>
+            <button
+              onClick={() => setShowSupport(true)}
+              className="bg-orange-500 hover:bg-orange-600 text-white px-5 py-2 rounded-lg font-medium transition duration-300 shadow-md"
+            >
+              Support
+            </button>
 
-        </div>
+            {/* HR Login */}
 
-        {/* Login Button */}
+            <button
+              onClick={() => navigate("/dashboard")}
+              className="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg font-medium transition duration-300 shadow-md"
+            >
+              HR / Admin Login
+            </button>
 
-        <div>
+            {/* User Login */}
 
-          <button
-            className="bg-purple-700 hover:bg-purple-800 text-white px-6 py-2 rounded-lg transition duration-300"
-            onClick={navigateSearchCandidate}
-          >
-            Pages
-          </button>
+            <button
+              onClick={() => navigate("/assessment")}
+              className="bg-purple-700 hover:bg-purple-800 text-white px-5 py-2 rounded-lg font-medium transition duration-300 shadow-md"
+            >
+              User Login
+            </button>
+
+          </div>
 
         </div>
 
@@ -83,44 +64,36 @@ const Navbar = () => {
 
       {/* Support Modal */}
 
-      {
-        showSupport && (
+      {showSupport && (
 
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
 
-            {/* Modal Box */}
+          <div className="bg-white w-[500px] rounded-2xl shadow-2xl p-8">
 
-            <div className="bg-white w-[400px] rounded-2xl shadow-2xl p-8">
+            <h2 className="text-3xl font-bold text-center text-purple-700 mb-6">
+              Developer Support
+            </h2>
 
-              <h2 className="text-3xl font-bold text-purple-700 mb-6 text-center">
-                Developer Support 
-              </h2>
+            <div className="space-y-4 text-gray-700">
 
-              {/* Details */}
+              <div>
+                <h3 className="font-bold text-lg">
+                  Developers
+                </h3>
 
-              <div className="space-y-4 text-gray-700">
+                <ul className="list-disc ml-6 mt-2">
+                  <li>John Divine Mathew J</li>
+                  <li>Vijayanandha</li>
+                  <li>Bharathsnehan</li>
+                </ul>
+              </div>
 
-                <p>
-                  <span className="font-bold">
-                    Developer Name:
-                  </span>
-                  {" "}
+              <div>
+                <h3 className="font-bold text-lg">
+                  Email
+                </h3>
 
-                <p>John Divine Mathew J</p>
-                <p> Vijayanandha </p>
-                <p>Bharathsnehan</p>
-                  
-                 
-                </p>
-
-                <p>
-                  <span className="font-bold">
-                    Email:
-                  </span>
-                  {" "}
-               
-                </p>
-                <p> mathewdivine95@gmail.com</p>
+                <p>mathewdivine95@gmail.com</p>
                 <p>vijayanandhaj@gmail.com</p>
                 <p>bharathsnehan@gmail.com</p>
                 <p>
@@ -154,28 +127,53 @@ const Navbar = () => {
                   {" "}
                   Monday to Friday 
                 </p>
-
               </div>
 
-              {/* Close Button */}
+              <div>
+                <h3 className="font-bold text-lg">
+                  Phone & WhatsApp
+                </h3>
 
-              <div className="mt-8 flex justify-center">
-
-                <button
-                  onClick={() => setShowSupport(false)}
-                  className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg transition duration-300"
-                >
-                  Close
-                </button>
-
+                <p>+91 9626749641</p>
+                <p>+91 7373774847</p>
+                <p>+91 7448540072</p>
               </div>
+
+              <div>
+                <h3 className="font-bold text-lg">
+                  Department
+                </h3>
+
+                <p>Automation</p>
+              </div>
+
+              <div>
+                <h3 className="font-bold text-lg">
+                  Working Hours
+                </h3>
+
+                <p>Monday - Friday</p>
+                <p>9:00 AM - 6:00 PM</p>
+              </div>
+
+            </div>
+
+            <div className="flex justify-center mt-8">
+
+              <button
+                onClick={() => setShowSupport(false)}
+                className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg"
+              >
+                Close
+              </button>
 
             </div>
 
           </div>
 
-        )
-      }
+        </div>
+
+      )}
 
     </>
   );
