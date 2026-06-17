@@ -24,7 +24,7 @@ function RenderList(){
     
     const nav = useNavigate();
     function navigateCandidateProfile(id){
-        nav('/candidateProfile',{state:id});
+        nav('/candidateProfile',{state:{tempCndId:id, permCndId:null}});
     }
 
 
