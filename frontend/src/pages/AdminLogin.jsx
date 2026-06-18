@@ -17,24 +17,41 @@ const AdminLogin = () => {
 
   const handleLogin = (e) => {
 
-    e.preventDefault();
+  e.preventDefault();
 
-    if (
-      teamMembers.includes(email) &&
-      password === "1234"
-    ) {
+  if (
+    teamMembers.includes(email) &&
+    password === "1234"
+  ) {
 
-      alert("Login Successful");
+    const userNames = {
+      "mathewdivine95@gmail.com": "Mathew Divine",
+      "bharathjeeva549@gmail.com": "Bharath Jeeva",
+      "vijayanandhaj@gmail.com": "Vijay Anandh",
+      "test@gmail.com": "Test User",
+    };
 
-      navigate("/dashboard");
+    const userData = {
+      name: userNames[email] || email.split("@")[0],
+      email: email,
+    };
 
-    } else {
+    localStorage.setItem(
+      "user",
+      JSON.stringify(userData)
+    );
 
-      alert("Invalid Email or Password");
+    alert("Login Successful");
 
-    }
+    navigate("/dashboard");
 
-  };
+  } else {
+
+    alert("Invalid Email or Password");
+
+  }
+
+};
 
   return (
     <div className="min-h-screen flex justify-center items-center bg-gray-100">

@@ -35,6 +35,9 @@ const recentSearches = [
 ];
 
 export default function Dashboard() {
+ 
+  const user = JSON.parse(localStorage.getItem("user"));
+
   return (
     <div className="flex h-screen bg-[#F5F6FA]">
       <Sidebar />
@@ -54,12 +57,14 @@ export default function Dashboard() {
 
             <div className="bg-white rounded-lg border px-4 py-2 flex items-center gap-3">
               
-              <div>
-                <p className="font-semibold">HR admin</p>
-                <p className="text-xs text-black-500">
-                  hr@company.com
+             <div>
+              <p className="font-semibold">
+               {user?.name || "HR Admin"}
                 </p>
-              </div>
+              <p className="text-xs text-gray-500">
+              {user?.email || "hr@company.com"}
+               </p>
+               </div>
             </div>
           </div>
         </div>
@@ -159,7 +164,7 @@ export default function Dashboard() {
 
                 <div>
                   <p className="font-medium">{item}</p>
-                  <p className="text-xs text-gray-100">
+                  <p className="text-xs text-gray-">
                     15 june 2026
                   </p>
                 </div>
