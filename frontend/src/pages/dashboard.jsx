@@ -8,7 +8,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-import Sidebar from "../../components/sideBar/sideBar.jsx";
+import Sidebar from "../components/sideBar/sideBar.jsx";
 
 const chartData = [
   { day: "Mon", value: 320 },
