@@ -132,9 +132,9 @@ export default function Dashboard() {
                   <div
                     className="h-2 rounded-full bg-violet-600"
                     style={{
-                      width: `${(skill.value / 1246) * 100}%`,
+                      width: `${(skill.value / 1246) * 80}%`,
                     }}
-                  />
+                  />  
                 </div>
               </div>
             ))}
@@ -159,7 +159,7 @@ export default function Dashboard() {
 
                 <div>
                   <p className="font-medium">{item}</p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-gray-100">
                     15 june 2026
                   </p>
                 </div>
