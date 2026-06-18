@@ -1,10 +1,10 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Home from "./pages/Home";
-import SearchCandidatePage from "./pages/searchCandidate/searchCandidate.jsx";
-import CandidateProfile from "./pages/candidateProfile/candidateProfile.jsx";
-import Analytics from "./pages/Analytics/analytics.jsx";
-import Dashboard from "./pages/dashboard/dashboard.jsx";
-import SavedCadidates from './pages/savedCandidates/savedCandidates.jsx';
+import SearchCandidatePage from "./pages/searchCandidate.jsx";
+import CandidateProfile from "./pages/candidateProfile.jsx";
+import Analytics from "./pages/analytics.jsx";
+import Dashboard from "./pages/dashboard.jsx";
+import SavedCadidates from './pages/savedCandidates.jsx';
 import AssessmentForm from './pages/Assessment/AssessmentForm.jsx';
 import AssessmentTest from "./pages/Assessment/AssessmentTest";
 import AdminAssessment from './pages/Assessment/AdminAssessment.jsx';

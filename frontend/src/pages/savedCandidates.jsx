@@ -1,4 +1,4 @@
-import Sidebar from "../../components/sideBar/sideBar";
+import Sidebar from "../components/sideBar/sideBar";
 import { Funnel, Eye, MoreVertical } from "lucide-react";
 import { useState, useEffect } from "react";
 import { format } from 'date-fns';
