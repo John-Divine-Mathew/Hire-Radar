@@ -21,7 +21,7 @@ const AdminLogin = () => {
 
     if (
       teamMembers.includes(email) &&
-      password === "1234"
+      password === "Hirotec@123"
     ) {
 
       alert("Login Successful");

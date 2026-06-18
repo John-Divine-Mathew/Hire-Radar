@@ -20,9 +20,9 @@ const Navbar = () => {
 
           <div className="flex items-center gap-4">
             <img
-              src="/hirotec-logo.webp" // Fixed: Removed 'public/' prefix
+              src="/hirotec-logo.webp" 
               alt="HIROTEC Logo"
-              className="h-20 w-auto object-contain" // Fixed: Applied clean, responsive height constraints
+              className="h-20 w-auto object-contain" 
             />
 
             <h1 className="text-3xl font-extrabold text-purple-700 ">
