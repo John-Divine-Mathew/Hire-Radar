@@ -53,14 +53,34 @@ function AssessmentTest() {
   const [score, setScore] = useState(null);
 
   const [testStarted, setTestStarted] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+
+  const [notification, setNotification] = useState("");
+  const [warningShown, setWarningShown] = useState(false);
 
   const [timeLeft, setTimeLeft] = useState(25 * 60);
 
   useEffect(() => {
-    if (!testStarted) return;
+    if (!testStarted || isSubmitted) return;
+
+    // Warning at 2 Minutes
+
+    if (timeLeft === 120 && !warningShown) {
+      setNotification(
+        "⚠️ Warning: Only 2 Minutes Remaining!"
+      );
+
+      setWarningShown(true);
+
+      setTimeout(() => {
+        setNotification("");
+      }, 5000);
+    }
+
+    // Auto Submit
 
     if (timeLeft <= 0) {
-      submitTest();
+      submitTest(true);
       return;
     }
 
@@ -69,13 +89,15 @@ function AssessmentTest() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [timeLeft, testStarted]);
+  }, [timeLeft, testStarted, isSubmitted, warningShown]);
 
   const startTest = () => {
     setTestStarted(true);
   };
 
-  const submitTest = () => {
+  const submitTest = (autoSubmit = false) => {
+    if (isSubmitted) return;
+
     let marks = 0;
 
     questions.forEach((q) => {
@@ -85,6 +107,17 @@ function AssessmentTest() {
     });
 
     setScore(marks);
+    setIsSubmitted(true);
+
+    if (autoSubmit) {
+      setNotification(
+        "⏰ Time Up! Test Automatically Submitted."
+      );
+    } else {
+      setNotification(
+        "✅ Assessment Submitted Successfully."
+      );
+    }
   };
 
   const formatTime = (seconds) => {
@@ -97,20 +130,26 @@ function AssessmentTest() {
   return (
     <div className="bg-gray-100 min-h-screen p-10">
 
-      {/* Page Header */}
+      {/* Header */}
 
       <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-
         <h1 className="text-4xl font-bold text-purple-700 mb-4">
           Hire-Radar Assessment Portal
         </h1>
 
         <p className="text-gray-600">
-          Welcome Candidate. Please read the instructions carefully before
-          starting the assessment.
+          Welcome Candidate. Please read all instructions
+          carefully before starting the assessment.
         </p>
-
       </div>
+
+      {/* Notification */}
+
+      {notification && (
+        <div className="mb-6 bg-yellow-100 border border-yellow-500 text-yellow-800 px-4 py-3 rounded-lg">
+          {notification}
+        </div>
+      )}
 
       {/* Assessment Details */}
 
@@ -121,7 +160,6 @@ function AssessmentTest() {
         </h2>
 
         <ul className="list-disc ml-6 space-y-3 text-gray-700">
-
           <li>Total Questions : {questions.length}</li>
           <li>Total Marks : {questions.length}</li>
           <li>Duration : 25 Minutes</li>
@@ -129,13 +167,12 @@ function AssessmentTest() {
           <li>No Negative Marks</li>
           <li>Do not refresh the page during the test</li>
           <li>Answer all questions before submitting</li>
-
+          <li>
+            Test will automatically submit when time expires
+          </li>
         </ul>
 
-        {/* Start Test Button */}
-
         {!testStarted && (
-
           <div className="mt-8">
 
             <button
@@ -146,15 +183,13 @@ function AssessmentTest() {
             </button>
 
           </div>
-
         )}
 
       </div>
 
       {/* Fixed Timer */}
 
-      {testStarted && (
-
+      {testStarted && !isSubmitted && (
         <div className="fixed top-5 right-5 bg-red-600 text-white px-6 py-4 rounded-xl shadow-xl z-50">
 
           <h2 className="text-xl font-bold">
@@ -162,7 +197,6 @@ function AssessmentTest() {
           </h2>
 
         </div>
-
       )}
 
       {/* Questions */}
@@ -196,8 +230,10 @@ function AssessmentTest() {
 
                   <input
                     type="radio"
-                    name={q.id}
+                    name={`question-${q.id}`}
                     value={option}
+                    disabled={isSubmitted}
+                    checked={answers[q.id] === option}
                     onChange={() =>
                       setAnswers({
                         ...answers,
@@ -206,7 +242,9 @@ function AssessmentTest() {
                     }
                   />
 
-                  <span className="ml-3">{option}</span>
+                  <span className="ml-3">
+                    {option}
+                  </span>
 
                 </div>
 
@@ -221,10 +259,17 @@ function AssessmentTest() {
           <div className="text-center mt-8">
 
             <button
-              onClick={submitTest}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg"
+              onClick={() => submitTest(false)}
+              disabled={isSubmitted}
+              className={`px-8 py-3 rounded-lg text-white font-semibold ${
+                isSubmitted
+                  ? "bg-gray-400 cursor-not-allowed"
+                  : "bg-blue-600 hover:bg-blue-700"
+              }`}
             >
-              Submit Test
+              {isSubmitted
+                ? "Assessment Submitted"
+                : "Submit Test"}
             </button>
 
           </div>
@@ -240,11 +285,17 @@ function AssessmentTest() {
         <div className="bg-green-100 border border-green-500 rounded-xl p-6 mt-10">
 
           <h2 className="text-3xl font-bold text-green-700">
-            Score : {score}/{questions.length}
+            Assessment Completed
           </h2>
 
-          <p className="mt-2 text-gray-700">
-            Assessment Completed Successfully.
+          <p className="mt-4 text-xl font-semibold">
+            Score : {score}/{questions.length}
+          </p>
+
+          <p className="mt-3 text-gray-700">
+            Your responses have been submitted
+            successfully. Further modifications are
+            not allowed.
           </p>
 
         </div>
