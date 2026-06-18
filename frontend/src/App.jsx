@@ -8,6 +8,8 @@ import SavedCadidates from './pages/savedCandidates/savedCandidates.jsx';
 import AssessmentForm from './pages/Assessment/AssessmentForm.jsx';
 import AssessmentTest from "./pages/Assessment/AssessmentTest";
 import AdminAssessment from './pages/Assessment/AdminAssessment.jsx';
+import AdminLogin from "./pages/AdminLogin";
+import { Router } from 'lucide-react';
 
 
 function App() {
@@ -24,6 +26,7 @@ function App() {
         <Route path='/assessmentform' element={<AssessmentForm />} />
         <Route path="/assessment-test" element={<AssessmentTest />} />
         <Route path="/admin-assessment" element={<AdminAssessment />} />
+        <Router path="/admin-login" element={<AdminLogin />} />
         
       </Routes>
     </BrowserRouter>

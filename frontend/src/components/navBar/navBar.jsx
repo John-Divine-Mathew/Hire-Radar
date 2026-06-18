@@ -47,7 +47,7 @@ const Navbar = () => {
             {/* HR Login */}
 
             <button
-              onClick={() => navigate("/dashboard")}
+              onClick={() => navigate("/admin-login")}
               className="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg font-medium transition duration-300 shadow-md"
             >
               HR / Admin Login
