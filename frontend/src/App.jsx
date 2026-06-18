@@ -26,7 +26,7 @@ function App() {
         <Route path='/assessmentform' element={<AssessmentForm />} />
         <Route path="/assessment-test" element={<AssessmentTest />} />
         <Route path="/admin-assessment" element={<AdminAssessment />} />
-        <Router path="/admin-login" element={<AdminLogin />} />
+        <Route path="/admin-login" element={<AdminLogin />} />
         
       </Routes>
     </BrowserRouter>
