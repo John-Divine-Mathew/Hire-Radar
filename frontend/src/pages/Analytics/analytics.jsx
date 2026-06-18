@@ -40,7 +40,7 @@ const COLORS = [
 
 export default function Analytics() {
   return (
-    <div style={{ display: "flex", minHeight: "100vh" }}>
+    <div style={{ display: "flex", minHeight: "80vh" }}>
       <Sidebar />
 
       <div className="flex-1 min-h-screen bg-slate-50 p-6 overflow-x-hidden">
@@ -78,7 +78,7 @@ export default function Analytics() {
               Search Trends
             </h2>
 
-            <ResponsiveContainer width="100%" height={350}>
+            <ResponsiveContainer width="100%" height={300}>
               <LineChart
                 data={trendData}
                 margin={{
@@ -122,15 +122,15 @@ export default function Analytics() {
             </h2>
 
             <div className="flex flex-col items-center">
-              <ResponsiveContainer width="100%" height={250}>
+              <ResponsiveContainer width="100%" height={150}>
                 <PieChart>
                   <Pie
                     data={locationData}
                     dataKey="value"
                     cx="50%"
                     cy="50%"
-                    innerRadius={55}
-                    outerRadius={85}
+                    innerRadius={40}
+                    outerRadius={60}
                     paddingAngle={4}
                   >
                     {locationData.map((entry, index) => (
@@ -157,12 +157,12 @@ export default function Analytics() {
                         }}
                       />
 
-                      <span className="text-gray-700">
+                      <span className="text-gray-500">
                         {item.name}
                       </span>
                     </div>
 
-                    <span className="font-medium text-gray-700">
+                    <span className="font-medium text-purple-400">
                       {item.value}%
                     </span>
                   </div>
