@@ -56,7 +56,7 @@ const Navbar = () => {
             {/* User Login */}
 
             <button
-              onClick={() => navigate("/assessmentform")}
+              onClick={() => navigate("/admin-user")}
               className="bg-purple-700 hover:bg-purple-800 text-white px-5 py-2 rounded-lg font-medium transition duration-300 shadow-md"
             >
               User Login
