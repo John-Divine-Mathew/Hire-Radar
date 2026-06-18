@@ -47,16 +47,6 @@ app.get("/hireRadar/cndpermsave/:cndid", async(req,res)=>{
     }
 });
 
-app.delete("/hireRadar/deleteCandidate/:cndid", async(req,res)=>{
-    try {
-        const { cndid } = req.params;
-        const deleteData = await pool.query("delete from cndpermsave where cndid = $1",[cndid]);
-        res.json('Deleted !');
-    } catch (err) {
-        console.log(err.message);
-    }
-});
-
 app.get("/hireRadar/cndpersonaldetails/:cndid", async(req,res)=>{
     try{
         const { cndid } = req.params;
@@ -85,6 +75,17 @@ app.post("/hireRadar/insertCandidate", async(req,res)=>{
         res.json(newCndData);
     } catch (err) {
         console.error(err.message);
+    }
+});
+
+app.delete("/hireRadar/deleteCandidate/:cndid", async(req,res)=>{
+    try {
+        const { cndid } = req.params;
+        const deleteData = await pool.query("delete from cndpermsave where cndid = $1",[cndid]);
+        
+        return res.json({ success: true, deleted: deleteData.rowCount || 0 });
+    } catch (err) {
+        console.log(err.message);
     }
 });
 
