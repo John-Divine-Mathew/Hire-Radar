@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 
 function SavedCandidates(){
     const [candidates, setCandidates] = useState([]);
+    const [openMenuId, setOpenMenuId] = useState(null);
 
     const getListData = async() => {
         try {
@@ -17,9 +18,52 @@ function SavedCandidates(){
         }
     }
 
+    async function deleteRecord(ID){
+        try {
+            const response = await fetch(`http://localhost:5000/hireRadar/deleteCandidate/${String(ID)}`, {
+                method: 'DELETE'
+            });
+
+            if (!response.ok) {
+                const text = await response.text();
+                throw new Error(text || 'Delete request failed');
+            }
+
+            // Remove from local state after successful delete
+            setCandidates(prev => prev.filter(c => String(c.cndid) !== String(ID)));
+            setOpenMenuId(null);
+        } catch (err) {
+            console.error('deleteRecord error:', err.message || err);
+        }
+    }
+
     useEffect(() => {
         getListData();
     }, []);
+
+    useEffect(() => {
+        function handleClickOutside(event) {
+            const menuContainers = document.querySelectorAll('.menu-container');
+            let clickedInsideMenu = false;
+            
+            menuContainers.forEach(container => {
+                if (container.contains(event.target)) {
+                    clickedInsideMenu = true;
+                }
+            });
+            
+            if (!clickedInsideMenu) {
+                setOpenMenuId(null);
+            }
+        }
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const toggleMenu = (id) => {
+        setOpenMenuId(openMenuId === id ? null : id);
+    };
 
     const nav = useNavigate();
     function navigateSavedCandidateProfile(id){
@@ -95,9 +139,20 @@ function SavedCandidates(){
                                                 >
                                                     <Eye size={20} />
                                                 </button>
-                                                <button className="text-gray-400 hover:text-gray-600 transition duration-200" title="More options">
-                                                    <MoreVertical size={20} />
-                                                </button>
+                                                <div className="menu-container relative inline-block">
+                                                    <button 
+                                                        className="text-gray-400 hover:text-gray-600 transition duration-200" 
+                                                        title="More options"
+                                                        onClick={() => toggleMenu(candidate.cndid)}
+                                                    >
+                                                        <MoreVertical size={20} />
+                                                    </button>
+                                                    <div className={`absolute right-full top-1/2 -translate-y-1/2 -mr-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg p-3 z-50 transition-opacity duration-200 ${openMenuId === candidate.cndid ? 'block opacity-100' : 'hidden opacity-0'}`} id={`popupBox-${candidate.cndid}`}>
+                                                        <a onClick={() => alert('Edit: ' + candidate.cndname)} className="block px-3 py-2 text-gray-700 text-sm rounded hover:bg-gray-100 cursor-pointer transition duration-150">Edit</a>
+                                                        <a onClick={() => deleteRecord(candidate.cndid)} className="block px-3 py-2 text-gray-700 text-sm rounded hover:bg-gray-100 cursor-pointer transition duration-150">Remove</a>
+                                                        <a onClick={() => alert('Send Message: ' + candidate.cndname)} className="block px-3 py-2 text-gray-700 text-sm rounded hover:bg-gray-100 cursor-pointer transition duration-150">Send Message</a>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </td>
                                     </tr>
