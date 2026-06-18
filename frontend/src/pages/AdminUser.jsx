@@ -26,7 +26,7 @@ const AdminLogin = () => {
 
       alert("Login Successful");
 
-      navigate("/dashboard");
+      navigate("/assessmentform");
 
     } else {
 
@@ -42,7 +42,7 @@ const AdminLogin = () => {
       <div className="bg-white shadow-lg rounded-xl p-8 w-[400px]">
 
         <h1 className="text-3xl font-bold text-center text-purple-700 mb-6">
-          HR / Admin Login
+          User Login
         </h1>
 
         <form onSubmit={handleLogin}>

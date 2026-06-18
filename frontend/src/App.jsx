@@ -10,7 +10,7 @@ import AssessmentTest from "./pages/Assessment/AssessmentTest";
 import AdminAssessment from './pages/Assessment/AdminAssessment.jsx';
 import AdminLogin from "./pages/AdminLogin";
 import { Router } from 'lucide-react';
-
+import AdminUser from './pages/AdminUser.jsx';
 
 function App() {
   return (
@@ -27,6 +27,7 @@ function App() {
         <Route path="/assessment-test" element={<AssessmentTest />} />
         <Route path="/admin-assessment" element={<AdminAssessment />} />
         <Route path="/admin-login" element={<AdminLogin />} />
+        <Route path="/admin-user" element={<AdminUser />} />
         
       </Routes>
     </BrowserRouter>
