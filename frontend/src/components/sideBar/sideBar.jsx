@@ -36,7 +36,6 @@ function Sidebar(){
                     <li><button className='listitem' onClick={navigateSavedCandidates}><Bookmark size={iconSize} /><p className='buttonP'>Saved Candidates</p></button></li>
                     <li><button className='listitem' onClick={navigateAnalytics}><ChartSpline size={iconSize} /><p className='buttonP'>Analytics</p></button></li>
                     <li><button className='listitem' onClick={navigateAdminAssessment}><ClipboardPen size={iconSize} /><p className='buttonP'>Assessment</p></button></li>
-                    <li><button className='listitem'><MessageSquareMore size={iconSize} /><p className='buttonP'>Messages</p></button></li>
                     <li><button className='listitem'><Settings size={iconSize} /><p className='buttonP'>Settings</p></button></li>
                     <li><button className='listitem'><LogOut size={iconSize} /><p className='buttonP'>Logout</p></button></li>
                 </ul>
