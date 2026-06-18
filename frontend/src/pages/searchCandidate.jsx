@@ -1,6 +1,6 @@
-import Sidebar from '../../components/sideBar/sideBar.jsx';
+import Sidebar from '../components/sideBar/sideBar.jsx';
 import { ChevronDown, Funnel } from 'lucide-react';
-import RenderList from '../../components/renderList/renderList.jsx';
+import RenderList from '../components/renderList/renderList.jsx';
 
 function SearchCandidatePage(){
     return( 

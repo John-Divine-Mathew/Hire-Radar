@@ -17,7 +17,7 @@ function AssessmentForm() {
   // Submit Details
 
   const handleSubmit = (e) => {
-
+    console.log('Submit');
     e.preventDefault();
 
     localStorage.setItem(
@@ -162,7 +162,8 @@ function AssessmentForm() {
             <button
               type="button"
               onClick={startAssessment}
-              className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg"
+              type="submit"
+          className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg"
             >
               Start Assessment
             </button>

@@ -10,7 +10,7 @@ import {
   Pie,
   Cell,
 } from "recharts";
-import Sidebar from "../../components/sideBar/sideBar.jsx";
+import Sidebar from "../components/sideBar/sideBar.jsx";
 
 const trendData = [
   { day: "May 10", value: 400 },

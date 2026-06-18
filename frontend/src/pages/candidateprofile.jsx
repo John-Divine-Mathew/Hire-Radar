@@ -1,4 +1,4 @@
-import Sidebar from '../../components/sideBar/sideBar.jsx';
+import Sidebar from '../components/sideBar/sideBar.jsx';
 import { ChevronLeft, Link, Download } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import React,{ useState, useEffect } from 'react';
