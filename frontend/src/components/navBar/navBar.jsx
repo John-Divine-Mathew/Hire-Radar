@@ -18,7 +18,12 @@ const Navbar = () => {
 
           {/* Logo */}
 
-          <div>
+          <div className="flex items-center gap-3">
+            <img
+              src="/hirotec-logo.webp" 
+              alt="HIROTEC Logo"
+              className="h-20 w-auto object-contain" 
+            />
 
             <h1 className="text-3xl font-extrabold text-purple-700 ">
               Hire-Radar
