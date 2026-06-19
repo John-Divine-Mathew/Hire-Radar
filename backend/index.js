@@ -72,7 +72,7 @@ app.post("/hireRadar/insertCandidate", async(req,res)=>{
         const { date, name, email, phone, age, gender, role, skills, texp, experience, location, status } = req.body;
         const newCndData = await pool.query("insert into cndpermsave(searchdate,cndname,cndemail,cndphone,cndage,cndgender,cndrole,cndskills,cndtotalexperience,cndexperience,cndlocation,cndstatus) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) returning *",
             [date, name, email, phone, age, gender, role, skills, texp, experience, location, status ]);
-        res.json(newCndData);
+        res.json(newCndData.rows[0]);
     } catch (err) {
         console.error(err.message);
     }
@@ -88,6 +88,19 @@ app.delete("/hireRadar/deleteCandidate/:cndid", async(req,res)=>{
         console.log(err.message);
     }
 });
+
+
+
+app.post("/hireRadar/insertTestDetails", async(req,res)=>{
+    try {
+        const { cndid, username, password } = req.body;
+        const newCndData = await pool.query("insert into testdetails(cndid, username, password) values($1,$2,$3) returning username, password",[cndid, username, password]);
+        res.json(newCndData.rows[0]);
+    } catch (err) {
+        console.error(err.message);
+    }
+});
+
 
 app.listen(5000,()=>{
     console.log('Server has started on port 5000');
