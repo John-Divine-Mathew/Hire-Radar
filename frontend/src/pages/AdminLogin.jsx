@@ -4,7 +4,8 @@ import { useNavigate } from "react-router-dom";
 const AdminLogin = () => {
 
   const navigate = useNavigate();
-
+    
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -47,6 +48,14 @@ const AdminLogin = () => {
 
         <form onSubmit={handleLogin}>
 
+            <input 
+            type="text"
+            placeholder="Enter Name"
+            className="w-full border p-3 rounded mb-4"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            />  
+    
           <input
             type="email"
             placeholder="Enter Email"

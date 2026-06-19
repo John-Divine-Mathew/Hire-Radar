@@ -134,7 +134,7 @@ function AssessmentTest() {
 
       <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
         <h1 className="text-4xl font-bold text-purple-700 mb-4">
-          Hire-Radar Assessment Portal
+          Hirotec Assessment Portal
         </h1>
 
         <p className="text-gray-600">
