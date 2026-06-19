@@ -16,14 +16,20 @@ function AssessmentForm() {
 
   // Submit Details
 
-  const handleSubmit = (e) => {
-    console.log('Submit');
+  const handleSubmit = async(e) => {
     e.preventDefault();
 
-    localStorage.setItem(
-      "candidate",
-      JSON.stringify(candidate)
-    );
+    try {
+      
+      const response = await fetch("http://localhost:5000/hireRadar/insertTestDetails", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(candidate)
+      });
+      
+    } catch (err) {
+      console.log(err.message);
+    }
 
     setMessage(" Candidate Details Submitted Successfully!");
 
@@ -160,10 +166,9 @@ function AssessmentForm() {
             {/* Start Assessment */}
 
             <button
-              type="button"
               onClick={startAssessment}
-              type="submit"
-          className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg"
+              type="button"
+              className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg"
             >
               Start Assessment
             </button>
