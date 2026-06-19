@@ -1,12 +1,15 @@
 import Sidebar from "../components/sideBar/sideBar";
-import { Funnel, Eye, MoreVertical } from "lucide-react";
+import { Funnel, Eye, MoreVertical, UserKey } from "lucide-react";
 import { useState, useEffect } from "react";
 import { format } from 'date-fns';
 import { useNavigate } from "react-router-dom";
+import { nanoid } from 'nanoid';
 
 function SavedCandidates(){
     const [candidates, setCandidates] = useState([]);
     const [openMenuId, setOpenMenuId] = useState(null);
+    const [credentials, setCredentials] = useState({});
+    const [openCredentialMenuId, setOpenCredentialMenuId] = useState(null);
 
     const getListData = async() => {
         try {
@@ -61,14 +64,65 @@ function SavedCandidates(){
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
+    useEffect(() => {
+        function handleClickOutside(event) {
+            const credentialContainers = document.querySelectorAll('.credential-container');
+            let clickedInsideMenu = false;
+            
+            credentialContainers.forEach(container => {
+                if (container.contains(event.target)) {
+                    clickedInsideMenu = true;
+                }
+            });
+            
+            if (!clickedInsideMenu) {
+                setOpenCredentialMenuId(null);
+            }
+        }
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
     const toggleMenu = (id) => {
         setOpenMenuId(openMenuId === id ? null : id);
+    };
+
+    const toggleCredentialMenu = (id) => {
+        setOpenCredentialMenuId(openCredentialMenuId === id ? null : id);
     };
 
     const nav = useNavigate();
     function navigateSavedCandidateProfile(id){
         nav('/candidateProfile',{state:{tempCndId:null, permCndId:id}});
     }
+
+    async function generateCredentials(ID){
+        try {
+            const username = nanoid(5);
+            const password = nanoid(10);
+            const response = await fetch("http://localhost:5000/hireRadar/insertTestDetails", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({'cndid':ID, 'username':username, 'password':password})
+            });
+            const result = await response.json();
+            
+            // Store credentials in state
+            setCredentials(prev => ({
+                ...prev,
+                [ID]: { username, password }
+            }));
+            setOpenMenuId(null);
+        } catch (err) {
+            console.error('generateCredentials error:', err.message || err);
+        }
+    }
+
+    const copyToClipboard = (text) => {
+        navigator.clipboard.writeText(text);
+        // alert('Copied to clipboard!');
+    };
 
     return(
         <div style={{ display: "flex", minHeight: "100vh" }}>
@@ -139,6 +193,43 @@ function SavedCandidates(){
                                                 >
                                                     <Eye size={20} />
                                                 </button>
+                                                {credentials[candidate.cndid] && (
+                                                    <div className="credential-container relative inline-block">
+                                                        <button 
+                                                            className="text-grey-600 hover:text-grey-800 transition duration-200" 
+                                                            title="View credentials"
+                                                            onClick={() => toggleCredentialMenu(candidate.cndid)}
+                                                        >
+                                                            <UserKey size={20} />
+                                                        </button>
+                                                        <div className={`absolute right-full top-1/2 -translate-y-1/2 -mr-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg p-3 z-50 transition-opacity duration-200 ${openCredentialMenuId === candidate.cndid ? 'block opacity-100' : 'hidden opacity-0'}`}>
+                                                            <div className="px-3 py-2 border-b border-gray-200 mb-2">
+                                                                <p className="text-xs font-semibold text-gray-600 mb-1">Username</p>
+                                                                <div className="flex items-center justify-between bg-gray-50 p-2 rounded">
+                                                                    <p className="text-sm font-mono text-gray-900">{credentials[candidate.cndid].username}</p>
+                                                                    <button 
+                                                                        onClick={() => copyToClipboard(credentials[candidate.cndid].username)}
+                                                                        className="text-xs text-purple-600 hover:text-purple-800"
+                                                                    >
+                                                                        Copy
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                            <div className="px-3 py-2">
+                                                                <p className="text-xs font-semibold text-gray-600 mb-1">Password</p>
+                                                                <div className="flex items-center justify-between bg-gray-50 p-2 rounded">
+                                                                    <p className="text-sm font-mono text-gray-900">{credentials[candidate.cndid].password}</p>
+                                                                    <button 
+                                                                        onClick={() => copyToClipboard(credentials[candidate.cndid].password)}
+                                                                        className="text-xs text-purple-600 hover:text-purple-800"
+                                                                    >
+                                                                        Copy
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
                                                 <div className="menu-container relative inline-block">
                                                     <button 
                                                         className="text-gray-400 hover:text-gray-600 transition duration-200" 
@@ -149,8 +240,9 @@ function SavedCandidates(){
                                                     </button>
                                                     <div className={`absolute right-full top-1/2 -translate-y-1/2 -mr-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg p-3 z-50 transition-opacity duration-200 ${openMenuId === candidate.cndid ? 'block opacity-100' : 'hidden opacity-0'}`} id={`popupBox-${candidate.cndid}`}>
                                                         <a onClick={() => alert('Edit: ' + candidate.cndname)} className="block px-3 py-2 text-gray-700 text-sm rounded hover:bg-gray-100 cursor-pointer transition duration-150">Edit</a>
-                                                        <a onClick={() => deleteRecord(candidate.cndid)} className="block px-3 py-2 text-gray-700 text-sm rounded hover:bg-gray-100 cursor-pointer transition duration-150">Remove</a>
+                                                        <a onClick={() => deleteRecord(candidate.cndid)} className="block px-3 py-2 text-gray-700 text-sm rounded hover:bg-gray-100 cursor-pointer transition duration-150">Delete</a>
                                                         <a onClick={() => alert('Send Message: ' + candidate.cndname)} className="block px-3 py-2 text-gray-700 text-sm rounded hover:bg-gray-100 cursor-pointer transition duration-150">Send Message</a>
+                                                        <a onClick={() => generateCredentials(candidate.cndid)} className="block px-3 py-2 text-gray-700 text-sm rounded hover:bg-gray-100 cursor-pointer transition duration-150">Generate Credentials</a>
                                                     </div>
                                                 </div>
                                             </div>
