@@ -1,9 +1,11 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 function AssessmentForm() {
 
   const navigate = useNavigate();
+  const location = useLocation();
+  const cndid = location.state;
 
   const [candidate, setCandidate] = useState({
     name: "",
@@ -20,12 +22,13 @@ function AssessmentForm() {
     e.preventDefault();
 
     try {
-      
-      const response = await fetch("http://localhost:5000/hireRadar/insertTestDetails", {
+      const body = {'cndid':cndid, 'name':candidate.name, 'email':candidate.email, 'department':candidate.department, 'phone':candidate.phone }
+      const response = await fetch("http://localhost:5000/hireRadar/updateTestDetails", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(candidate)
+        body: JSON.stringify(body)
       });
+      console.log(response);
       
     } catch (err) {
       console.log(err.message);
