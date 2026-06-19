@@ -9,10 +9,9 @@ const AdminLogin = () => {
   const [password, setPassword] = useState("");
 
   const teamMembers = [
-    "mathewdivine95@gmail.com",
-    "bharathjeeva549@gmail.com",
-    "vijayanandhaj@gmail.com",
-    "test@gmail.com"
+    "test@gmail.com",
+    "mathewdivine95@gmail.com"
+    
   ];
 
   const handleLogin = (e) => {
