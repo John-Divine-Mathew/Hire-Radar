@@ -1,37 +1,52 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
  
 const AdminLogin = () => {
  
   const navigate = useNavigate();
- 
-  const [email, setEmail] = useState("");
+  let jsonData;
+  const [userName, setUserName] = useState("");
   const [password, setPassword] = useState("");
- 
-  const teamMembers = [
-    "test@gmail.com",
-    "mathewdivine95@gmail.com",
-    "bharathjeeva549@gmail.com"
-   
-  ];
- 
-  const handleLogin = (e) => {
- 
+  const [credentialsList, setCredentialsList] = useState([]);
+
+
+  const fetchData = async()=>{
+    try {
+      const response = await fetch("http://localhost:5000/hireRadar/getTestDetails");
+      jsonData = await response.json();
+      setCredentialsList(jsonData);
+    } catch (err) {
+      console.error(err.message);
+    }
+  }
+  useEffect(()=>{
+    fetchData();
+  },[]);
+
+  const handleLogin = async(e) => {
     e.preventDefault();
- 
+
+    let flag=0;
+    let cndid;
+    for (const i of credentialsList){
+      if ((i.username===userName) && (i.password===password)){
+        flag=1;
+        cndid = i.cndid;
+      }
+    }
+
     if (
-      teamMembers.includes(email) &&
-      password === "Hirotec@123"
+      (flag===1) || ((userName === 'test') && (password === "Hirotec@123")) 
     ) {
  
       alert("Login Successful");
- 
-      navigate("/assessmentform");
- 
+
+      navigate("/assessmentform",{state:cndid});
+
     } else {
- 
-      alert("Invalid Email or Password");
- 
+
+      alert("Invalid Username or Password");
+
     }
  
   };
@@ -48,11 +63,11 @@ const AdminLogin = () => {
         <form onSubmit={handleLogin}>
  
           <input
-            type="email"
-            placeholder="Enter Email"
+            type="text"
+            placeholder="Enter username"
             className="w-full border p-3 rounded mb-4"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            value={userName}
+            onChange={(e) => setUserName(e.target.value)}
           />
  
           <input
