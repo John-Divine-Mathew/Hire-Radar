@@ -10,6 +10,8 @@ function SavedCandidates(){
     const [openMenuId, setOpenMenuId] = useState(null);
     const [credentials, setCredentials] = useState({});
     const [openCredentialMenuId, setOpenCredentialMenuId] = useState(null);
+    const [copyText1, setCopyText1] = useState('Copy');
+    const [copyText2, setCopyText2] = useState('Copy');
 
     const getListData = async() => {
         try {
@@ -119,9 +121,26 @@ function SavedCandidates(){
         }
     }
 
-    const copyToClipboard = (text) => {
-        navigator.clipboard.writeText(text);
-        // alert('Copied to clipboard!');
+    const copyToClipboard = (text, n) => {
+        
+        if(n===1){
+            setCopyText1('✓');
+            navigator.clipboard.writeText(text);
+            // alert('Copied to clipboard!');
+
+            setTimeout(() => {
+                setCopyText1("Copy");
+            }, 2000);
+        } else {
+            setCopyText2('✓');
+            navigator.clipboard.writeText(text);
+            // alert('Copied to clipboard!');
+
+            setTimeout(() => {
+                setCopyText2("Copy");
+            }, 2000);
+        }
+
     };
 
     return(
@@ -208,10 +227,10 @@ function SavedCandidates(){
                                                                 <div className="flex items-center justify-between bg-gray-50 p-2 rounded">
                                                                     <p className="text-sm font-mono text-gray-900">{credentials[candidate.cndid].username}</p>
                                                                     <button 
-                                                                        onClick={() => copyToClipboard(credentials[candidate.cndid].username)}
+                                                                        onClick={() => copyToClipboard(credentials[candidate.cndid].username,1)}
                                                                         className="text-xs text-purple-600 hover:text-purple-800"
                                                                     >
-                                                                        Copy
+                                                                        {copyText1}
                                                                     </button>
                                                                 </div>
                                                             </div>
@@ -220,10 +239,10 @@ function SavedCandidates(){
                                                                 <div className="flex items-center justify-between bg-gray-50 p-2 rounded">
                                                                     <p className="text-sm font-mono text-gray-900">{credentials[candidate.cndid].password}</p>
                                                                     <button 
-                                                                        onClick={() => copyToClipboard(credentials[candidate.cndid].password)}
+                                                                        onClick={() => copyToClipboard(credentials[candidate.cndid].password,2)}
                                                                         className="text-xs text-purple-600 hover:text-purple-800"
                                                                     >
-                                                                        Copy
+                                                                        {copyText2}
                                                                     </button>
                                                                 </div>
                                                             </div>
@@ -241,7 +260,6 @@ function SavedCandidates(){
                                                     <div className={`absolute right-full top-1/2 -translate-y-1/2 -mr-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg p-3 z-50 transition-opacity duration-200 ${openMenuId === candidate.cndid ? 'block opacity-100' : 'hidden opacity-0'}`} id={`popupBox-${candidate.cndid}`}>
                                                         <a onClick={() => alert('Edit: ' + candidate.cndname)} className="block px-3 py-2 text-gray-700 text-sm rounded hover:bg-gray-100 cursor-pointer transition duration-150">Edit</a>
                                                         <a onClick={() => deleteRecord(candidate.cndid)} className="block px-3 py-2 text-gray-700 text-sm rounded hover:bg-gray-100 cursor-pointer transition duration-150">Delete</a>
-                                                        <a onClick={() => alert('Send Message: ' + candidate.cndname)} className="block px-3 py-2 text-gray-700 text-sm rounded hover:bg-gray-100 cursor-pointer transition duration-150">Send Message</a>
                                                         <a onClick={() => generateCredentials(candidate.cndid)} className="block px-3 py-2 text-gray-700 text-sm rounded hover:bg-gray-100 cursor-pointer transition duration-150">Generate Credentials</a>
                                                     </div>
                                                 </div>
