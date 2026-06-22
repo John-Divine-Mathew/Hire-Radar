@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import Sidebar from "../../components/sideBar/sideBar.jsx";
 
 const questions = [
   {
@@ -128,180 +129,165 @@ function AssessmentTest() {
   };
 
   return (
-    <div className="bg-gray-100 min-h-screen p-10">
+    <div className="bg-gray-100 min-h-screen">
+      <div className="flex min-h-screen">
+        <Sidebar />
 
-      {/* Header */}
+        <main className="flex-1 p-8 lg:p-10">
+          <div className="bg-white rounded-3xl shadow-2xl p-8 mb-8">
+            <h1 className="text-4xl font-bold text-purple-700 mb-4">
+              Hirotec Assessment Portal
+            </h1>
 
-      <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-        <h1 className="text-4xl font-bold text-purple-700 mb-4">
-          Hirotec Assessment Portal
-        </h1>
+            <p className="text-gray-600">
+              Welcome Candidate. Please read all instructions
+              carefully before starting the assessment.
+            </p>
+          </div>
 
-        <p className="text-gray-600">
-          Welcome Candidate. Please read all instructions
-          carefully before starting the assessment.
-        </p>
-      </div>
+          {/* Notification */}
 
-      {/* Notification */}
+          {notification && (
+            <div className="mb-6 bg-yellow-100 border border-yellow-500 text-yellow-800 px-4 py-3 rounded-lg">
+              {notification}
+            </div>
+          )}
 
-      {notification && (
-        <div className="mb-6 bg-yellow-100 border border-yellow-500 text-yellow-800 px-4 py-3 rounded-lg">
-          {notification}
-        </div>
-      )}
+          {/* Assessment Details */}
 
-      {/* Assessment Details */}
+          <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
 
-      <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
+            <h2 className="text-2xl font-bold text-green-700 mb-5">
+              Assessment Details
+            </h2>
 
-        <h2 className="text-2xl font-bold text-green-700 mb-5">
-          Assessment Details
-        </h2>
+            <ul className="list-disc ml-6 space-y-3 text-gray-700">
+              <li>Total Questions : {questions.length}</li>
+              <li>Total Marks : {questions.length}</li>
+              <li>Duration : 25 Minutes</li>
+              <li>Each Question Carries 1 Mark</li>
+              <li>No Negative Marks</li>
+              <li>Do not refresh the page during the test</li>
+              <li>Answer all questions before submitting</li>
+              <li>
+                Test will automatically submit when time expires
+              </li>
+            </ul>
 
-        <ul className="list-disc ml-6 space-y-3 text-gray-700">
-          <li>Total Questions : {questions.length}</li>
-          <li>Total Marks : {questions.length}</li>
-          <li>Duration : 25 Minutes</li>
-          <li>Each Question Carries 1 Mark</li>
-          <li>No Negative Marks</li>
-          <li>Do not refresh the page during the test</li>
-          <li>Answer all questions before submitting</li>
-          <li>
-            Test will automatically submit when time expires
-          </li>
-        </ul>
-
-        {!testStarted && (
-          <div className="mt-8">
-
-            <button
-              onClick={startTest}
-              className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg text-lg font-semibold"
-            >
-              Start Test
-            </button>
+            {!testStarted && (
+              <div className="mt-8">
+                <button
+                  onClick={startTest}
+                  className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg text-lg font-semibold"
+                >
+                  Start Test
+                </button>
+              </div>
+            )}
 
           </div>
-        )}
 
-      </div>
+          {/* Fixed Timer */}
 
-      {/* Fixed Timer */}
-
-      {testStarted && !isSubmitted && (
-        <div className="fixed top-5 right-5 bg-red-600 text-white px-6 py-4 rounded-xl shadow-xl z-50">
-
-          <h2 className="text-xl font-bold">
-            ⏳ {formatTime(timeLeft)}
-          </h2>
-
-        </div>
-      )}
-
-      {/* Questions */}
-
-      {testStarted && (
-
-        <div>
-
-          <h1 className="text-3xl font-bold mb-8">
-            Assessment Questions
-          </h1>
-
-          {questions.map((q) => (
-
-            <div
-              key={q.id}
-              className="bg-white border rounded-xl shadow p-6 mb-6"
-            >
-
-              <h2 className="text-purple-700 font-semibold">
-                {q.category}
+          {testStarted && !isSubmitted && (
+            <div className="fixed top-5 right-5 bg-red-600 text-white px-6 py-4 rounded-xl shadow-xl z-50">
+              <h2 className="text-xl font-bold">
+                ⏳ {formatTime(timeLeft)}
               </h2>
+            </div>
+          )}
 
-              <h3 className="font-bold text-lg mt-3 mb-4">
-                {q.question}
-              </h3>
+          {/* Questions */}
 
-              {q.options.map((option) => (
+          {testStarted && (
+            <div>
+              <h1 className="text-3xl font-bold mb-8">
+                Assessment Questions
+              </h1>
 
-                <div key={option} className="mb-3">
+              <form className="space-y-6">
+                {questions.map((q) => (
+                  <fieldset
+                    key={q.id}
+                    className="bg-white border border-slate-200 rounded-3xl shadow-sm p-6"
+                  >
+                    <legend className="text-lg font-semibold text-slate-900 mb-4">
+                      {q.id}. {q.question}
+                    </legend>
+                    <p className="text-sm text-slate-500 mb-4">
+                      {q.category}
+                    </p>
 
-                  <input
-                    type="radio"
-                    name={`question-${q.id}`}
-                    value={option}
-                    disabled={isSubmitted}
-                    checked={answers[q.id] === option}
-                    onChange={() =>
-                      setAnswers({
-                        ...answers,
-                        [q.id]: option,
-                      })
-                    }
-                  />
+                    <div className="grid gap-3">
+                      {q.options.map((option) => (
+                        <label
+                          key={option}
+                          className="flex items-center gap-4 rounded-2xl border border-slate-200 px-4 py-3 cursor-pointer transition hover:border-purple-500"
+                        >
+                          <input
+                            type="radio"
+                            name={`question-${q.id}`}
+                            value={option}
+                            disabled={isSubmitted}
+                            checked={answers[q.id] === option}
+                            onChange={() =>
+                              setAnswers({
+                                ...answers,
+                                [q.id]: option,
+                              })
+                            }
+                            className="h-4 w-4 text-purple-600"
+                          />
+                          <span className="text-slate-800">{option}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </fieldset>
+                ))}
+              </form>
 
-                  <span className="ml-3">
-                    {option}
-                  </span>
+              {/* Submit Button */}
 
-                </div>
-
-              ))}
+              <div className="text-center mt-8">
+                <button
+                  onClick={() => submitTest(false)}
+                  disabled={isSubmitted}
+                  className={`px-8 py-3 rounded-lg text-white font-semibold ${
+                    isSubmitted
+                      ? "bg-gray-400 cursor-not-allowed"
+                      : "bg-blue-600 hover:bg-blue-700"
+                  }`}
+                >
+                  {isSubmitted
+                    ? "Assessment Submitted"
+                    : "Submit Test"}
+                </button>
+              </div>
 
             </div>
+          )}
 
-          ))}
+          {/* Result */}
 
-          {/* Submit Button */}
+          {score !== null && (
+            <div className="bg-green-100 border border-green-500 rounded-xl p-6 mt-10">
+              <h2 className="text-3xl font-bold text-green-700">
+                Assessment Completed
+              </h2>
 
-          <div className="text-center mt-8">
+              <p className="mt-4 text-xl font-semibold">
+                Score : {score}/{questions.length}
+              </p>
 
-            <button
-              onClick={() => submitTest(false)}
-              disabled={isSubmitted}
-              className={`px-8 py-3 rounded-lg text-white font-semibold ${
-                isSubmitted
-                  ? "bg-gray-400 cursor-not-allowed"
-                  : "bg-blue-600 hover:bg-blue-700"
-              }`}
-            >
-              {isSubmitted
-                ? "Assessment Submitted"
-                : "Submit Test"}
-            </button>
-
-          </div>
-
-        </div>
-
-      )}
-
-      {/* Result */}
-
-      {score !== null && (
-
-        <div className="bg-green-100 border border-green-500 rounded-xl p-6 mt-10">
-
-          <h2 className="text-3xl font-bold text-green-700">
-            Assessment Completed
-          </h2>
-
-          <p className="mt-4 text-xl font-semibold">
-            Score : {score}/{questions.length}
-          </p>
-
-          <p className="mt-3 text-gray-700">
-            Your responses have been submitted
-            successfully. Further modifications are
-            not allowed.
-          </p>
-
-        </div>
-
-      )}
-
+              <p className="mt-3 text-gray-700">
+                Your responses have been submitted
+                successfully. Further modifications are
+                not allowed.
+              </p>
+            </div>
+          )}
+        </main>
+      </div>
     </div>
   );
 }

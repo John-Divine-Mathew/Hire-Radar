@@ -78,13 +78,20 @@ function AssessmentForm() {
 
   return (
 
-    <div className="min-h-screen bg-gray-100 flex justify-center items-center">
+    <div className="min-h-screen bg-gray-100">
+      <div className="flex min-h-screen">
+        <Sidebar />
 
-      <div className="bg-white shadow-xl rounded-xl p-10 w-[700px]">
-
-        <h1 className="text-4xl font-bold text-purple-700 mb-8 text-center">
-          Candidate Details
-        </h1>
+        <main className="flex-1 p-8 lg:p-12">
+          <div className="mx-auto w-full max-w-4xl bg-white shadow-xl rounded-3xl p-10">
+            <div className="mb-8">
+              <h1 className="text-4xl font-bold text-purple-700 mb-2">
+                Candidate Assessment Details
+              </h1>
+              <p className="text-slate-600">
+                Enter candidate information and proceed to the assessment in a clean, structured form.
+              </p>
+            </div>
 
         {/* Notification */}
 
@@ -98,7 +105,7 @@ function AssessmentForm() {
 
         <form
           onSubmit={handleSubmit}
-          className="space-y-4"
+          className="space-y-6"
         >
 
           <input
@@ -153,9 +160,7 @@ function AssessmentForm() {
             }
           />
 
-          {/* Buttons */}
-
-          <div className="flex gap-4 justify-center mt-6">
+          <div className="grid gap-4 md:grid-cols-3 justify-center mt-8">
 
             {/* Submit */}
 
@@ -170,8 +175,8 @@ function AssessmentForm() {
 
             <button
               onClick={startAssessment}
-              type="button"
-              className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg"
+              type="submit"
+          className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg"
             >
               Start Assessment
             </button>
@@ -191,12 +196,13 @@ function AssessmentForm() {
         </form>
 
         <h2 className="text-center text-2xl font-bold text-purple-700 mt-8">
-          Best of Luck for Your Assessment 
+          Best of Luck for Your Assessment
         </h2>
 
       </div>
-
+      </main>
     </div>
+  </div>
   );
 }
 
