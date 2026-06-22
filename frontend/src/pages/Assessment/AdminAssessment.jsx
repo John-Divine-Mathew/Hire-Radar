@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import Sidebar from "../../components/sideBar/sideBar.jsx";
 
 function AdminAssessment() {
 
@@ -35,8 +36,11 @@ function AdminAssessment() {
   };
 
   return (
-
-    <div className="p-10">
+    <div className="min-h-screen bg-gray-100">
+      <div className="flex min-h-screen">
+        <Sidebar />
+        <main className="flex-1 p-8 lg:p-12">
+          <div className="mx-auto w-full max-w-4xl bg-white shadow-xl rounded-3xl p-10">
 
       <h1 className="text-4xl font-bold mb-6">
         Assessment Management
@@ -89,6 +93,9 @@ function AdminAssessment() {
 
       </div>
 
+          </div>
+        </main>
+      </div>
     </div>
   );
 }
