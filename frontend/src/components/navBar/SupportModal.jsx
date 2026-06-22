@@ -66,7 +66,6 @@ const SupportModal = ({ closeModal }) => {
 
             <li>• 9626749641</li>
             <li>• 7373774847</li>
-            <li>• 7448540072</li>
 
           </ul>
 
