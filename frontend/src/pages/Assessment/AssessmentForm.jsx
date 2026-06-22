@@ -1,9 +1,11 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 function AssessmentForm() {
 
   const navigate = useNavigate();
+  const location = useLocation();
+  const cndid = location.state;
 
   const [candidate, setCandidate] = useState({
     name: "",
@@ -16,14 +18,21 @@ function AssessmentForm() {
 
   // Submit Details
 
-  const handleSubmit = (e) => {
-    console.log('Submit');
+  const handleSubmit = async(e) => {
     e.preventDefault();
 
-    localStorage.setItem(
-      "candidate",
-      JSON.stringify(candidate)
-    );
+    try {
+      const body = {'cndid':cndid, 'name':candidate.name, 'email':candidate.email, 'department':candidate.department, 'phone':candidate.phone }
+      const response = await fetch("http://localhost:5000/hireRadar/updateTestDetails", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+      console.log(response);
+      
+    } catch (err) {
+      console.log(err.message);
+    }
 
     setMessage(" Candidate Details Submitted Successfully!");
 
@@ -160,10 +169,9 @@ function AssessmentForm() {
             {/* Start Assessment */}
 
             <button
-              type="button"
               onClick={startAssessment}
-              type="submit"
-          className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg"
+              type="button"
+              className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg"
             >
               Start Assessment
             </button>
