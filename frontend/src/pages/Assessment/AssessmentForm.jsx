@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import Sidebar from "../../components/sideBar/sideBar.jsx";
 
 function AssessmentForm() {
 
@@ -77,11 +78,9 @@ function AssessmentForm() {
   };
 
   return (
-
     <div className="min-h-screen bg-gray-100">
       <div className="flex min-h-screen">
         <Sidebar />
-
         <main className="flex-1 p-8 lg:p-12">
           <div className="mx-auto w-full max-w-4xl bg-white shadow-xl rounded-3xl p-10">
             <div className="mb-8">
