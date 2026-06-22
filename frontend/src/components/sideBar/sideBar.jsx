@@ -30,7 +30,10 @@ function Sidebar(){
     return(
         <div className='sidebar'>
                 <ul className="sidebartitle">
-                    <li className='brandTitle'><Atom size={50}/><p className='headingP'>Hire Radar</p></li>
+                    <li className='brandTitle'>
+                        <img src="/hirotec-logo.webp" alt="Hirotec Logo" className='sidebarLogo' />
+                        <p className='headingP'>Hire Radar</p>
+                    </li>
                 </ul>
                 <ul className="sidebarlist">
                     <li><button className='listitem' onClick={navigateDashboard}><House size={iconSize} /><p className='buttonP'>Dashboard</p></button></li>
