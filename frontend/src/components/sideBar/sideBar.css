@@ -27,6 +27,12 @@
     padding: 1rem 0;
 }
 
+.sidebarLogo{
+    height: 50px;
+    width: auto;
+    object-fit: contain;
+}
+
 .listitem{
     display: flex;
     flex-direction: row;
