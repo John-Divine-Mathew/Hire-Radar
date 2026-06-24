@@ -9,7 +9,6 @@ function RenderList({ var1 }){
     const [list,setList] = useState([]);
     const getListData = async()=>{
         try {
-            console.log(var1);
             const response = var1===""? await fetch(`http://localhost:5000/hireRadar/cndtempsave`): await fetch(`http://localhost:5000/hireRadar/cndtempsavesearch/${var1.toLowerCase().trim()}`);
             const jsonData = await response.json();
             setList(jsonData);
