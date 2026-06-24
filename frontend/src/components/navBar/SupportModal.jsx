@@ -33,7 +33,7 @@ const SupportModal = ({ closeModal }) => {
           <ul className="text-gray-600 space-y-1">
 
             <li>• John Divine Mathew J</li>
-            <li>• Vijayanandha</li>
+            <li>• vijayanandha</li>
             <li>• Bharathsnehan</li>
 
           </ul>
