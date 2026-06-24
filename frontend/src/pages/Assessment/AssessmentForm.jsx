@@ -80,7 +80,6 @@ function AssessmentForm() {
   return (
     <div className="min-h-screen bg-gray-100">
       <div className="flex min-h-screen">
-        <Sidebar />
         <main className="flex-1 p-8 lg:p-12">
           <div className="mx-auto w-full max-w-4xl bg-white shadow-xl rounded-3xl p-10">
             <div className="mb-8">
@@ -145,20 +144,26 @@ function AssessmentForm() {
               })
             }
           />
-
-          <input
-            type="text"
-            placeholder="Department"
-            className="border p-3 w-full rounded"
-            value={candidate.department}
-            onChange={(e) =>
-              setCandidate({
-                ...candidate,
-                department: e.target.value
-              })
-            }
-          />
-
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Department
+            </label>
+            <select
+              className="border p-3 w-full rounded focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white text-sm"
+              value={candidate.department}
+              onChange={(e) =>
+                setCandidate({
+                  ...candidate,
+                  department: e.target.value
+                })
+              }
+            >
+              <option value="">Please choose an option</option>
+              <option value="Automation">Automation</option>
+              <option value="Design Engineering">Design Engineering</option>
+              <option value="HR">Human Resource</option>
+            </select>
+          </div>
           <div className="grid gap-4 md:grid-cols-3 justify-center mt-8">
 
             {/* Submit */}
