@@ -9,7 +9,6 @@ function SearchCandidatePage(){
     const [propsVar, setPropsVar] = useState("");
     function handleClick(){
         setPropsVar(searchVar);
-        console.log(propsVar);
     }
 
 

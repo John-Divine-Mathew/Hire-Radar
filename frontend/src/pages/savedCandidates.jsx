@@ -13,15 +13,27 @@ function SavedCandidates(){
     const [copyText1, setCopyText1] = useState('Copy');
     const [copyText2, setCopyText2] = useState('Copy');
 
-    const getListData = async() => {
+    const [searchVar, setSearchVar] = useState("");
+    const [propsVar, setPropsVar] = useState("");
+    function handleClick(){
+        setPropsVar(searchVar);
+    }
+
+
+
+    const getListData = async()=>{
         try {
-            const response = await fetch("http://localhost:5000/hireRadar/cndpermsave");
+            console.log(propsVar);
+            const response = propsVar===""? await fetch(`http://localhost:5000/hireRadar/cndpermsave`): await fetch(`http://localhost:5000/hireRadar/cndpermsavesearch/${propsVar.toLowerCase().trim()}`);
             const jsonData = await response.json();
             setCandidates(jsonData);
         } catch (err) {
             console.error(err.message);
         }
     }
+    useEffect(() => {
+        getListData();
+    }, [propsVar]);
 
     async function deleteRecord(ID){
         try {
@@ -42,9 +54,7 @@ function SavedCandidates(){
         }
     }
 
-    useEffect(() => {
-        getListData();
-    }, []);
+
 
     useEffect(() => {
         function handleClickOutside(event) {
@@ -157,10 +167,16 @@ function SavedCandidates(){
                             type="text" 
                             placeholder="Search saved candidates..." 
                             className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-lg"
+                            value={searchVar}
+                            onChange={(e)=>setSearchVar(e.target.value)}
                         />
+                        <button className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-lg font-semibold transition duration-200"
+                            onClick={()=>handleClick()}>
+                            Search
+                        </button>
                         <button className="ml-4 border border-gray-300 hover:bg-gray-50 text-gray-700 px-6 py-3 rounded-lg font-semibold flex items-center gap-2 transition duration-200">
                             <Funnel size={20} />
-                            <span>Filter</span>
+                            <span>Filters</span>
                         </button>
                     </div>
                 </div>
