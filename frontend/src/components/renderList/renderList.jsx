@@ -5,15 +5,12 @@ import { v4 as uuid } from "uuid";
 import { format } from 'date-fns';
     
 
-function RenderList(){
-
+function RenderList({ var1 }){
     const [list,setList] = useState([]);
-
-
-
     const getListData = async()=>{
         try {
-            const response = await fetch("http://localhost:5000/hireRadar/cndtempsave");
+            console.log(var1);
+            const response = var1===""? await fetch(`http://localhost:5000/hireRadar/cndtempsave`): await fetch(`http://localhost:5000/hireRadar/cndtempsavesearch/${var1.toLowerCase().trim()}`);
             const jsonData = await response.json();
             setList(jsonData);
         } catch (err) {
@@ -22,7 +19,7 @@ function RenderList(){
     }
     useEffect(()=>{
         getListData();
-    },[]);
+    },[var1]);
     
     
     const nav = useNavigate();

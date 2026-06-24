@@ -131,7 +131,6 @@ function AssessmentTest() {
   return (
     <div className="bg-gray-100 min-h-screen">
       <div className="flex min-h-screen">
-        <Sidebar />
 
         <main className="flex-1 p-8 lg:p-10">
           <div className="bg-white rounded-3xl shadow-2xl p-8 mb-8">
