@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import './sideBar.css';
+import { createPortal } from 'react-dom';
 import {House, Atom, Search, Bookmark, ChartSpline, MessageSquareMore, LogOut, ClipboardPen} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { logoutUser } from '../../utils/auth';
 
 function Sidebar(){
+
 
     const nav = useNavigate();
     const navigateDashboard = ()=>{
@@ -57,8 +59,8 @@ function Sidebar(){
                     <li><button className='listitem' onClick={handleLogoutClick}><LogOut size={iconSize} /><p className='buttonP'>Logout</p></button></li>
                 </ul>
 
-                {showLogoutModal && (
-                    <div className='logout-modal-overlay'>
+                {showLogoutModal && createPortal(
+                    <div className='logout-modal-overlay' role="dialog" aria-modal="true">
                         <div className='logout-modal-content'>
                             <h2>Confirm Logout</h2>
                             <p>Are you confirm to logout</p>
@@ -67,7 +69,8 @@ function Sidebar(){
                                 <button className='logout-button cancel' onClick={cancelLogout}>Cancel</button>
                             </div>
                         </div>
-                    </div>
+                    </div>,
+                    document.body
                 )}
             </div>
     );
