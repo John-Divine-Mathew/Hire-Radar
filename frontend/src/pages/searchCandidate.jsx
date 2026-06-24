@@ -1,8 +1,18 @@
 import Sidebar from '../components/sideBar/sideBar.jsx';
 import { ChevronDown, Funnel } from 'lucide-react';
 import RenderList from '../components/renderList/renderList.jsx';
+import { useState, useEffect } from 'react';
 
 function SearchCandidatePage(){
+
+    const [searchVar, setSearchVar] = useState('');
+    const [propsVar, setPropsVar] = useState("");
+    function handleClick(){
+        setPropsVar(searchVar);
+        console.log(propsVar);
+    }
+
+
     return( 
         <div style={{ display: "flex", minHeight: "100vh" }}>
             <Sidebar />
@@ -17,9 +27,13 @@ function SearchCandidatePage(){
                                 <input 
                                     className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-lg" 
                                     type="text" 
-                                    placeholder="Search candidates by name, skills, location..."
+                                    placeholder="Search candidates by name ..."
+                                    value={searchVar}
+                                    onChange={(e)=>setSearchVar(e.target.value)}
                                 />
-                                <button className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-lg font-semibold transition duration-200">
+                                <button className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-lg font-semibold transition duration-200"
+                                    onClick={()=>handleClick()}
+                                >
                                     Search
                                 </button>
                                 <button className="border border-gray-300 hover:bg-gray-50 text-gray-700 px-6 py-3 rounded-lg font-semibold flex items-center gap-2 transition duration-200">
@@ -45,7 +59,7 @@ function SearchCandidatePage(){
                 </div>
                 
                 {/* Candidates List */}
-                <RenderList />
+                <RenderList var1={propsVar}/>
             </div>
         </div>
     );
