@@ -46,6 +46,16 @@ app.get("/hireRadar/cndpermsave",async(req,res)=>{
     }
 });
 
+app.get("/hireRadar/cndpermsavesearch/:alias",async(req,res)=>{
+    try{
+        const { alias } = req.params;
+        const allData = await pool.query("select * from cndpermsave where lower(cndname) like '%' || $1 || '%'",[alias]);
+        res.json(allData.rows);
+    }catch(err){
+        console.error(err.message);
+    }
+});
+
 app.get("/hireRadar/cndpermsave/:cndid", async(req,res)=>{
     try{
         const { cndid } = req.params;
