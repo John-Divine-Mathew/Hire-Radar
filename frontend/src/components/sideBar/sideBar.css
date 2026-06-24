@@ -73,3 +73,61 @@ button.listitem:hover{
 button.listitem:hover svg {
     color: #a855f7;
 }
+
+.logout-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+    padding: 1rem;
+}
+
+.logout-modal-content {
+    width: min(500px, 100%);
+    background: #ffffff;
+    border-radius: 1rem;
+    padding: 2rem;
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.25);
+    text-align: center;
+}
+
+.logout-modal-content h2 {
+    margin-bottom: 0.75rem;
+    color: #1f2937;
+    font-size: 1.75rem;
+}
+
+.logout-modal-content p {
+    margin-bottom: 1.5rem;
+    color: #4b5563;
+    font-size: 1rem;
+}
+
+.logout-modal-actions {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.logout-button {
+    min-width: 140px;
+    padding: 0.85rem 1rem;
+    border-radius: 999px;
+    border: none;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.logout-button.confirm {
+    background: #7c3aed;
+    color: #fff;
+}
+
+.logout-button.cancel {
+    background: #e5e7eb;
+    color: #111827;
+}

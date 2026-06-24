@@ -10,7 +10,7 @@ const AdminLogin = () => {
 
   const teamMembers = [
     "mathewdivine95@gmail.com",
-    "bharathjeeva549@gmail.com",
+    "bharathsnehan011@gmail.com",
     "vijayanandhaj@gmail.com",
     "test@gmail.com",
   ];
