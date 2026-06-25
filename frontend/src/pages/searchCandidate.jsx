@@ -5,18 +5,13 @@ import { useState } from 'react';
 
 function SearchCandidatePage(){
     const [searchVar, setSearchVar] = useState('');
-    const [propsVar, setPropsVar] = useState("");
     const [showFilters, setShowFilters] = useState(false);
     const [activeFilter, setActiveFilter] = useState(""); 
 
-    function handleClick(){
-        setPropsVar(searchVar);
-    }
 
     function toggleFilter(filter) {
         setActiveFilter((prev) => (prev === filter ? "" : filter));
     }
-    console.log(activeFilter);
 
     return(
         <div style={{ display: "flex", minHeight: "100vh" }}>
@@ -32,14 +27,14 @@ function SearchCandidatePage(){
                                 <input 
                                     className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-lg" 
                                     type="text" 
-                                    placeholder="Search candidates by name ..."
+                                    placeholder={`Search Candidate by ${activeFilter===''? 'name': activeFilter.toLowerCase()} ...`}
                                     value={searchVar}
                                     onChange={(e)=>setSearchVar(e.target.value)}
                                 />
                                 <button className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-lg font-semibold transition duration-200"
-                                    onClick={handleClick}
+                                    onClick={()=>setSearchVar("")}
                                 >
-                                    Search
+                                    Reset
                                 </button>
                                 
                                 {/* Main Filter Button - Border active style */}
@@ -59,7 +54,7 @@ function SearchCandidatePage(){
                             {/* Filter Tags */}
                             {showFilters && (
                                 <div className="flex flex-wrap gap-2 items-center pt-2 border-t border-gray-100">
-                                    {['Experience', 'Skills', 'Location', 'Role', 'Availability'].map((filter) => {
+                                    {['Experience', 'Skills', 'Location', 'Role', 'Status'].map((filter) => {
                                         const isActive = activeFilter === filter;
                                         return (
                                             <button 
@@ -82,7 +77,7 @@ function SearchCandidatePage(){
                 </div>
                 
                 {/* Candidates List */}
-                <RenderList var1={propsVar} activeFilter={activeFilter}/>
+                <RenderList var1={searchVar} activeFilter={activeFilter}/>
             </div>
         </div>
     );
