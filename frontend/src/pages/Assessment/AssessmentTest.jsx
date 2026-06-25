@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { logoutUser } from "../../utils/auth.js";
 import Sidebar from "../../components/sideBar/sideBar.jsx";
 
 const questions = [
@@ -50,6 +52,7 @@ const questions = [
 ];
 
 function AssessmentTest() {
+  const navigate = useNavigate();
   const [answers, setAnswers] = useState({});
   const [score, setScore] = useState(null);
 
@@ -269,7 +272,17 @@ function AssessmentTest() {
           {/* Result */}
 
           {score !== null && (
-            <div className="bg-green-100 border border-green-500 rounded-xl p-6 mt-10">
+            <div className="bg-green-100 border border-green-500 rounded-xl p-6 mt-10 relative">
+              <button
+                onClick={() => {
+                  logoutUser();
+                  navigate("/admin-user");
+                }}
+                className="absolute top-6 right-6 bg-purple-600 hover:bg-purple-700 text-white font-semibold px-4 py-2 rounded-lg"
+              >
+                back to home
+              </button>
+
               <h2 className="text-3xl font-bold text-green-700">
                 Assessment Completed
               </h2>
