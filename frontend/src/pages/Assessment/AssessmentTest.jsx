@@ -276,7 +276,7 @@ function AssessmentTest() {
               <button
                 onClick={() => {
                   logoutUser();
-                  navigate("/admin-user");
+                  navigate("/home");
                 }}
                 className="absolute top-6 right-6 bg-purple-600 hover:bg-purple-700 text-white font-semibold px-4 py-2 rounded-lg"
               >
