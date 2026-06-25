@@ -89,7 +89,7 @@ const Navbar = () => {
 
                 <ul className="list-disc ml-6 mt-2">
                   <li>John Divine Mathew J</li>
-                  <li>bharathsb</li>
+                  <li>Vijayanandha J</li>
                   <li>Bharathsnehan</li>
                 </ul>
               </div>

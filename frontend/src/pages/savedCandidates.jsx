@@ -15,11 +15,19 @@ function SavedCandidates(){
 
     const [searchVar, setSearchVar] = useState("");
     const [propsVar, setPropsVar] = useState("");
+    const [showFilters, setShowFilters] = useState(false);
+    
+    // Updated to handle only one active filter string key at a time
+    const [activeFilter, setActiveFilter] = useState("");
+
     function handleClick(){
         setPropsVar(searchVar);
     }
 
-
+    function toggleFilter(filter) {
+        // Mutual exclusivity: sets the filter or clears it if clicked again
+        setActiveFilter((prev) => (prev === filter ? "" : filter));
+    }
 
     const getListData = async()=>{
         try {
@@ -46,15 +54,12 @@ function SavedCandidates(){
                 throw new Error(text || 'Delete request failed');
             }
 
-            // Remove from local state after successful delete
             setCandidates(prev => prev.filter(c => String(c.cndid) !== String(ID)));
             setOpenMenuId(null);
         } catch (err) {
             console.error('deleteRecord error:', err.message || err);
         }
     }
-
-
 
     useEffect(() => {
         function handleClickOutside(event) {
@@ -118,9 +123,8 @@ function SavedCandidates(){
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({'cndid':ID, 'username':username, 'password':password})
             });
-            const result = await response.json();
+            await response.json();
             
-            // Store credentials in state
             setCredentials(prev => ({
                 ...prev,
                 [ID]: { username, password }
@@ -132,56 +136,79 @@ function SavedCandidates(){
     }
 
     const copyToClipboard = (text, n) => {
-        
         if(n===1){
             setCopyText1('✓');
             navigator.clipboard.writeText(text);
-            // alert('Copied to clipboard!');
-
             setTimeout(() => {
                 setCopyText1("Copy");
             }, 2000);
         } else {
             setCopyText2('✓');
             navigator.clipboard.writeText(text);
-            // alert('Copied to clipboard!');
-
             setTimeout(() => {
                 setCopyText2("Copy");
             }, 2000);
         }
-
     };
 
     return(
         <div style={{ display: "flex", minHeight: "100vh" }}>
             <Sidebar />
             <div className="flex-1 min-h-screen bg-slate-50 p-6 overflow-x-hidden">
-                {/* Header Section */}
                 <div className="mb-6">
                     <h1 className="text-4xl font-bold text-gray-900 mb-6">Saved Candidates</h1>
                     
-                    {/* Search and Filter Bar */}
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 flex items-center justify-between">
-                        <input 
-                            type="text" 
-                            placeholder="Search saved candidates..." 
-                            className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-lg"
-                            value={searchVar}
-                            onChange={(e)=>setSearchVar(e.target.value)}
-                        />
-                        <button className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-lg font-semibold transition duration-200"
-                            onClick={()=>handleClick()}>
-                            Search
-                        </button>
-                        <button className="ml-4 border border-gray-300 hover:bg-gray-50 text-gray-700 px-6 py-3 rounded-lg font-semibold flex items-center gap-2 transition duration-200">
-                            <Funnel size={20} />
-                            <span>Filters</span>
-                        </button>
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 flex flex-col gap-4">
+                        <div className="flex items-center justify-between gap-4">
+                            <input 
+                                type="text" 
+                                placeholder="Search saved candidates..." 
+                                className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-lg"
+                                value={searchVar}
+                                onChange={(e)=>setSearchVar(e.target.value)}
+                            />
+                            <button className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-lg font-semibold transition duration-200"
+                                onClick={handleClick}>
+                                Search
+                            </button>
+                            
+                            {/* Main Filter Button - Only border-2 frames it when active/open */}
+                            <button
+                                className={`border-2 px-6 py-3 rounded-lg font-semibold flex items-center gap-2 transition duration-200 bg-white ${
+                                    showFilters || activeFilter
+                                        ? 'border-purple-600 text-purple-700'
+                                        : 'border-gray-300 hover:bg-gray-50 text-gray-700'
+                                }`}
+                                onClick={() => setShowFilters((prev) => !prev)}
+                            >
+                                <Funnel size={20} />
+                                <span>Filters</span>
+                            </button>
+                        </div>
+
+                        {showFilters && (
+                            <div className="flex flex-wrap gap-2 items-center pt-2 border-t border-gray-100">
+                                {['Experience', 'Skills', 'Location', 'Role', 'Availability'].map((filter) => {
+                                    const isActive = activeFilter === filter;
+                                    return (
+                                        <button 
+                                            key={filter}
+                                            onClick={() => toggleFilter(filter)}
+                                            className={`px-4 py-2 rounded-lg flex items-center gap-2 transition duration-200 border-2 bg-white ${
+                                                isActive
+                                                    ? 'border-purple-600 text-purple-700 font-semibold'
+                                                    : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+                                            }`}
+                                        >
+                                            <span className="text-sm">{filter}</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </div>
                 </div>
                 
-                {/* Table Section */}
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden max-h-[calc(100vh-280px)] flex flex-col">
                     <div className="overflow-x-auto flex-1 overflow-y-auto">
                         <table className="w-full">
@@ -222,7 +249,7 @@ function SavedCandidates(){
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
                                                 <button 
-                                                    onClick={()=>navigateSavedCandidateProfile(candidate.cndid)}
+                                                    onClick={() => navigateSavedCandidateProfile(candidate.cndid)}
                                                     className="text-purple-600 hover:text-purple-800 transition duration-200"
                                                     title="View profile"
                                                 >
@@ -231,7 +258,7 @@ function SavedCandidates(){
                                                 {credentials[candidate.cndid] && (
                                                     <div className="credential-container relative inline-block">
                                                         <button 
-                                                            className="text-grey-600 hover:text-grey-800 transition duration-200" 
+                                                            className="text-gray-600 hover:text-gray-800 transition duration-200" 
                                                             title="View credentials"
                                                             onClick={() => toggleCredentialMenu(candidate.cndid)}
                                                         >
@@ -287,7 +314,6 @@ function SavedCandidates(){
                         </table>
                     </div>
                     
-                    {/* Pagination */}
                     <div className="border-t border-gray-200 px-6 py-4 bg-gray-50">
                         <p className="text-sm text-gray-700">Showing 1 to {candidates.length} of {candidates.length} results</p>
                     </div>
