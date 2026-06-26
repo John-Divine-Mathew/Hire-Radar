@@ -124,7 +124,7 @@ app.post("/hireRadar/insertTestDetails", async(req,res)=>{
 
 app.get("/hireRadar/getTestDetails",async(req,res)=>{
     try{
-        const allData = await pool.query("select cndid,username,password from testdetails");
+        const allData = await pool.query("select cndid,username,password,testresult from testdetails");
         res.json(allData.rows);
     }catch(err){
         console.error(err.message);
