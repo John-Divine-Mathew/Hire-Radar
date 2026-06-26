@@ -5,7 +5,7 @@ function AssessmentForm() {
 
   const navigate = useNavigate();
   const location = useLocation();
-  const cndid = location.state;
+  const { cndid, result } = location.state;
 
   const [candidate, setCandidate] = useState({
     name: "",
@@ -55,6 +55,11 @@ function AssessmentForm() {
       return;
     }
 
+    if(result){
+      alert("Already taken the test !");
+      return;
+    }
+    handleSubmit();
     navigate("/assessment-test", {state:cndid});
   };
 
