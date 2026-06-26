@@ -32,7 +32,10 @@ function SearchCandidatePage(){
                                     onChange={(e)=>setSearchVar(e.target.value)}
                                 />
                                 <button className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-lg font-semibold transition duration-200"
-                                    onClick={()=>setSearchVar("")}
+                                    onClick={()=>{
+                                        setSearchVar("");
+                                        setActiveFilter("");
+                                    }}
                                 >
                                     Reset
                                 </button>

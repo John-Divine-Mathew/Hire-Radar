@@ -19,7 +19,8 @@ app.get("/hireRadar/cndtempsave",async(req,res)=>{
 app.get("/hireRadar/cndtempsavesearch/:alias",async(req,res)=>{
     try{
         const { alias } = req.params;
-        const allData = await pool.query("select * from cndtempsave where lower(cndname) like '%' || $1 || '%'",[alias]);
+        const [ field, str ] = alias.split('and');
+        const allData = await pool.query(`select * from cndtempsave where lower(${field}) like '%${str}%'`);
         res.json(allData.rows);
     }catch(err){
         console.error(err.message);
@@ -49,7 +50,8 @@ app.get("/hireRadar/cndpermsave",async(req,res)=>{
 app.get("/hireRadar/cndpermsavesearch/:alias",async(req,res)=>{
     try{
         const { alias } = req.params;
-        const allData = await pool.query("select * from cndpermsave where lower(cndname) like '%' || $1 || '%'",[alias]);
+        const [ field, str ] = alias.split('and');
+        const allData = await pool.query(`select * from cndpermsave where lower(${field}) like '%${str}%'`);
         res.json(allData.rows);
     }catch(err){
         console.error(err.message);
