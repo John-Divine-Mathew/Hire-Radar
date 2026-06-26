@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import Sidebar from "../../components/sideBar/sideBar.jsx";
 
 function AssessmentForm() {
 
@@ -56,7 +55,7 @@ function AssessmentForm() {
       return;
     }
 
-    navigate("/assessment-test");
+    navigate("/assessment-test", {state:cndid});
   };
 
   // Reset Form
@@ -158,7 +157,7 @@ function AssessmentForm() {
                   department: e.target.value
                 })
               }>
-              <option value="option">Please choose the Respective Departmnet </option>
+              <option value="">--- Choose Department ---</option>
               <option value="Automation">Automation</option>
               <option value="Design Engineering">Design Engineering</option>
               <option value="HR">Human Resource</option>
