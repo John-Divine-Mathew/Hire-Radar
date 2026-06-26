@@ -141,6 +141,25 @@ app.post("/hireRadar/updateTestDetails", async(req,res)=>{
     }
 });
 
+app.get("/hireRadar/testquestions",async(req,res)=>{
+    try{
+        const allData = await pool.query("select * from questions");
+        res.json(allData.rows);
+    }catch(err){
+        console.error(err.message);
+    }
+});
+
+app.post("/hireRadar/setTestResult", async(req,res)=>{
+    try {
+        const { result, cndid } = req.body;
+        const newCndData = await pool.query("update testdetails set testresult=$1 where cndid=$2 returning *",[result, cndid]);
+        res.json(newCndData.rows[0]);
+    } catch (err) {
+        console.error(err.message);
+    }
+});
+
 
 app.listen(5000,()=>{
     console.log('Server has started on port 5000');
