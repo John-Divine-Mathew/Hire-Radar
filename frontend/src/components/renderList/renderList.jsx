@@ -5,11 +5,12 @@ import { v4 as uuid } from "uuid";
 import { format } from 'date-fns';
     
 
-function RenderList({ var1 }){
+function RenderList({ var1, activeFilter }){
     const [list,setList] = useState([]);
     const getListData = async()=>{
         try {
-            const response = var1===""? await fetch(`http://localhost:5000/hireRadar/cndtempsave`): await fetch(`http://localhost:5000/hireRadar/cndtempsavesearch/${var1.toLowerCase().trim()}`);
+            const field = activeFilter===""? 'cndname': `cnd${activeFilter.toLowerCase().trim()}`;
+            const response = var1===""? await fetch(`http://localhost:5000/hireRadar/cndtempsave`): await fetch(`http://localhost:5000/hireRadar/cndtempsavesearch/${field}and${var1.toLowerCase().trim()}`);
             const jsonData = await response.json();
             setList(jsonData);
         } catch (err) {
