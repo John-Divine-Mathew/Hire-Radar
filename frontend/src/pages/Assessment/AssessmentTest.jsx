@@ -1,58 +1,14 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { logoutUser } from "../../utils/auth.js";
-import Sidebar from "../../components/sideBar/sideBar.jsx";
-
-const questions = [
-  {
-    id: 1,
-    category: "Reasoning",
-    question: "Find the next number: 2,4,6,8 ?",
-    options: ["10", "11", "12", "15"],
-    answer: "10",
-  },
-  {
-    id: 2,
-    category: "Aptitude",
-    question: "10 + 20 = ?",
-    options: ["25", "30", "35", "40"],
-    answer: "30",
-  },
-  {
-    id: 3,
-    category: "Technical",
-    question: "React is?",
-    options: ["Database", "Frontend Library", "OS", "Browser"],
-    answer: "Frontend Library",
-  },
-  {
-    id: 4,
-    category: "Technical",
-    question: "What is the main purpose of Software Testing?",
-    options: [
-      "To write code",
-      "To find Defects in the application",
-      "To Design UI",
-      "To Create Databases",
-    ],
-    answer: "To find Defects in the application",
-  },
-  {
-    id: 5,
-    category: "Technical",
-    question: "Which Testing is Performed by the End User?",
-    options: [
-      "Unit Testing",
-      "Integration Testing",
-      "User Acceptance Testing",
-      "Regression Testing",
-    ],
-    answer: "User Acceptance Testing",
-  },
-];
 
 function AssessmentTest() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const cndid = location.state;
+  const [timeLeft, setTimeLeft] = useState(0);
+
+  const [questions, setQuestions] = useState([]);
   const [answers, setAnswers] = useState({});
   const [score, setScore] = useState(null);
 
@@ -62,7 +18,33 @@ function AssessmentTest() {
   const [notification, setNotification] = useState("");
   const [warningShown, setWarningShown] = useState(false);
 
-  const [timeLeft, setTimeLeft] = useState(25 * 60);
+  const getListData = async()=>{
+    try {
+      const response = await fetch(`http://localhost:5000/hireRadar/testquestions`);
+      const jsonData = await response.json();
+      setQuestions(jsonData);
+      setTimeLeft(jsonData.length * 60);
+    } catch (err) {
+      console.error(err.message);
+    }
+  }
+  useEffect(() => {
+    getListData();
+  },[]);
+  
+  async function setFinalResult(percentage){
+    try {
+      const response1 = await fetch("http://localhost:5000/hireRadar/setTestResult",{
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({'result':percentage, 'cndid':cndid})
+      });
+      const jsonData1 = await response1.json();
+    } catch (err) {
+      console.log(err.message);
+    }
+  }
+
 
   useEffect(() => {
     if (!testStarted || isSubmitted) return;
@@ -105,13 +87,13 @@ function AssessmentTest() {
     let marks = 0;
 
     questions.forEach((q) => {
-      if (answers[q.id] === q.answer) {
+      if (answers[q.qno] === q.answer) {
         marks++;
       }
     });
-
     setScore(marks);
     setIsSubmitted(true);
+    setFinalResult((marks/questions.length)*100);
 
     if (autoSubmit) {
       setNotification(
@@ -166,7 +148,7 @@ function AssessmentTest() {
             <ul className="list-disc ml-6 space-y-3 text-gray-700">
               <li>Total Questions : {questions.length}</li>
               <li>Total Marks : {questions.length}</li>
-              <li>Duration : 25 Minutes</li>
+              <li>Duration : {questions.length} Minutes</li>
               <li>Each Question Carries 1 Mark</li>
               <li>No Negative Marks</li>
               <li>Do not refresh the page during the test</li>
@@ -210,32 +192,32 @@ function AssessmentTest() {
               <form className="space-y-6">
                 {questions.map((q) => (
                   <fieldset
-                    key={q.id}
+                    key={q.qno}
                     className="bg-white border border-slate-200 rounded-3xl shadow-sm p-6"
                   >
                     <legend className="text-lg font-semibold text-slate-900 mb-4">
-                      {q.id}. {q.question}
+                      {q.qno}. {q.question}
                     </legend>
                     <p className="text-sm text-slate-500 mb-4">
                       {q.category}
                     </p>
 
                     <div className="grid gap-3">
-                      {q.options.map((option) => (
+                      {[q.option1,q.option2,q.option3,q.option4].map((option) => (
                         <label
                           key={option}
                           className="flex items-center gap-4 rounded-2xl border border-slate-200 px-4 py-3 cursor-pointer transition hover:border-purple-500"
                         >
                           <input
                             type="radio"
-                            name={`question-${q.id}`}
+                            name={`question-${q.qno}`}
                             value={option}
                             disabled={isSubmitted}
-                            checked={answers[q.id] === option}
+                            checked={answers[q.qno] === option}
                             onChange={() =>
                               setAnswers({
                                 ...answers,
-                                [q.id]: option,
+                                [q.qno]: option,
                               })
                             }
                             className="h-4 w-4 text-purple-600"
@@ -271,7 +253,7 @@ function AssessmentTest() {
 
           {/* Result */}
 
-          {score !== null && (
+          {isSubmitted && score !== null && (
             <div className="bg-green-100 border border-green-500 rounded-xl p-6 mt-10 relative">
               <button
                 onClick={() => {
