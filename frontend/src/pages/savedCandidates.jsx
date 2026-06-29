@@ -14,25 +14,18 @@ function SavedCandidates(){
     const [copyText2, setCopyText2] = useState('Copy');
 
     const [searchVar, setSearchVar] = useState("");
-    const [propsVar, setPropsVar] = useState("");
     const [showFilters, setShowFilters] = useState(false);
-    
-    // Updated to handle only one active filter string key at a time
     const [activeFilter, setActiveFilter] = useState("");
 
-    function handleClick(){
-        setPropsVar(searchVar);
-    }
 
     function toggleFilter(filter) {
-        // Mutual exclusivity: sets the filter or clears it if clicked again
         setActiveFilter((prev) => (prev === filter ? "" : filter));
     }
 
     const getListData = async()=>{
         try {
-            console.log(propsVar);
-            const response = propsVar===""? await fetch(`http://localhost:5000/hireRadar/cndpermsave`): await fetch(`http://localhost:5000/hireRadar/cndpermsavesearch/${propsVar.toLowerCase().trim()}`);
+            const field = activeFilter===""? 'cndname': `cnd${activeFilter.toLowerCase().trim()}`;
+            const response = searchVar===""? await fetch(`http://localhost:5000/hireRadar/cndpermsave`): await fetch(`http://localhost:5000/hireRadar/cndpermsavesearch/${field}and${searchVar.toLowerCase().trim()}`);
             const jsonData = await response.json();
             setCandidates(jsonData);
         } catch (err) {
@@ -41,7 +34,7 @@ function SavedCandidates(){
     }
     useEffect(() => {
         getListData();
-    }, [propsVar]);
+    }, [searchVar]);
 
     async function deleteRecord(ID){
         try {
@@ -162,14 +155,17 @@ function SavedCandidates(){
                         <div className="flex items-center justify-between gap-4">
                             <input 
                                 type="text" 
-                                placeholder="Search saved candidates..." 
+                                placeholder={`Search saved candidates by ${activeFilter===''? 'name': activeFilter.toLowerCase()} ...`}
                                 className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-lg"
                                 value={searchVar}
                                 onChange={(e)=>setSearchVar(e.target.value)}
                             />
                             <button className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-lg font-semibold transition duration-200"
-                                onClick={handleClick}>
-                                Search
+                                onClick={()=>{
+                                    setSearchVar("");
+                                    setActiveFilter("");
+                                }}>
+                                Reset
                             </button>
                             
                             {/* Main Filter Button - Only border-2 frames it when active/open */}
@@ -188,7 +184,7 @@ function SavedCandidates(){
 
                         {showFilters && (
                             <div className="flex flex-wrap gap-2 items-center pt-2 border-t border-gray-100">
-                                {['Experience', 'Skills', 'Location', 'Role', 'Availability'].map((filter) => {
+                                {['Experience', 'Skills', 'Location', 'Role', 'Status'].map((filter) => {
                                     const isActive = activeFilter === filter;
                                     return (
                                         <button 
