@@ -64,7 +64,7 @@ function AdminAssessment() {
 
         {/* Header */}
 
-        <div className="bg-gradient-to-r from-purple-700 to-indigo-700 rounded-2xl p-8 text-white shadow-lg mb-8">
+        <div >
 
           <h1 className="text-4xl font-bold">
             Assessment Management
@@ -196,7 +196,7 @@ function AdminAssessment() {
 
           <button
             onClick={addQuestion}
-            className="mt-8 bg-purple-700 hover:bg-purple-800 text-white px-8 py-3 rounded-xl shadow-lg transition"
+            className="mt-8 bg-green-600 hover:bg-green-800 text-white px-8 py-3 rounded-xl shadow-lg transition"
           >
             + Save Question
           </button>
