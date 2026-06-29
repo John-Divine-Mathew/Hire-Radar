@@ -9,8 +9,9 @@
     border-right: 1px solid hsla(269, 55%, 16%, 0.817);
     box-sizing: border-box;
     padding: 2rem 1rem;
-    position: sticky;
-    top: 0;
+    position: relative;
+    top: auto;
+    align-self: flex-start;
 }
 .sidebartitle{
     color: #e5e7eb;
