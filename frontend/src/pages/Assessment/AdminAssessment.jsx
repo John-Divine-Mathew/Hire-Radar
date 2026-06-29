@@ -4,14 +4,19 @@ import Sidebar from "../../components/sideBar/sideBar";
 function AdminAssessment() {
   const [questions, setQuestions] = useState([]);
 
-  const [form, setForm] = useState({
-    question: "",
-    option1: "",
-    option2: "",
-    option3: "",
-    option4: "",
-    answer: "",
-  });
+ const [form, setForm] = useState({
+  assessmentTitle: "",
+  department: "",
+  category: "",
+  difficulty: "",
+  marks: "1",
+  question: "",
+  option1: "",
+  option2: "",
+  option3: "",
+  option4: "",
+  answer: "",
+});
 
   const handleChange = (e) => {
     setForm({
@@ -21,14 +26,19 @@ function AdminAssessment() {
   };
 
   const addQuestion = () => {
-    if (
-      !form.question ||
-      !form.option1 ||
-      !form.option2 ||
-      !form.option3 ||
-      !form.option4 ||
-      !form.answer
-    ) {
+  if (
+  !form.assessmentTitle ||
+  !form.department ||
+  !form.category ||
+  !form.difficulty ||
+  !form.marks ||
+  !form.question ||
+  !form.option1 ||
+  !form.option2 ||
+  !form.option3 ||
+  !form.option4 ||
+  !form.answer
+){
       alert("Please fill all fields.");
       return;
     }
@@ -41,14 +51,19 @@ function AdminAssessment() {
       },
     ]);
 
-    setForm({
-      question: "",
-      option1: "",
-      option2: "",
-      option3: "",
-      option4: "",
-      answer: "",
-    });
+ setForm({
+  assessmentTitle: "",
+  department: "",
+  category: "",
+  difficulty: "",
+  marks: "1",
+  question: "",
+  option1: "",
+  option2: "",
+  option3: "",
+  option4: "",
+  answer: "",
+});
   };
 
   const deleteQuestion = (id) => {
@@ -62,6 +77,79 @@ function AdminAssessment() {
 
       <div className="flex-1 p-8">
 
+<div className="grid md:grid-cols-2 gap-6 mb-6">
+
+  {/* Department */}
+
+  <div>
+
+    <label className="font-semibold text-gray-700">
+      Department
+    </label>
+
+    <select
+      name="department"
+      value={form.department}
+      onChange={handleChange}
+      className="w-full mt-2 border rounded-xl p-3"
+    >
+
+      <option value="">Select Department</option>
+
+      <option>Software Development</option>
+
+      <option>Design Engineering</option>
+
+      <option>Automation</option>
+
+      <option>Quality Assurance</option>
+
+      <option>Mechanical</option>
+
+      <option>Electrical</option>
+
+      <option>HR</option>
+
+      <option>Production</option>
+
+    </select>
+
+  </div>
+
+  {/* Category */}
+
+  <div>
+
+    <label className="font-semibold text-gray-700">
+      Question Category
+    </label>
+
+    <select
+      name="category"
+      value={form.category}
+      onChange={handleChange}
+      className="w-full mt-2 border rounded-xl p-3"
+    >
+
+      <option value="">Select Category</option>
+
+      <option>Aptitude</option>
+
+      <option>Reasoning</option>
+
+      <option>Technical</option>
+
+      <option>Verbal Ability</option>
+
+      <option>General Knowledge</option>
+
+      <option>Coding</option>
+
+    </select>
+
+  </div>
+
+</div>
         {/* Header */}
 
         <div >
@@ -243,6 +331,23 @@ function AdminAssessment() {
               >
 
                 <div className="flex justify-between items-center">
+                  <div className="flex gap-3 mb-4">
+
+  <span className="bg-blue-100 text-blue-700 px-4 py-1 rounded-full text-sm font-semibold">
+
+    Department :
+    {q.department}
+
+  </span>
+
+  <span className="bg-purple-100 text-purple-700 px-4 py-1 rounded-full text-sm font-semibold">
+
+    Category :
+    {q.category}
+
+  </span>
+
+</div>
 
                   <h3 className="text-xl font-bold text-gray-800">
                     Q{index + 1}. {q.question}
