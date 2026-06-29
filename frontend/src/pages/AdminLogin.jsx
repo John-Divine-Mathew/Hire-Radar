@@ -49,11 +49,39 @@ const AdminLogin = () => {
 
   return (
 
-    <div className="min-h-screen flex overflow-hidden">
+<div className="relative min-h-screen flex overflow-hidden bg-[#F5F0FF]">
+
+  {/* Background */}
+
+<div className="absolute inset-0 overflow-hidden">
+
+  {/* Purple Glow */}
+
+  <div className="absolute -left-40 top-20 w-[700px] h-[700px]
+  rounded-full bg-violet-300/40 blur-[180px]"></div>
+
+  {/* Pink Glow */}
+
+  <div className="absolute -right-40 top-32 w-[650px] h-[650px]
+  rounded-full bg-pink-300/40 blur-[180px]"></div>
+
+  {/* Blue Glow */}
+
+  <div className="absolute left-1/2 bottom-[-200px]
+  -translate-x-1/2 w-[700px] h-[700px]
+  rounded-full bg-indigo-300/20 blur-[200px]"></div>
+
+  {/* Small Glow */}
+
+  <div className="absolute top-10 left-1/3
+  w-[300px] h-[300px]
+  rounded-full bg-purple-400/20 blur-[120px]"></div>
+
+</div>
 
       {/* Left Side */}
 
-      <div className="hidden lg:flex w-1/2 relative bg-gradient-to-br from-violet-100 via-purple-200 to-fuchsia-200 justify-center items-center overflow-hidden">
+     <div className="hidden lg:flex w-1/2 relative z-10 justify-center items-center">
 
         {/* Animated Blobs */}
 
@@ -71,12 +99,7 @@ const AdminLogin = () => {
 
           </h1>
 
-          <p className="mt-6 text-2xl text-red-800 font-medium">
-
-            Recruitment Management Platform
-
-          </p>
-
+        
           <p className="mt-4 text-lg text-green-700 leading-8">
 
             AI Powered Recruitment
@@ -93,28 +116,35 @@ const AdminLogin = () => {
 
       {/* Right Side */}
 
-      <div className="flex-1 relative flex justify-center items-center bg-gradient-to-bl from-blue-100 via-indigo-100 to-purple-100 overflow-hidden">
+     <div className="flex-1 relative z-10 flex justify-center items-center">
 
-        {/* Background Animation */}
 
-        <div className="absolute w-80 h-80 bg-violet-300 rounded-full blur-3xl opacity-20 animate-pulse -top-20 -right-20"></div>
 
-        <div className="absolute w-96 h-96 bg-purple-400 rounded-full blur-3xl opacity-20 animate-bounce bottom-0 -left-20"></div>
+     {/* Background Decorations */}
 
-        <div className="absolute w-60 h-60 bg-pink-300 rounded-full blur-3xl opacity-20 animate-ping top-40 right-40"></div>
+<div className="absolute -top-40 -left-40 w-[500px] h-[500px] rounded-full bg-purple-400/30 blur-[150px]"></div>
 
+<div className="absolute top-20 right-0 w-[450px] h-[450px] rounded-full bg-pink-400/30 blur-[150px]"></div>
+
+<div className="absolute bottom-0 left-1/3 w-[450px] h-[450px] rounded-full bg-indigo-400/20 blur-[150px]"></div>
         {/* Login Card */}
 
-        <div className="relative bg-white/70 backdrop-blur-xl border border-white shadow-2xl rounded-3xl w-[450px] p-10">
+   <div   className="
+relative
+w-[470px]
+rounded-[32px]
+bg-white/55
+backdrop-blur-3xl
+border
+border-white/60
+shadow-[0_30px_80px_rgba(124,58,237,0.20)]
+p-10
+">
 
           <div className="flex justify-center">
 
-            <div className="w-24 h-24 rounded-full bg-gradient-to-r from-purple-700 to-indigo-700 flex items-center justify-center shadow-xl">
-
-              <span className="text-4xl text-white">
-                Hello
-              </span>
-
+            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-indigo-700 via-purple-700 to-pink-600 flex items-center justify-center shadow-2xl">
+              <span className="text-4xl font-bold text-white">HR</span>
             </div>
 
           </div>
@@ -165,7 +195,7 @@ const AdminLogin = () => {
 
             <button
               type="submit"
-              className="w-full bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-800 hover:to-indigo-800 text-white py-4 rounded-xl text-lg font-semibold shadow-lg transition transform hover:scale-105"
+             className="w-full bg-gradient-to-r from-indigo-700 via-purple-700 to-pink-600 hover:from-indigo-800 hover:via-purple-800 hover:to-pink-700 text-white py-4 rounded-xl text-lg font-semibold shadow-xl transition-all duration-300 hover:scale-105"
             >
 
               Login
