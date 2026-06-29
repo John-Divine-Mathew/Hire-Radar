@@ -1,4 +1,3 @@
-
 import {
   LineChart,
   Line,
@@ -35,65 +34,60 @@ const recentSearches = [
 ];
 
 export default function Dashboard() {
-
   const user = JSON.parse(localStorage.getItem("user"));
-
   const userName = user?.name || "HR Admin";
   const userEmail = user?.email || "hr@company.com";
 
   return (
-    <div className="flex h-screen bg-[#F5F6FA]">
+    <div className="flex h-screen bg-[#F8FAFC]">
       <Sidebar />
 
       <div className="flex-1 p-5 overflow-y-auto">
 
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-4xl font-bold">Dashboard</h1>
+          <h1 className="text-4xl font-bold text-[#1E293B]">Dashboard</h1>
 
           <div className="flex items-center gap-4">
             <input
               type="text"
               placeholder="Search anything..."
-              className="w-72 h-11 px-4 border rounded-lg outline-none"
+              className="w-72 h-11 px-4 border rounded-lg outline-none focus:border-[#7E22CE]"
             />
 
             <div className="bg-white rounded-lg border px-4 py-2 flex items-center gap-3">
-              
-            <div>
-  <p className="font-semibold">{userName}</p>
-  <p className="text-xs text-gray-500">
-    {userEmail}
-  </p>
-</div>  
+              <div>
+                <p className="font-semibold text-[#1E293B]">{userName}</p>
+                <p className="text-xs text-gray-500">{userEmail}</p>
+              </div>  
             </div>
           </div>
         </div>
 
         {/* Top Cards */}
         <div className="grid grid-cols-4 gap-5 mb-6">
-          <div className="bg-white rounded-xl p-5 shadow-sm border">
-            <p className="text-purple-500">Total Searches</p>
-            <h2 className="text-4xl font-bold mt-2">1,248</h2>
-            <p className="text-green-500 mt-2">+18.5% this month</p>
+          <div className="bg-white rounded-xl p-5 shadow-sm border border-t-4 border-t-[#7E22CE]">
+            <p className="text-[#64748B] font-medium text-sm uppercase tracking-wider">Total Searches</p>
+            <h2 className="text-4xl font-bold mt-2 text-[#1E293B]">1,248</h2>
+            <p className="text-[#10B981] text-sm mt-2 font-semibold">+18.5% this month</p>
           </div>
 
-          <div className="bg-white rounded-xl p-5 shadow-sm border">
-            <p className="text-purple-500">Candidates Found</p>
-            <h2 className="text-4xl font-bold mt-2">8,732</h2>
-            <p className="text-green-500 mt-2">+23.4% this month</p>
+          <div className="bg-white rounded-xl p-5 shadow-sm border border-t-4 border-t-[#7E22CE]">
+            <p className="text-[#64748B] font-medium text-sm uppercase tracking-wider">Candidates Found</p>
+            <h2 className="text-4xl font-bold mt-2 text-[#1E293B]">8,732</h2>
+            <p className="text-[#10B981] text-sm mt-2 font-semibold">+23.4% this month</p>
           </div>
 
-          <div className="bg-white rounded-xl p-5 shadow-sm border">
-            <p className="text-purple-500">Saved Candidates</p>
-            <h2 className="text-4xl font-bold mt-2">312</h2>
-            <p className="text-green-500 mt-2">+15.3% this month</p>
+          <div className="bg-white rounded-xl p-5 shadow-sm border border-t-4 border-t-[#7E22CE]">
+            <p className="text-[#64748B] font-medium text-sm uppercase tracking-wider">Saved Candidates</p>
+            <h2 className="text-4xl font-bold mt-2 text-[#1E293B]">312</h2>
+            <p className="text-[#10B981] text-sm mt-2 font-semibold">+15.3% this month</p>
           </div>
 
-          <div className="bg-white rounded-xl p-5 shadow-sm border">
-            <p className="text-purple-500">Profile Views</p>
-            <h2 className="text-4xl font-bold mt-2">2,152</h2>
-            <p className="text-green-500 mt-2">+19.2% this month</p>
+          <div className="bg-white rounded-xl p-5 shadow-sm border border-t-4 border-t-[#7E22CE]">
+            <p className="text-[#64748B] font-medium text-sm uppercase tracking-wider">Profile Views</p>
+            <h2 className="text-4xl font-bold mt-2 text-[#1E293B]">2,152</h2>
+            <p className="text-[#10B981] text-sm mt-2 font-semibold">+19.2% this month</p>
           </div>
         </div>
 
@@ -102,20 +96,18 @@ export default function Dashboard() {
 
           {/* Chart */}
           <div className="col-span-5 bg-white p-5 rounded-xl border">
-            <h2 className="font-bold text-lg mb-4">
-              Search Overview...
-            </h2>
-
+            <h2 className="font-bold text-lg mb-4 text-[#1E293B]">Search Overview...</h2>
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={chartData}>
-                <XAxis dataKey="day" />
-                <YAxis />
+                <XAxis dataKey="day" stroke="#64748B" />
+                <YAxis stroke="#64748B" />
                 <Tooltip />
                 <Line
                   type="monotone"
                   dataKey="value"
-                  stroke="#655ace"
+                  stroke="#7E22CE"
                   strokeWidth={3}
+                  dot={{ fill: '#d316f9', strokeWidth: 2 }}
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -123,20 +115,18 @@ export default function Dashboard() {
 
           {/* Skills */}
           <div className="col-span-4 bg-white p-5 rounded-xl border">
-            <h2 className="font-bold text-lg mb-5">
-              Top Skills Searched
-            </h2>
+            <h2 className="font-bold text-lg mb-5 text-[#1E293B]">Top Skills Searched</h2>
 
             {skills.map((skill) => (
               <div key={skill.name} className="mb-5">
-                <div className="flex justify-between mb-2">
-                  <span>{skill.name}</span>
-                  <span>{skill.value}</span>
+                <div className="flex justify-between mb-2 text-sm font-medium">
+                  <span className="text-[#1E293B]">{skill.name}</span>
+                  <span className="text-[#64748B]">{skill.value}</span>
                 </div>
 
                 <div className="h-2 bg-gray-200 rounded-full">
                   <div
-                    className="h-2 rounded-full bg-violet-600"
+                    className="h-2 rounded-full bg-[#7E22CE]"
                     style={{
                       width: `${(skill.value / 1246) * 80}%`,
                     }}
@@ -149,25 +139,17 @@ export default function Dashboard() {
           {/* Recent Searches */}
           <div className="col-span-3 bg-white p-5 rounded-xl border">
             <div className="flex justify-between mb-5">
-              <h2 className="font-bold text-lg">
-                Recent Searches
-              </h2>
-              <button className="text-violet-600">
+              <h2 className="font-bold text-lg text-[#1E293B]">Recent Searches</h2>
+              <button className="text-[#7E22CE] font-semibold text-sm hover:underline">
                 View All
               </button>
             </div>
 
             {recentSearches.map((item, i) => (
-              <div
-                key={i}
-                className="flex items-center gap-3 mb-4"
-              >
-
+              <div key={i} className="flex items-center gap-3 mb-4">
                 <div>
-                  <p className="font-medium">{item}</p>
-                  <p className="text-xs text-gray-500">
-                    15 june 2026
-                  </p>
+                  <p className="font-medium text-[#1E293B]">{item}</p>
+                  <p className="text-xs text-gray-500">15 June 2026</p>
                 </div>
               </div>
             ))}
