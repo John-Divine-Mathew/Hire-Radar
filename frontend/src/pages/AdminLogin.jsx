@@ -143,9 +143,7 @@ p-10
 
           <div className="flex justify-center">
 
-            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-indigo-700 via-purple-700 to-pink-600 flex items-center justify-center shadow-2xl">
-              <span className="text-4xl font-bold text-white">HR</span>
-            </div>
+           
 
           </div>
 
