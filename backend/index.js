@@ -19,7 +19,8 @@ app.get("/hireRadar/cndtempsave",async(req,res)=>{
 app.get("/hireRadar/cndtempsavesearch/:alias",async(req,res)=>{
     try{
         const { alias } = req.params;
-        const allData = await pool.query("select * from cndtempsave where lower(cndname) like '%' || $1 || '%'",[alias]);
+        const [ field, str ] = alias.split('and');
+        const allData = await pool.query(`select * from cndtempsave where lower(${field}) like '%${str}%'`);
         res.json(allData.rows);
     }catch(err){
         console.error(err.message);
@@ -49,7 +50,8 @@ app.get("/hireRadar/cndpermsave",async(req,res)=>{
 app.get("/hireRadar/cndpermsavesearch/:alias",async(req,res)=>{
     try{
         const { alias } = req.params;
-        const allData = await pool.query("select * from cndpermsave where lower(cndname) like '%' || $1 || '%'",[alias]);
+        const [ field, str ] = alias.split('and');
+        const allData = await pool.query(`select * from cndpermsave where lower(${field}) like '%${str}%'`);
         res.json(allData.rows);
     }catch(err){
         console.error(err.message);
@@ -122,7 +124,7 @@ app.post("/hireRadar/insertTestDetails", async(req,res)=>{
 
 app.get("/hireRadar/getTestDetails",async(req,res)=>{
     try{
-        const allData = await pool.query("select cndid,username,password from testdetails");
+        const allData = await pool.query("select cndid,username,password,testresult from testdetails");
         res.json(allData.rows);
     }catch(err){
         console.error(err.message);
@@ -133,6 +135,25 @@ app.post("/hireRadar/updateTestDetails", async(req,res)=>{
     try {
         const { cndid, name, email, department, phone } = req.body;
         const newCndData = await pool.query("update testdetails set cndname=$1, phone=$2, personalemail=$3, department=$4, testdate=$6 where cndid=$5 returning *",[name, phone, email, department, cndid, new Date()]);
+        res.json(newCndData.rows[0]);
+    } catch (err) {
+        console.error(err.message);
+    }
+});
+
+app.get("/hireRadar/testquestions",async(req,res)=>{
+    try{
+        const allData = await pool.query("select * from questions");
+        res.json(allData.rows);
+    }catch(err){
+        console.error(err.message);
+    }
+});
+
+app.post("/hireRadar/setTestResult", async(req,res)=>{
+    try {
+        const { result, cndid } = req.body;
+        const newCndData = await pool.query("update testdetails set testresult=$1 where cndid=$2 returning *",[result, cndid]);
         res.json(newCndData.rows[0]);
     } catch (err) {
         console.error(err.message);

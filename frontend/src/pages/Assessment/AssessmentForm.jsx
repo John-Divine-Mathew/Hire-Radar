@@ -1,12 +1,11 @@
 import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import Sidebar from "../../components/sideBar/sideBar.jsx";
 
 function AssessmentForm() {
 
   const navigate = useNavigate();
   const location = useLocation();
-  const cndid = location.state;
+  const { cndid, result } = location.state;
 
   const [candidate, setCandidate] = useState({
     name: "",
@@ -56,7 +55,12 @@ function AssessmentForm() {
       return;
     }
 
-    navigate("/assessment-test");
+    if(result){
+      alert("Already taken the test !");
+      return;
+    }
+    handleSubmit();
+    navigate("/assessment-test", {state:cndid});
   };
 
   // Reset Form
@@ -158,7 +162,7 @@ function AssessmentForm() {
                   department: e.target.value
                 })
               }>
-              <option value="option">Please choose the Respective Departmnet </option>
+              <option value="">--- Choose Department ---</option>
               <option value="Automation">Automation</option>
               <option value="Design Engineering">Design Engineering</option>
               <option value="HR">Human Resource</option>

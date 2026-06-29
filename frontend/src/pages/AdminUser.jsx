@@ -28,10 +28,12 @@ const AdminLogin = () => {
 
     let flag=0;
     let cndid;
+    let result;
     for (const i of credentialsList){
       if ((i.username===userName) && (i.password===password)){
         flag=1;
         cndid = i.cndid;
+        result = i.testresult? true: false;
       }
     }
 
@@ -41,7 +43,7 @@ const AdminLogin = () => {
  
       alert("Login Successful");
 
-      navigate("/assessmentform",{state:cndid});
+      navigate("/assessmentform",{state:{'cndid':cndid, 'result':result}});
 
     } else {
 
