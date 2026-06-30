@@ -18,6 +18,9 @@ function AssessmentTest() {
   const [notification, setNotification] = useState("");
   const [warningShown, setWarningShown] = useState(false);
 
+// Detect tab switching / page leave
+const [tabSwitchDetected, setTabSwitchDetected] = useState(false);
+
   const getListData = async()=>{
     try {
       const response = await fetch(`http://localhost:5000/hireRadar/testquestions`);
@@ -44,7 +47,6 @@ function AssessmentTest() {
       console.log(err.message);
     }
   }
-
 
   useEffect(() => {
     if (!testStarted || isSubmitted) return;
@@ -77,34 +79,109 @@ function AssessmentTest() {
     return () => clearInterval(timer);
   }, [timeLeft, testStarted, isSubmitted, warningShown]);
 
+  // ===============================
+// Detect Browser Tab Change
+// ===============================
+
+useEffect(() => {
+  if (!testStarted || isSubmitted) return;
+
+  const handleVisibilityChange = () => {
+    if (document.hidden) {
+      setTabSwitchDetected(true);
+
+      submitTest(true);
+
+      setNotification(
+        "⚠ Test submitted because you switched to another tab or application."
+      );
+    }
+  };
+
+  document.addEventListener(
+    "visibilitychange",
+    handleVisibilityChange
+  );
+
+  return () => {
+    document.removeEventListener(
+      "visibilitychange",
+      handleVisibilityChange
+    );
+  };
+}, [testStarted, isSubmitted]);
+
+// ===============================
+// Detect Refresh / Close
+// ===============================
+
+useEffect(() => {
+  if (!testStarted || isSubmitted) return;
+
+  const handleBeforeUnload = (event) => {
+
+    submitTest(true);
+
+    event.preventDefault();
+
+    event.returnValue = "";
+  };
+
+  window.addEventListener(
+    "beforeunload",
+    handleBeforeUnload
+  );
+
+  return () => {
+    window.removeEventListener(
+      "beforeunload",
+      handleBeforeUnload
+    );
+  };
+
+}, [testStarted, isSubmitted]);
+
   const startTest = () => {
     setTestStarted(true);
   };
 
-  const submitTest = (autoSubmit = false) => {
-    if (isSubmitted) return;
+ const submitTest = (autoSubmit = false) => {
 
-    let marks = 0;
+  if (isSubmitted) return;
 
-    questions.forEach((q) => {
-      if (answers[q.qno] === q.answer) {
-        marks++;
-      }
-    });
-    setScore(marks);
-    setIsSubmitted(true);
-    setFinalResult((marks/questions.length)*100);
+  let marks = 0;
 
-    if (autoSubmit) {
-      setNotification(
-        "⏰ Time Up! Test Automatically Submitted."
-      );
-    } else {
-      setNotification(
-        "✅ Assessment Submitted Successfully."
-      );
+  questions.forEach((q) => {
+
+    if (answers[q.qno] === q.answer) {
+
+      marks++;
+
     }
-  };
+
+  });
+
+  setScore(marks);
+
+  setIsSubmitted(true);
+
+  setFinalResult((marks / questions.length) * 100);
+
+  if (autoSubmit) {
+
+    setNotification(
+      "⚠ Assessment was automatically submitted."
+    );
+
+  } else {
+
+    setNotification(
+      " Assessment Submitted Successfully."
+    );
+
+  }
+
+};
 
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
@@ -137,6 +214,8 @@ function AssessmentTest() {
             </div>
           )}
 
+          
+
           {/* Assessment Details */}
 
           <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
@@ -151,14 +230,19 @@ function AssessmentTest() {
               <li>Duration : {questions.length} Minutes</li>
               <li>Each Question Carries 1 Mark</li>
               <li>No Negative Marks</li>
-              <li>Do not refresh the page during the test</li>
               <li>Answer all questions before submitting</li>
               <li>
                 Test will automatically submit when time expires
               </li>
+              <li className="text-red-600 font-semibold">
+Do not switch browser tabs or applications.
+The assessment will be submitted automatically.
+</li>
             </ul>
 
-            <div className="bg-red-50 border border-red-300 rounded-xl p-5 mb-6">
+           {/*Professional Warning Banner*/ }
+
+        <div className="bg-red-50 border border-red-300 rounded-xl p-5 mb-6">
 
 <h3 className="font-bold text-red-700">
 Important Assessment Rules
@@ -178,7 +262,7 @@ Important Assessment Rules
 
 </ul>
 
-</div>
+</div>  
 
             {!testStarted && (
               <div className="mt-8">
@@ -193,6 +277,7 @@ Important Assessment Rules
 
           </div>
 
+     
           {/* Fixed Timer */}
 
           {testStarted && !isSubmitted && (
@@ -309,3 +394,4 @@ Important Assessment Rules
 }
 
 export default AssessmentTest;
+
