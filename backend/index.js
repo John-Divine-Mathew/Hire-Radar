@@ -150,6 +150,16 @@ app.get("/hireRadar/testquestions",async(req,res)=>{
     } 
 });
 
+app.get("/hireRadar/testquestions/:dept",async(req,res)=>{
+    try{
+        const { dept } = req.params;
+        const allData = await pool.query(`select * from questions where lower(dept)='${dept.toLowerCase().trim()}'`);
+        res.json(allData.rows);
+    }catch(err){
+        console.error(err.message);
+    } 
+});
+
 app.post("/hireRadar/insertQuestions",async(req,res)=>{
     try{
         const { dept, category, question, option1, option2, option3, option4, answer } = req.body;
