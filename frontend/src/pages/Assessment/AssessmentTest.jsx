@@ -176,7 +176,7 @@ useEffect(() => {
   } else {
 
     setNotification(
-      "✅ Assessment Submitted Successfully."
+      " Assessment Submitted Successfully."
     );
 
   }
