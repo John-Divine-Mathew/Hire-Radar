@@ -158,6 +158,28 @@ function AssessmentTest() {
               </li>
             </ul>
 
+            <div className="bg-red-50 border border-red-300 rounded-xl p-5 mb-6">
+
+<h3 className="font-bold text-red-700">
+Important Assessment Rules
+</h3>
+
+<ul className="list-disc ml-6 mt-3 text-red-700 space-y-2">
+
+<li>Refreshing the page is prohibited.</li>
+
+<li>Switching browser tabs is prohibited.</li>
+
+<li>Opening another application will automatically submit the assessment.</li>
+
+<li>Do not minimize the browser.</li>
+
+<li>Use only one browser window.</li>
+
+</ul>
+
+</div>
+
             {!testStarted && (
               <div className="mt-8">
                 <button
