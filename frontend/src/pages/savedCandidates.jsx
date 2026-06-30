@@ -16,7 +16,6 @@ function SavedCandidates(){
     const [searchVar, setSearchVar] = useState("");
     const [showFilters, setShowFilters] = useState(false);
     
-    // Upgraded states to mirror the structural search pattern cleanly
     const [activeFilters, setActiveFilters] = useState([]);
     const [filterValues, setFilterValues] = useState({});
     const [showSkillsDropdown, setShowSkillsDropdown] = useState(false);
@@ -32,7 +31,6 @@ function SavedCandidates(){
         Status: ['Applied', 'Interviewing', 'Offered', 'Rejected']
     };
 
-    // Close custom menu if focused outside component bounds
     useEffect(() => {
         function handleClickOutside(event) {
             if (skillsRef.current && !skillsRef.current.contains(event.target)) {
@@ -45,33 +43,42 @@ function SavedCandidates(){
 
     const getListData = async () => {
         try {
-            // Evaluates active entries dynamically for your query string context
-            const primaryActive = activeFilters[0] || "";
-            const field = primaryActive === "" ? 'cndname' : `cnd${primaryActive.toLowerCase().trim()}`;
+            // Build dynamic query parameters safely using URLSearchParams
+            const params = new URLSearchParams();
             
-            // Extracts current active parameters safely
-            let currentSearchQuery = searchVar;
-            if (primaryActive && filterValues[primaryActive]) {
-                currentSearchQuery = Array.isArray(filterValues[primaryActive]) 
-                    ? filterValues[primaryActive].join(',') 
-                    : filterValues[primaryActive];
+            if (searchVar) {
+                params.append('search', searchVar);
             }
 
-            const response = (currentSearchQuery === "")
-                ? await fetch(`http://localhost:5000/hireRadar/cndpermsave`)
-                : await fetch(`http://localhost:5000/hireRadar/cndpermsavesearch/${field}and${currentSearchQuery.toLowerCase().trim()}`);
-            
+            // Append filter keys if they hold user-selected options
+            Object.keys(filterValues).forEach((key) => {
+                const val = filterValues[key];
+                if (Array.isArray(val)) {
+                    if (val.length > 0) {
+                        params.append(key.toLowerCase(), val.join(','));
+                    }
+                } else if (val) {
+                    params.append(key.toLowerCase(), val);
+                }
+            });
+
+            const queryString = params.toString();
+            const url = queryString 
+                ? `http://localhost:5000/hireRadar/cndpermsavesearch?${queryString}`
+                : `http://localhost:5000/hireRadar/cndpermsave`;
+
+            const response = await fetch(url);
             const jsonData = await response.json();
             setCandidates(jsonData);
         } catch (err) {
-            console.error(err.message);
+            console.error("Error fetching filtered saved candidates:", err.message);
         }
     }
 
-    // List updates in real-time as search text or chosen dropdown entries alter
+    // Automatically re-fetch data in real-time on search input changes or filter changes
     useEffect(() => {
         getListData();
-    }, [searchVar, filterValues, activeFilters]);
+    }, [searchVar, filterValues]);
 
     function handleDropdownChange(filter, value) {
         setFilterValues((prev) => {
@@ -251,7 +258,6 @@ function SavedCandidates(){
                                 Reset
                             </button>
                             
-                            {/* Filter Button - Circular framework removed, plain active text styling remains */}
                             <button
                                 className={`border-2 px-6 py-3 rounded-lg font-semibold flex items-center gap-2 transition duration-200 bg-white ${
                                     showFilters || activeFilters.length > 0
@@ -275,7 +281,6 @@ function SavedCandidates(){
                                 {filterOptions.map((filter) => {
                                     const isActive = activeFilters.includes(filter);
 
-                                    // MULTI-SELECT DISPLAY PATTERN FOR SKILLS
                                     if (filter === 'Skills') {
                                         const selectedSkills = filterValues['Skills'] || [];
                                         const displayLabel = selectedSkills.length > 0 
@@ -326,7 +331,6 @@ function SavedCandidates(){
                                         );
                                     }
 
-                                    // SINGLE SELECT MENUS
                                     return (
                                         <div key={filter} className="relative inline-block">
                                             <select
