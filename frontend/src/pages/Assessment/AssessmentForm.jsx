@@ -72,7 +72,7 @@ function AssessmentForm() {
     navigate("/assessment-test", {
       state: { 
         'cndid': cndid, 
-        'department': candidate.department.toLowerCase().trim() 
+        'department': candidate.department
       }
     });
   };
