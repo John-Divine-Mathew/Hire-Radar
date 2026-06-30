@@ -1,17 +1,50 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Sidebar from "../../components/sideBar/sideBar";
-import { ChevronDown } from "lucide-react"; // Imported ChevronDown for better dropdown visuals
+import { ChevronDown } from "lucide-react";
 
 function AdminAssessment() {
   const [questions, setQuestions] = useState([]);
   const [selectedDeptFilter, setSelectedDeptFilter] = useState("");
 
+  const getQuestions = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/hireRadar/testquestions');
+      const jsonData = await response.json();
+      setQuestions(jsonData);
+    } catch (err) {
+      console.error(err.message);
+    }
+  };
+
+  useEffect(() => {
+    getQuestions();
+  }, []);
+
+  async function insertQuestions(form) {
+    try {
+      const body = {
+        'dept': form.department,
+        'category': form.category,
+        'question': form.question,
+        'option1': form.option1,
+        'option2': form.option2,
+        'option3': form.option3,
+        'option4': form.option4,
+        'answer': form.answer
+      };
+      await fetch('http://localhost:5000/hireRadar/insertQuestions', {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+    } catch (err) {
+      console.error(err.message);
+    }
+  }
+
   const [form, setForm] = useState({
-    assessmentTitle: "",
     department: "",
     category: "",
-    difficulty: "",
-    marks: "1",
     question: "",
     option1: "",
     option2: "",
@@ -38,7 +71,7 @@ function AdminAssessment() {
     });
   };
 
-  const addQuestion = () => {
+  const addQuestion = async () => {
     if (
       !form.department ||
       !form.category ||
@@ -53,20 +86,13 @@ function AdminAssessment() {
       return;
     }
 
-    setQuestions([
-      ...questions,
-      {
-        id: Date.now(),
-        ...form,
-      },
-    ]);
+    // Await ensures database save operation completes before fetching
+    await insertQuestions(form);
+    await getQuestions();
 
     setForm({
-      assessmentTitle: "",
       department: "",
       category: "",
-      difficulty: "",
-      marks: "1",
       question: "",
       option1: "",
       option2: "",
@@ -76,12 +102,26 @@ function AdminAssessment() {
     });
   };
 
-  const deleteQuestion = (id) => {
-    setQuestions(questions.filter((q) => q.id !== id));
+  const deleteQuestion = async (qno) => {
+    try {
+      const response = await fetch(`http://localhost:5000/hireRadar/deleteQuestion/${String(qno)}`, {
+        method: 'DELETE'
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(text || 'Delete request failed');
+      }
+
+      // Automatically refresh UI state lists following database removal
+      await getQuestions();
+    } catch (err) {
+      console.error(err.message);
+    }
   };
 
   const filteredQuestions = selectedDeptFilter
-    ? questions.filter((q) => q.department === selectedDeptFilter)
+    ? questions.filter((q) => q.dept.toLowerCase() === selectedDeptFilter.toLowerCase())
     : questions;
 
   return (
@@ -107,7 +147,7 @@ function AdminAssessment() {
           <div className="bg-white rounded-2xl shadow-lg p-8">
             <h2 className="text-2xl font-bold text-gray-700 mb-6">
               Add New Question
-            </h2>
+            </h2> 
 
             {/* Department & Category Selectors */}
             <div className="grid md:grid-cols-2 gap-6 mb-6">
@@ -260,7 +300,6 @@ function AdminAssessment() {
                 <h2 className="text-3xl font-bold text-gray-700">
                   Saved Questions
                 </h2>
-                {/* Outlined Counter Badge instead of a solid layout background */}
                 <div className="border-2 border-purple-600 text-purple-700 px-4 py-1.5 rounded-full font-bold shadow-sm text-sm bg-transparent">
                   {filteredQuestions.length} Questions
                 </div>
@@ -302,26 +341,26 @@ function AdminAssessment() {
             ) : (
               filteredQuestions.map((q, index) => (
                 <div
-                  key={q.id}
+                  key={q.qno}
                   className="bg-white rounded-2xl shadow-lg p-7 mb-6 border-l-8 border-purple-600"
                 >
                   <div className="flex justify-between items-start gap-4">
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-wrap gap-2 mb-3">
                         <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-semibold">
-                          Department: {q.department}
+                          Department: {q.dept}
                         </span>
                         <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-semibold">
                           Category: {q.category}
                         </span>
                       </div>
                       <h3 className="text-xl font-bold text-gray-800 break-words">
-                        Q{index + 1}. {q.question}
+                        Q{index+1}. {q.question}
                       </h3>
                     </div>
                     <button
                       type="button"
-                      onClick={() => deleteQuestion(q.id)}
+                      onClick={() => deleteQuestion(q.qno)}
                       className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition shrink-0"
                     >
                       Delete
