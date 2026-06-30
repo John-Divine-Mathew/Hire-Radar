@@ -2,10 +2,10 @@ import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 
 function AssessmentForm() {
-
   const navigate = useNavigate();
   const location = useLocation();
-  const { cndid, result } = location.state;
+  // Using optional chaining syntax to avoid crashing if state is null
+  const { cndid, result } = location.state || {};
 
   const [candidate, setCandidate] = useState({
     name: "",
@@ -16,13 +16,19 @@ function AssessmentForm() {
 
   const [message, setMessage] = useState("");
 
-  // Submit Details
-
-  const handleSubmit = async(e) => {
-    e.preventDefault();
+  // Submit Details (Made safely callable without an event object)
+  const handleSubmit = async (e) => {
+    if (e) e.preventDefault(); // Only call preventDefault if the event exists
 
     try {
-      const body = {'cndid':cndid, 'name':candidate.name, 'email':candidate.email, 'department':candidate.department, 'phone':candidate.phone }
+      const body = {
+        'cndid': cndid,
+        'name': candidate.name,
+        'email': candidate.email,
+        'department': candidate.department,
+        'phone': candidate.phone
+      };
+      
       const response = await fetch("http://localhost:5000/hireRadar/updateTestDetails", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -30,20 +36,20 @@ function AssessmentForm() {
       });
       console.log(response);
       
+      setMessage("Candidate Details Submitted Successfully!");
+      setTimeout(() => {
+        setMessage("");
+      }, 3000);
+
     } catch (err) {
       console.log(err.message);
+      setMessage("An error occurred during submission.");
     }
-
-    setMessage(" Candidate Details Submitted Successfully!");
-
-    setTimeout(() => {
-      setMessage("");
-    }, 3000);
   };
 
   // Start Assessment
-
-  const startAssessment = () => {
+  const startAssessment = async (e) => {
+    e.preventDefault(); // Prevent standard form submissions if clicked
 
     if (
       !candidate.name ||
@@ -55,18 +61,24 @@ function AssessmentForm() {
       return;
     }
 
-    if(result){
+    if (result) {
       alert("Already taken the test !");
       return;
     }
-    handleSubmit();
-    navigate("/assessment-test", {state:cndid});
+
+    // Await or let the submission trigger cleanly
+    await handleSubmit(); 
+    
+    navigate("/assessment-test", {
+      state: { 
+        'cndid': cndid, 
+        'department': candidate.department.toLowerCase().trim() 
+      }
+    });
   };
 
   // Reset Form
-
   const handleReset = () => {
-
     setCandidate({
       name: "",
       email: "",
@@ -74,7 +86,7 @@ function AssessmentForm() {
       department: ""
     });
 
-    setMessage(" Form Reset Successfully");
+    setMessage("Form Reset Successfully");
 
     setTimeout(() => {
       setMessage("");
@@ -95,123 +107,95 @@ function AssessmentForm() {
               </p>
             </div>
 
-        {/* Notification */}
+            {/* Notification */}
+            {message && (
+              <div className="mb-5 bg-green-100 border border-green-500 text-green-700 px-4 py-3 rounded">
+                {message}
+              </div>
+            )}
 
-        {message && (
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <input
+                type="text"
+                placeholder="Full Name"
+                className="border p-3 w-full rounded"
+                value={candidate.name}
+                onChange={(e) => setCandidate({ ...candidate, name: e.target.value })}
+              />
 
-          <div className="mb-5 bg-green-100 border border-green-500 text-green-700 px-4 py-3 rounded">
-            {message}
+              <input
+                type="email"
+                placeholder="Email"
+                className="border p-3 w-full rounded"
+                value={candidate.email}
+                onChange={(e) => setCandidate({ ...candidate, email: e.target.value })}
+              />
+
+              <input
+                type="text"
+                placeholder="Phone Number"
+                className="border p-3 w-full rounded"
+                value={candidate.phone}
+                onChange={(e) => setCandidate({ ...candidate, phone: e.target.value })}
+              />
+
+              <div>
+                <label className="block text-sm font-medium text-purple-700 mb-3">
+                  Department
+                </label>
+
+                <select
+                  className="border p-3 w-full rounded focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white text-sm"
+                  value={candidate.department}
+                  onChange={(e) => setCandidate({ ...candidate, department: e.target.value })}
+                >
+                  <option value="">--- Choose Department ---</option>
+                  <option value="Automation">Automation</option>
+                  <option value="Design Engineering">Design Engineering</option>
+                  <option value="Software Development">Software Development</option>
+                  <option value="HR">Human Resources</option>
+                  <option value="Mechanical">Mechanical</option>
+                  <option value="Production">Production</option>
+                  <option value="Quality Assurance">Quality Assurance</option>
+                </select>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-3 justify-center mt-8">
+                {/* Submit */}
+                <button
+                  type="submit"
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg"
+                >
+                  Submit
+                </button>
+
+                {/* Start Assessment (Changed type to button to prevent double submit triggers) */}
+                <button
+                  type="button" 
+                  onClick={startAssessment}
+                  className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg"
+                >
+                  Start Assessment
+                </button>
+
+                {/* Reset */}
+                <button
+                  type="button"
+                  onClick={handleReset}
+                  className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg"
+                >
+                  Reset
+                </button>
+              </div>
+            </form>
+
+            <h2 className="text-center text-2xl font-bold text-purple-700 mt-8">
+              Best of Luck for Your Assessment
+            </h2>
           </div>
-
-        )}
-
-        <form
-          onSubmit={handleSubmit}
-          className="space-y-6"
-        >
-
-          <input
-            type="text"
-            placeholder="Full Name"
-            className="border p-3 w-full rounded"
-            value={candidate.name}
-            onChange={(e) =>
-              setCandidate({
-                ...candidate,
-                name: e.target.value
-              })
-            }
-          />
-
-          <input
-            type="email"
-            placeholder="Email"
-            className="border p-3 w-full rounded"
-            value={candidate.email}
-            onChange={(e) =>
-              setCandidate({
-                ...candidate,
-                email: e.target.value
-              })
-            }
-          />
-
-          <input
-            type="text"
-            placeholder="Phone Number"
-            className="border p-3 w-full rounded"
-            value={candidate.phone}
-            onChange={(e) =>
-              setCandidate({
-                ...candidate,
-                phone: e.target.value
-              })
-            }
-          />
-          <div>
-            <label className="block text-sm font-medium text-purple-700 mb-3">
-              Department
-            </label>
-
-            <select
-              className="border p-3 w-full rounded focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white text-sm"
-              value={candidate.department}
-              onChange={(e) =>
-                setCandidate({
-                  ...candidate,
-                  department: e.target.value
-                })
-              }>
-              <option value="">--- Choose Department ---</option>
-              <option value="Automation">Automation</option>
-              <option value="Design Engineering">Design Engineering</option>
-              <option value="HR">Human Resource</option>
-              
-            </select>
-          </div>
-          <div className="grid gap-4 md:grid-cols-3 justify-center mt-8">
-
-            {/* Submit */}
-
-            <button
-              type="submit"
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg"
-            >
-              Submit
-            </button>
-
-            {/* Start Assessment */}
-
-            <button
-              onClick={startAssessment}
-              type="submit"
-          className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg"
-            >
-              Start Assessment
-            </button>
-
-            {/* Reset */}
-
-            <button
-              type="button"
-              onClick={handleReset}
-              className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg"
-            >
-              Reset
-            </button>
-
-          </div>
-
-        </form>
-
-        <h2 className="text-center text-2xl font-bold text-purple-700 mt-8">
-          Best of Luck for Your Assessment
-        </h2>
-
+        </main>
       </div>
-      </main>
     </div>
-  </div>
   );
 }
 

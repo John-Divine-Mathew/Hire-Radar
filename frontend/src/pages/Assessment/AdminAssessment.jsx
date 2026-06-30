@@ -59,7 +59,6 @@ function AdminAssessment() {
     "Automation",
     "Quality Assurance",
     "Mechanical",
-    "Electrical",
     "HR",
     "Production"
   ];
