@@ -16,14 +16,59 @@ app.get("/hireRadar/cndtempsave",async(req,res)=>{
     }
 });
 
-app.get("/hireRadar/cndtempsavesearch/:alias",async(req,res)=>{
-    try{
-        const { alias } = req.params;
-        const [ field, str ] = alias.split('and');
-        const allData = await pool.query(`select * from cndtempsave where lower(${field}) like '%${str}%'`);
-        res.json(allData.rows);
-    }catch(err){
-        console.error(err.message);
+app.get("/hireRadar/cndtempsavesearch", async (req, res) => {
+    try {
+        const { search, experience, location, role, status, skills } = req.query;
+        
+        let queryText = "SELECT * FROM cndtempsave WHERE 1=1";
+        let queryParams = [];
+        let paramCounter = 1;
+
+        // 1. Text Search Input (Failsafe matching name if no filters applied)
+        if (search) {
+            queryText += ` AND LOWER(cndname) LIKE $${paramCounter}`;
+            queryParams.push(`%${search.toLowerCase().trim()}%`);
+            paramCounter++;
+        }
+
+        // 2. Single select dropdown selectors
+        if (experience) {
+            queryText += ` AND cndexperience = $${paramCounter}`;
+            queryParams.push(experience);
+            paramCounter++;
+        }
+        if (location) {
+            queryText += ` AND LOWER(cndlocation) = $${paramCounter}`;
+            queryParams.push(location.toLowerCase());
+            paramCounter++;
+        }
+        if (role) {
+            queryText += ` AND LOWER(cndrole) = $${paramCounter}`;
+            queryParams.push(role.toLowerCase());
+            paramCounter++;
+        }
+        if (status) {
+            queryText += ` AND LOWER(cndstatus) = $${paramCounter}`;
+            queryParams.push(status.toLowerCase());
+            paramCounter++;
+        }
+
+        // 3. Multi-Select Checkboxes (Skills parsing wrapper)
+        if (skills) {
+            const skillsArray = skills.split(',');
+            skillsArray.forEach(skill => {
+                queryText += ` AND LOWER(cndskills) LIKE $${paramCounter}`;
+                queryParams.push(`%${skill.toLowerCase().trim()}%`);
+                paramCounter++;
+            });
+        }
+
+        const filteredData = await pool.query(queryText, queryParams);
+        res.json(filteredData.rows);
+
+    } catch (err) {
+        console.error("Backend filter processing error:", err.message);
+        res.status(500).send("Server Error");
     }
 });
 
@@ -47,14 +92,62 @@ app.get("/hireRadar/cndpermsave",async(req,res)=>{
     }
 });
 
-app.get("/hireRadar/cndpermsavesearch/:alias",async(req,res)=>{
-    try{
-        const { alias } = req.params;
-        const [ field, str ] = alias.split('and');
-        const allData = await pool.query(`select * from cndpermsave where lower(${field}) like '%${str}%'`);
-        res.json(allData.rows);
-    }catch(err){
-        console.error(err.message);
+app.get("/hireRadar/cndpermsavesearch", async (req, res) => {
+    try {
+        const { search, experience, location, role, status, skills } = req.query;
+        
+        let queryText = "SELECT * FROM cndpermsave WHERE 1=1";
+        let queryParams = [];
+        let paramCounter = 1;
+
+        // 1. Text Search Box (Failsafe matching text to name column)
+        if (search) {
+            queryText += ` AND LOWER(cndname) LIKE $${paramCounter}`;
+            queryParams.push(`%${search.toLowerCase().trim()}%`);
+            paramCounter++;
+        }
+
+        // 2. Dropdown Selectors
+        if (experience) {
+            queryText += ` AND cndexperience = $${paramCounter}`;
+            queryParams.push(experience);
+            paramCounter++;
+        }
+        if (location) {
+            queryText += ` AND LOWER(cndlocation) = $${paramCounter}`;
+            queryParams.push(location.toLowerCase());
+            paramCounter++;
+        }
+        if (role) {
+            queryText += ` AND LOWER(cndrole) = $${paramCounter}`;
+            queryParams.push(role.toLowerCase());
+            paramCounter++;
+        }
+        if (status) {
+            queryText += ` AND LOWER(cndstatus) = $${paramCounter}`;
+            queryParams.push(status.toLowerCase());
+            paramCounter++;
+        }
+
+        // 3. Multi-Select Checkboxes (Skills evaluation matching sub-strings)
+        if (skills) {
+            const skillsArray = skills.split(',');
+            skillsArray.forEach(skill => {
+                queryText += ` AND LOWER(cndskills) LIKE $${paramCounter}`;
+                queryParams.push(`%${skill.toLowerCase().trim()}%`);
+                paramCounter++;
+            });
+        }
+
+        // Orders table by candidate ID
+        queryText += " ORDER BY cndid ASC";
+
+        const filteredData = await pool.query(queryText, queryParams);
+        res.json(filteredData.rows);
+
+    } catch (err) {
+        console.error("Backend permanent search filter error:", err.message);
+        res.status(500).send("Server Error");
     }
 });
 
