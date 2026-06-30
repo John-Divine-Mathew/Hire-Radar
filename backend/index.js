@@ -147,6 +147,27 @@ app.get("/hireRadar/testquestions",async(req,res)=>{
         res.json(allData.rows);
     }catch(err){
         console.error(err.message);
+    } 
+});
+
+app.post("/hireRadar/insertQuestions",async(req,res)=>{
+    try{
+        const { dept, category, question, option1, option2, option3, option4, answer } = req.body;
+        const allData = await pool.query("insert into questions(dept, category, question, option1, option2, option3, option4, answer) values($1, $2, $3, $4, $5, $6, $7, $8) returning *",[dept, category, question, option1, option2, option3, option4, answer]);
+        res.json(allData.rows);
+    }catch(err){
+        console.error(err.message);
+    } 
+});
+
+app.delete("/hireRadar/deleteQuestion/:qno", async(req,res)=>{
+    try {
+        const { qno } = req.params;
+        const deleteData = await pool.query("delete from questions where qno = $1",[Number(qno)]);
+        
+        return res.json({ success: true, deleted: deleteData.rowCount || 0 });
+    } catch (err) {
+        console.log(err.message);
     }
 });
 
@@ -159,6 +180,8 @@ app.post("/hireRadar/setTestResult", async(req,res)=>{
         console.error(err.message);
     }
 });
+
+
 
 
 app.listen(5000,()=>{
