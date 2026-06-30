@@ -19,6 +19,7 @@ function AssessmentTest() {
   const [warningShown, setWarningShown] = useState(false);
 
   const getListData = async()=>{
+  const getListData = async()=>{
     try {
       const response = await fetch(`http://localhost:5000/hireRadar/testquestions`);
       const jsonData = await response.json();
@@ -28,15 +29,21 @@ function AssessmentTest() {
       console.error(err.message);
     }
   }
+  }
   useEffect(() => {
     getListData();
   },[]);
   
   async function setFinalResult(percentage){
+  },[]);
+  
+  async function setFinalResult(percentage){
     try {
+      const response1 = await fetch("http://localhost:5000/hireRadar/setTestResult",{
       const response1 = await fetch("http://localhost:5000/hireRadar/setTestResult",{
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({'result':percentage, 'cndid':cndid})
         body: JSON.stringify({'result':percentage, 'cndid':cndid})
       });
       const jsonData1 = await response1.json();
@@ -46,17 +53,24 @@ function AssessmentTest() {
   }
 
 
+
   useEffect(() => {
     if (!testStarted || isSubmitted) return;
 
     // Warning at 2 Minutes
+
 
     if (timeLeft === 120 && !warningShown) {
       setNotification(
         "⚠️ Warning: Only 2 Minutes Remaining!"
       );
 
+      setNotification(
+        "⚠️ Warning: Only 2 Minutes Remaining!"
+      );
+
       setWarningShown(true);
+
 
       setTimeout(() => {
         setNotification("");
@@ -64,6 +78,7 @@ function AssessmentTest() {
     }
 
     // Auto Submit
+
 
     if (timeLeft <= 0) {
       submitTest(true);
@@ -94,12 +109,19 @@ function AssessmentTest() {
     setScore(marks);
     setIsSubmitted(true);
     setFinalResult((marks/questions.length)*100);
+    setFinalResult((marks/questions.length)*100);
 
     if (autoSubmit) {
       setNotification(
         "⏰ Time Up! Test Automatically Submitted."
       );
+      setNotification(
+        "⏰ Time Up! Test Automatically Submitted."
+      );
     } else {
+      setNotification(
+        "✅ Assessment Submitted Successfully."
+      );
       setNotification(
         "✅ Assessment Submitted Successfully."
       );
@@ -110,6 +132,7 @@ function AssessmentTest() {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
 
+
     return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
   };
 
@@ -118,18 +141,24 @@ function AssessmentTest() {
       <div className="flex min-h-screen">
 
         <main className="flex-1 p-8 lg:p-10">
+
+        <main className="flex-1 p-8 lg:p-10">
           <div className="bg-white rounded-3xl shadow-2xl p-8 mb-8">
             <h1 className="text-4xl font-bold text-purple-700 mb-4">
               Hirotec Assessment Portal
             </h1>
 
+
             <p className="text-gray-600">
+              Welcome Candidate. Please read all instructions
+              carefully before starting the assessment.
               Welcome Candidate. Please read all instructions
               carefully before starting the assessment.
             </p>
           </div>
 
           {/* Notification */}
+
 
           {notification && (
             <div className="mb-6 bg-yellow-100 border border-yellow-500 text-yellow-800 px-4 py-3 rounded-lg">
@@ -139,7 +168,10 @@ function AssessmentTest() {
 
           {/* Assessment Details */}
 
+          {/* Assessment Details */}
+
           <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
+
 
             <h2 className="text-2xl font-bold text-green-700 mb-5">
               Assessment Details
@@ -156,12 +188,38 @@ function AssessmentTest() {
               <li>
                 Test will automatically submit when time expires
               </li>
+              <li>
+                Test will automatically submit when time expires
+              </li>
             </ul>
+
+            <div className="bg-red-50 border border-red-300 rounded-xl p-5 mb-6">
+
+<h3 className="font-bold text-red-700">
+Important Assessment Rules
+</h3>
+
+<ul className="list-disc ml-6 mt-3 text-red-700 space-y-2">
+
+<li>Refreshing the page is prohibited.</li>
+
+<li>Switching browser tabs is prohibited.</li>
+
+<li>Opening another application will automatically submit the assessment.</li>
+
+<li>Do not minimize the browser.</li>
+
+<li>Use only one browser window.</li>
+
+</ul>
+
+</div>
 
             {!testStarted && (
               <div className="mt-8">
                 <button
                   onClick={startTest}
+                  className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg text-lg font-semibold"
                   className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg text-lg font-semibold"
                 >
                   Start Test
@@ -169,7 +227,10 @@ function AssessmentTest() {
               </div>
             )}
 
+
           </div>
+
+          {/* Fixed Timer */}
 
           {/* Fixed Timer */}
 
@@ -183,29 +244,39 @@ function AssessmentTest() {
 
           {/* Questions */}
 
+          {/* Questions */}
+
           {testStarted && (
+            <div>
+              <h1 className="text-3xl font-bold mb-8">
             <div>
               <h1 className="text-3xl font-bold mb-8">
                 Assessment Questions
               </h1>
 
               <form className="space-y-6">
+              <form className="space-y-6">
                 {questions.map((q) => (
                   <fieldset
                     key={q.qno}
                     className="bg-white border border-slate-200 rounded-3xl shadow-sm p-6"
+                    className="bg-white border border-slate-200 rounded-3xl shadow-sm p-6"
                   >
+                    <legend className="text-lg font-semibold text-slate-900 mb-4">
                     <legend className="text-lg font-semibold text-slate-900 mb-4">
                       {q.qno}. {q.question}
                     </legend>
+                    <p className="text-sm text-slate-500 mb-4">
                     <p className="text-sm text-slate-500 mb-4">
                       {q.category}
                     </p>
 
                     <div className="grid gap-3">
                       {[q.option1,q.option2,q.option3,q.option4].map((option) => (
+                      {[q.option1,q.option2,q.option3,q.option4].map((option) => (
                         <label
                           key={option}
+                          className="flex items-center gap-4 rounded-2xl border border-slate-200 px-4 py-3 cursor-pointer transition hover:border-purple-500"
                           className="flex items-center gap-4 rounded-2xl border border-slate-200 px-4 py-3 cursor-pointer transition hover:border-purple-500"
                         >
                           <input
@@ -221,6 +292,7 @@ function AssessmentTest() {
                               })
                             }
                             className="h-4 w-4 text-purple-600"
+                            className="h-4 w-4 text-purple-600"
                           />
                           <span className="text-slate-800">{option}</span>
                         </label>
@@ -233,9 +305,13 @@ function AssessmentTest() {
               {/* Submit Button */}
 
               <div className="text-center mt-8">
+              {/* Submit Button */}
+
+              <div className="text-center mt-8">
                 <button
                   onClick={() => submitTest(false)}
                   disabled={isSubmitted}
+                  className={`px-8 py-3 rounded-lg text-white font-semibold ${
                   className={`px-8 py-3 rounded-lg text-white font-semibold ${
                     isSubmitted
                       ? "bg-gray-400 cursor-not-allowed"
@@ -245,11 +321,17 @@ function AssessmentTest() {
                   {isSubmitted
                     ? "Assessment Submitted"
                     : "Submit Test"}
+                  {isSubmitted
+                    ? "Assessment Submitted"
+                    : "Submit Test"}
                 </button>
               </div>
 
+
             </div>
           )}
+
+          {/* Result */}
 
           {/* Result */}
 
@@ -261,6 +343,7 @@ function AssessmentTest() {
                   navigate("/home");
                 }}
                 className="absolute top-6 right-6 bg-purple-600 hover:bg-purple-700 text-white font-semibold px-4 py-2 rounded-lg"
+                className="absolute top-6 right-6 bg-purple-600 hover:bg-purple-700 text-white font-semibold px-4 py-2 rounded-lg"
               >
                 back to home
               </button>
@@ -269,11 +352,16 @@ function AssessmentTest() {
                 Assessment Completed
               </h2>
 
+
               <p className="mt-4 text-xl font-semibold">
                 Score : {score}/{questions.length}
               </p>
 
+
               <p className="mt-3 text-gray-700">
+                Your responses have been submitted
+                successfully. Further modifications are
+                not allowed.
                 Your responses have been submitted
                 successfully. Further modifications are
                 not allowed.
