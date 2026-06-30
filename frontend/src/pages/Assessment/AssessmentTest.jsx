@@ -222,7 +222,7 @@ Important Assessment Rules
                   className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg text-lg font-semibold"
                   className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg text-lg font-semibold"
                 >
-                  Start Test
+                  Start Assessment
                 </button>
               </div>
             )}
