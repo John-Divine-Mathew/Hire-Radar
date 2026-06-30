@@ -5,7 +5,7 @@ import { logoutUser } from "../../utils/auth.js";
 function AssessmentTest() {
  const navigate = useNavigate();
  const location = useLocation();
- const cndid = location.state;
+ const { cndid, department } = location.state;
  const [timeLeft, setTimeLeft] = useState(0);
  
  const [questions, setQuestions] = useState([]);
@@ -23,7 +23,7 @@ const [tabSwitchDetected, setTabSwitchDetected] = useState(false);
  
  const getListData = async()=>{
    try {
-     const response = await fetch(`http://localhost:5000/hireRadar/testquestions`);
+     const response = await fetch(`http://localhost:5000/hireRadar/testquestions/${department}`);
      const jsonData = await response.json();
      setQuestions(jsonData);
      setTimeLeft(jsonData.length * 60);
@@ -297,13 +297,13 @@ Important Assessment Rules
              </h1>
  
              <form className="space-y-6">
-               {questions.map((q) => (
+               {questions.map((q, index) => (
                  <fieldset
                    key={q.qno}
                    className="bg-white border border-slate-200 rounded-3xl shadow-sm p-6"
                  >
                    <legend className="text-lg font-semibold text-slate-900 mb-4">
-                     {q.qno}. {q.question}
+                     {index+1}. {q.question}
                    </legend>
                    <p className="text-sm text-slate-500 mb-4">
                      {q.category}
