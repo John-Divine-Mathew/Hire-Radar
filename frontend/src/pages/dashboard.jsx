@@ -1,6 +1,6 @@
 import {
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   Tooltip,
@@ -94,22 +94,34 @@ export default function Dashboard() {
         {/* Bottom Section */}
         <div className="grid grid-cols-12 gap-5">
 
-          {/* Chart */}
+          {/* Chart Section */}
           <div className="col-span-5 bg-white p-5 rounded-xl border">
             <h2 className="font-bold text-lg mb-4 text-[#1E293B]">Search Overview...</h2>
             <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={chartData}>
+              <AreaChart data={chartData}>
+                {/* Defining the purple gradient shade */}
+                <defs>
+                  <linearGradient id="purpleShade" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#7E22CE" stopOpacity={0.4}/>
+                    <stop offset="95%" stopColor="#7E22CE" stopOpacity={0.0}/>
+                  </linearGradient>
+                </defs>
+                
                 <XAxis dataKey="day" stroke="#64748B" />
                 <YAxis stroke="#64748B" />
                 <Tooltip />
-                <Line
+                
+                {/* Changed from Line to Area */}
+                <Area
                   type="monotone"
                   dataKey="value"
                   stroke="#7E22CE"
                   strokeWidth={3}
+                  fillOpacity={1}
+                  fill="url(#purpleShade)"
                   dot={{ fill: '#d316f9', strokeWidth: 2 }}
                 />
-              </LineChart>
+              </AreaChart>
             </ResponsiveContainer>
           </div>
 
