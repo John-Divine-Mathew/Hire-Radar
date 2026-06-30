@@ -5,7 +5,7 @@ import { logoutUser } from "../../utils/auth.js";
 function AssessmentTest() {
   const navigate = useNavigate();
   const location = useLocation();
-  const cndid = location.state;
+  const { cndid, department } = location.state;
   const [timeLeft, setTimeLeft] = useState(0);
 
   const [questions, setQuestions] = useState([]);
@@ -20,7 +20,7 @@ function AssessmentTest() {
 
   const getListData = async()=>{
     try {
-      const response = await fetch(`http://localhost:5000/hireRadar/testquestions`);
+      const response = await fetch(`http://localhost:5000/hireRadar/testquestions/${department}`);
       const jsonData = await response.json();
       setQuestions(jsonData);
       setTimeLeft(jsonData.length * 60);
