@@ -129,6 +129,8 @@ function SearchCandidatePage() {
                             {showFilters && (
                                 <div className="flex flex-col gap-3 items-start">
                                     <div className="flex flex-wrap gap-2 items-center">
+
+                                        
                                         {filterOptions.map((filter) => {
                                             const isActive = activeFilters.includes(filter);
 
