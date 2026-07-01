@@ -190,7 +190,7 @@ const submitTest = (autoSubmit = false) => {
    return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
  };
  
- return (
+  return (
    <div className="bg-gray-100 min-h-screen">
      <div className="flex min-h-screen">
  
@@ -205,7 +205,7 @@ const submitTest = (autoSubmit = false) => {
              carefully before starting the assessment.
            </p>
          </div>
- 
+        
          {/* Notification */}
  
          {notification && (
@@ -218,31 +218,28 @@ const submitTest = (autoSubmit = false) => {
  
          {/* Assessment Details */}
  
-         <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
+         <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-6 sm:p-8 mb-8">
  
            <h2 className="text-2xl font-bold text-green-700 mb-5">
              Assessment Details
            </h2>
  
-           <ul className="list-disc ml-6 space-y-3 text-gray-700">
-             <li>Total Questions : {questions.length}</li>
-             <li>Total Marks : {questions.length}</li>
-             <li>Duration : {questions.length} Minutes</li>
-             <li>Each Question Carries 1 Mark</li>
-             <li>No Negative Marks</li>
-             <li>Answer all questions before submitting</li>
-             <li>
-               Test will automatically submit when time expires
-             </li>
-             <li className="text-red-600 font-semibold">
-Do not switch browser tabs or applications.
-The assessment will be submitted automatically.
-</li>
-           </ul>
+           <div className="grid gap-3 md:grid-cols-2 text-gray-700">
+             <ul className="space-y-3 list-disc ml-6">
+               <li>Total Questions : {questions.length}</li>
+               <li>Total Marks : {questions.length}</li>
+               <li>Duration : {questions.length} Minutes</li>
+               <li>Each Question Carries 1 Mark</li>
+               <li>No Negative Marks</li>
+               <li>Answer all questions before submitting</li>
+               <li>Test will automatically submit when time expires</li>
+              
+             </ul>
+           </div>
  
           {/*Professional Warning Banner*/ }
  
-       <div className="bg-red-50 border border-red-300 rounded-xl p-5 mb-6">
+       <div className="bg-red-50 border border-red-300 rounded-xl p-5 mt-6">
  
 <h3 className="font-bold text-red-700">
 Important Assessment Rules
@@ -259,6 +256,10 @@ Important Assessment Rules
 <li>Do not minimize the browser.</li>
  
 <li>Use only one browser window.</li>
+
+ <li>
+                 Do not switch browser tabs or applications. The assessment will be submitted automatically.
+               </li>
  
 </ul>
  
@@ -268,7 +269,7 @@ Important Assessment Rules
              <div className="mt-8">
                <button
                  onClick={startTest}
-                 className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg text-lg font-semibold"
+                 className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg text-lg font-semibold shadow-sm transition"
                >
                  Start Test
                </button>
@@ -292,28 +293,47 @@ Important Assessment Rules
  
          {testStarted && (
            <div>
-             <h1 className="text-3xl font-bold mb-8">
-               Assessment Questions
-             </h1>
+             <div className="mb-8 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+               <div>
+                 <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">
+                   Assessment Questions
+                 </h1>
+                 <p className="text-sm text-slate-600 mt-1">
+                   Select one answer for each question before submitting your test.
+                 </p>
+               </div>
+               <div className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 shadow-sm">
+                 {questions.length} Questions
+               </div>
+             </div>
  
-             <form className="space-y-6">
+             <form className="space-y-5">
                {questions.map((q, index) => (
                  <fieldset
                    key={q.qno}
-                   className="bg-white border border-slate-200 rounded-3xl shadow-sm p-6"
+                   className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5 sm:p-6"
                  >
-                   <legend className="text-lg font-semibold text-slate-900 mb-4">
-                     {index+1}. {q.question}
-                   </legend>
-                   <p className="text-sm text-slate-500 mb-4">
-                     {q.category}
-                   </p>
+                   <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                     <div className="space-y-2">
+                       <span className="inline-flex items-center rounded-full bg-purple-50 px-3 py-1 text-sm font-medium text-purple-700">
+                         {index + 1}.
+                       </span>
+                       <h3 className="text-lg font-semibold text-slate-900 leading-7">
+                         {q.question}
+                       </h3>
+                     </div>
+                     {q.category && (
+                       <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-sm text-slate-600 self-start">
+                         {q.category}
+                       </span>
+                     )}
+                   </div>
  
-                   <div className="grid gap-3">
+                   <div className="mt-5 grid gap-3 md:grid-cols-2">
                      {[q.option1,q.option2,q.option3,q.option4].map((option) => (
                        <label
                          key={option}
-                         className="flex items-center gap-4 rounded-2xl border border-slate-200 px-4 py-3 cursor-pointer transition hover:border-purple-500"
+                         className="flex items-start gap-3 rounded-xl border border-slate-200 px-4 py-3 cursor-pointer transition hover:border-purple-500 hover:bg-purple-50/70"
                        >
                          <input
                            type="radio"
@@ -327,9 +347,9 @@ Important Assessment Rules
                                [q.qno]: option,
                              })
                            }
-                           className="h-4 w-4 text-purple-600"
+                           className="mt-1 h-4 w-4 text-purple-600"
                          />
-                         <span className="text-slate-800">{option}</span>
+                         <span className="text-slate-800 leading-6">{option}</span>
                        </label>
                      ))}
                    </div>
@@ -343,7 +363,7 @@ Important Assessment Rules
                <button
                  onClick={() => submitTest(false)}
                  disabled={isSubmitted}
-                 className={`px-8 py-3 rounded-lg text-white font-semibold ${
+                 className={`px-8 py-3 rounded-lg text-white font-semibold shadow-sm transition ${
                    isSubmitted
                      ? "bg-gray-400 cursor-not-allowed"
                      : "bg-blue-600 hover:bg-blue-700"
@@ -361,30 +381,31 @@ Important Assessment Rules
          {/* Result */}
  
          {isSubmitted && score !== null && (
-           <div className="bg-green-100 border border-green-500 rounded-xl p-6 mt-10 relative">
-             <button
-               onClick={() => {
-                 logoutUser();
-                 navigate("/home");
-               }}
-               className="absolute top-6 right-6 bg-purple-600 hover:bg-purple-700 text-white font-semibold px-4 py-2 rounded-lg"
-             >
-               back to home
-             </button>
- 
-             <h2 className="text-3xl font-bold text-green-700">
-               Assessment Completed
-             </h2>
- 
-             <p className="mt-4 text-xl font-semibold">
-               Score : {score}/{questions.length}
-             </p>
- 
-             <p className="mt-3 text-gray-700">
-               Your responses have been submitted
-               successfully. Further modifications are
-               not allowed.
-             </p>
+           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-6">
+             <div className="relative w-full max-w-lg rounded-2xl border border-green-200 bg-white p-8 text-center shadow-2xl">
+               <button
+                 onClick={() => {
+                   logoutUser();
+                   navigate("/home");
+                 }}
+                 className="absolute right-4 top-4 rounded-lg bg-purple-600 px-4 py-2 font-semibold text-white transition hover:bg-purple-700"
+               >
+                 Back to Home
+               </button>
+
+               <h2 className="text-3xl font-bold text-green-700">
+                 Assessment Completed
+               </h2>
+
+               <div className="mt-6 rounded-xl bg-green-50 p-6">
+                 <p className="text-xl font-semibold text-slate-800">
+                   Score : {score}/{questions.length}
+                 </p>
+                 <p className="mt-3 text-gray-700">
+                   Your responses have been submitted successfully. Further modifications are not allowed.
+                 </p>
+               </div>
+             </div>
            </div>
          )}
        </main>
