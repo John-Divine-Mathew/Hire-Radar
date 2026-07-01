@@ -153,7 +153,7 @@ function AssessmentForm() {
                   <option value="Automation">Automation</option>
                   <option value="Design Engineering">Design Engineering</option>
                   <option value="Software Development">Software Development</option>
-                  <option value="HR">Human Resources</option>
+                  <option value="Human Resources">Human Resources</option>
                   <option value="Mechanical">Mechanical</option>
                   <option value="Production">Production</option>
                   <option value="Quality Assurance">Quality Assurance</option>
