@@ -5,111 +5,97 @@ import {
   YAxis,
   Tooltip,
   ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
 } from "recharts";
 
-import Sidebar from "../components/sideBar/sideBar.jsx";
+import Sidebar from "../components/sideBar/sideBar";
 
-const chartData = [
-  { day: "Mon", value: 320 },
-  { day: "Tue", value: 450 },
-  { day: "Wed", value: 380 },
-  { day: "Thu", value: 520 },
-  { day: "Fri", value: 610 },
-  { day: "Sat", value: 540 },
-  { day: "Sun", value: 690 },
+const searchData = [
+  { day: "May 10", value: 350 },
+  { day: "May 11", value: 760 },
+  { day: "May 12", value: 1150 },
+  { day: "May 13", value: 780 },
+  { day: "May 14", value: 1230 },
+  { day: "May 15", value: 890 },
+  { day: "May 16", value: 1180 },
 ];
 
-const skills = [
-  { name: "React", value: 980 },
-  { name: "JavaScript", value: 820 },
-  { name: "Node.js", value: 650 },
-  { name: "Python", value: 540 },
+const locationData = [
+  { name: "Bangalore", value: 38, color: "#7E22CE" }, // Synced accents to your main purple theme
+  { name: "Gujarat", value: 25, color: "#A855F7" },
+  { name: "Madhya Pradesh", value: 20, color: "#C084FC" },
+  { name: "Delhi", value: 17, color: "#E9D5FF" },
 ];
 
-const recentSearches = [
-  "Frontend Developer",
-  "Data Analyst",
-  "Product Manager",
-  "UI/UX Designer",
-];
-
-export default function Dashboard() {
-  const user = JSON.parse(localStorage.getItem("user"));
-  const userName = user?.name || "HR Admin";
-  const userEmail = user?.email || "hr@company.com";
-
+export default function Analytics() {
   return (
     <div className="flex h-screen bg-[#F8FAFC]">
       <Sidebar />
 
       <div className="flex-1 p-5 overflow-y-auto">
-
+        
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-4xl font-bold text-[#1E293B]">Dashboard</h1>
-
-          <div className="flex items-center gap-4">
-            <input
-              type="text"
-              placeholder="Search anything..."
-              className="w-72 h-11 px-4 border rounded-lg outline-none focus:border-[#7E22CE]"
-            />
-
-            <div className="bg-white rounded-lg border px-4 py-2 flex items-center gap-3">
-              <div>
-                <p className="font-semibold text-[#1E293B]">{userName}</p>
-                <p className="text-xs text-gray-500">{userEmail}</p>
-              </div>  
-            </div>
-          </div>
+          <h1 className="text-4xl font-bold text-[#1E293B]">Analytics</h1>
         </div>
 
         {/* Top Cards */}
         <div className="grid grid-cols-4 gap-5 mb-6">
           <div className="bg-white rounded-xl p-5 shadow-sm border border-t-4 border-t-[#7E22CE]">
             <p className="text-[#64748B] font-medium text-sm uppercase tracking-wider">Total Searches</p>
-            <h2 className="text-4xl font-bold mt-2 text-[#1E293B]">1,248</h2>
-            <p className="text-[#10B981] text-sm mt-2 font-semibold">+18.5% this month</p>
+            <h2 className="text-4xl font-bold mt-2 text-[#1E293B]">1,240</h2>
           </div>
 
           <div className="bg-white rounded-xl p-5 shadow-sm border border-t-4 border-t-[#7E22CE]">
-            <p className="text-[#64748B] font-medium text-sm uppercase tracking-wider">Candidates Found</p>
-            <h2 className="text-4xl font-bold mt-2 text-[#1E293B]">8,732</h2>
-            <p className="text-[#10B981] text-sm mt-2 font-semibold">+23.4% this month</p>
+            <p className="text-[#64748B] font-medium text-sm uppercase tracking-wider">Candidates Viewed</p>
+            <h2 className="text-4xl font-bold mt-2 text-[#1E293B]">986</h2>
           </div>
 
           <div className="bg-white rounded-xl p-5 shadow-sm border border-t-4 border-t-[#7E22CE]">
             <p className="text-[#64748B] font-medium text-sm uppercase tracking-wider">Saved Candidates</p>
-            <h2 className="text-4xl font-bold mt-2 text-[#1E293B]">312</h2>
-            <p className="text-[#10B981] text-sm mt-2 font-semibold">+15.3% this month</p>
+            <h2 className="text-4xl font-bold mt-2 text-[#1E293B]">356</h2>
           </div>
 
           <div className="bg-white rounded-xl p-5 shadow-sm border border-t-4 border-t-[#7E22CE]">
-            <p className="text-[#64748B] font-medium text-sm uppercase tracking-wider">Profile Views</p>
-            <h2 className="text-4xl font-bold mt-2 text-[#1E293B]">2,152</h2>
-            <p className="text-[#10B981] text-sm mt-2 font-semibold">+19.2% this month</p>
+            <p className="text-[#64748B] font-medium text-sm uppercase tracking-wider">Avg Match Score</p>
+            <h2 className="text-4xl font-bold mt-2 text-[#1E293B]">82%</h2>
           </div>
         </div>
 
-        {/* Bottom Section */}
+        {/* Charts Row */}
         <div className="grid grid-cols-12 gap-5">
+          
+          {/* Search Trends with Premium Purple Gradient Shading */}
+          <div className="col-span-8 min-w-0 bg-white p-5 rounded-xl border">
+            <h2 className="font-bold text-lg mb-4 text-[#1E293B]">Search Trends</h2>
 
-          {/* Chart Section */}
-          <div className="col-span-5 bg-white p-5 rounded-xl border">
-            <h2 className="font-bold text-lg mb-4 text-[#1E293B]">Search Overview...</h2>
-            <ResponsiveContainer width="100%" height={300}>
-              <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                
-                {/* Fixed & enhanced gradient definition wrapper */}
+            <ResponsiveContainer width="100%" height={250}>
+              <AreaChart data={searchData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                {/* Defining the purple gradient shade exactly like your dashboard */}
                 <defs>
                   <linearGradient id="purpleShade" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#7E22CE" stopOpacity={0.5}/>
-                    <stop offset="100%" stopColor="#7E22CE" stopOpacity={0.01}/>
+                    <stop offset="5%" stopColor="#7E22CE" stopOpacity={0.4}/>
+                    <stop offset="95%" stopColor="#7E22CE" stopOpacity={0.0}/>
                   </linearGradient>
                 </defs>
                 
-                <XAxis dataKey="day" stroke="#64748B" tickLine={false} axisLine={false} />
-                <YAxis stroke="#64748B" tickLine={false} axisLine={false} />
+                <XAxis 
+                  dataKey="day" 
+                  stroke="#64748B"
+                  tick={{ fontSize: 12 }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis 
+                  stroke="#64748B"
+                  domain={[0, 1400]}
+                  ticks={[0, 350, 700, 1050, 1400]}
+                  tick={{ fontSize: 12 }}
+                  axisLine={false}
+                  tickLine={false}
+                />
                 <Tooltip />
                 
                 <Area
@@ -119,53 +105,52 @@ export default function Dashboard() {
                   strokeWidth={3}
                   fillOpacity={1}
                   fill="url(#purpleShade)"
-                  dot={{ fill: '#7E22CE', stroke: '#FFF', strokeWidth: 2, r: 5 }}
-                  activeDot={{ r: 8 }}
+                  // Styled line dots to match your dashboard design
+                  dot={{ fill: '#ffffff', stroke: '#7E22CE', strokeWidth: 2, r: 4 }}
+                  activeDot={{ r: 6, fill: '#7E22CE' }}
                 />
               </AreaChart>
             </ResponsiveContainer>
           </div>
 
-          {/* Skills */}
+          {/* Top Locations Card */}
           <div className="col-span-4 bg-white p-5 rounded-xl border">
-            <h2 className="font-bold text-lg mb-5 text-[#1E293B]">Top Skills Searched</h2>
+            <h2 className="font-bold text-lg mb-4 text-[#1E293B]">Top Locations</h2>
 
-            {skills.map((skill) => (
-              <div key={skill.name} className="mb-5">
-                <div className="flex justify-between mb-2 text-sm font-medium">
-                  <span className="text-[#1E293B]">{skill.name}</span>
-                  <span className="text-[#64748B]">{skill.value}</span>
-                </div>
-
-                <div className="h-2 bg-gray-200 rounded-full">
-                  <div
-                    className="h-2 rounded-full bg-[#7E22CE]"
-                    style={{
-                      width: `${(skill.value / 1246) * 80}%`,
-                    }}
-                  />  
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Recent Searches */}
-          <div className="col-span-3 bg-white p-5 rounded-xl border">
-            <div className="flex justify-between mb-5">
-              <h2 className="font-bold text-lg text-[#1E293B]">Recent Searches</h2>
-              <button className="text-[#7E22CE] font-semibold text-sm hover:underline">
-                View All
-              </button>
+            <div className="flex justify-center items-center">
+              <PieChart width={200} height={200}>
+                <Pie
+                  data={locationData}
+                  dataKey="value"
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={65}
+                  outerRadius={85}
+                  paddingAngle={2}
+                >
+                  {locationData.map((item, index) => (
+                    <Cell key={index} fill={item.color} />
+                  ))}
+                </Pie>
+              </PieChart>
             </div>
 
-            {recentSearches.map((item, i) => (
-              <div key={i} className="flex items-center gap-3 mb-4">
-                <div>
-                  <p className="font-medium text-[#1E293B]">{item}</p>
-                  <p className="text-xs text-gray-500">15 June 2026</p>
+            <div className="mt-4 space-y-3">
+              {locationData.map((item) => (
+                <div key={item.name} className="flex justify-between items-center text-sm">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-3 h-3 rounded-full"
+                      style={{ backgroundColor: item.color }}
+                    />
+                    <span className="text-[#64748B] font-medium">{item.name}</span>
+                  </div>
+                  <span className="font-semibold text-[#1E293B]">
+                    {item.value}%
+                  </span>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
 
         </div>
