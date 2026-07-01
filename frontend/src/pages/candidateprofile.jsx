@@ -65,7 +65,7 @@ function CandidateProfile(){
                                     </span>
                                 </div>
                                 <p className="text-xl text-gray-700 font-semibold mb-1">{cndData.cndrole}</p>
-                                <p className="text-gray-600 mb-4">{cndData.cndexperience} of Experience • {cndData.cndlocation}</p>
+                                <p className="text-gray-600 mb-4">{cndData.cndexperience} Years of Experience • {cndData.cndlocation}</p>
                                 <div className="flex gap-4">
                                     <button className="text-purple-600 hover:text-purple-800 font-semibold flex items-center gap-2 transition duration-200">
                                         <Link size={18}/>
