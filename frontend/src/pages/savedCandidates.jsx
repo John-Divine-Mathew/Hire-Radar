@@ -5,7 +5,7 @@ import { format } from 'date-fns';
 import { useNavigate } from "react-router-dom";
 import { nanoid } from 'nanoid';
 
-function SavedCandidates(){
+function SavedCandidates() {
     const [candidates, setCandidates] = useState([]);
     const [openMenuId, setOpenMenuId] = useState(null);
     const [credentials, setCredentials] = useState({});
@@ -15,19 +15,36 @@ function SavedCandidates(){
 
     const [searchVar, setSearchVar] = useState("");
     const [showFilters, setShowFilters] = useState(false);
-    
+
     const [activeFilters, setActiveFilters] = useState([]);
     const [filterValues, setFilterValues] = useState({});
     const [showSkillsDropdown, setShowSkillsDropdown] = useState(false);
+    const [showLocationDropdown, setShowLocationDropdown] = useState(false);
     const skillsRef = useRef(null);
+    const locationRef = useRef(null);
 
     const filterOptions = ['Experience', 'Skills', 'Location', 'Role', 'Status'].sort();
 
     const dropdownOptions = {
         Experience: ['0-1 years', '1-3 years', '3-5 years', '5+ years'],
-        Skills: ['React', 'Node.js', 'Python', 'Tailwind CSS', 'TypeScript'],
-        Location: ['Remote', 'New York', 'San Francisco', 'London', 'India'],
-        Role: ['Frontend Developer', 'Backend Developer', 'Fullstack Engineer', 'UI/UX Designer'],
+        Skills: [
+            'React', 'Node.js', 'Python', 'TypeScript', 'PyTorch',
+            'Apache Spark', 'Figma', 'C++', 'RTOS', 'Selenium',
+            'AWS', 'Terraform', 'PostgreSQL', 'GraphQL', 'Modbus',
+            'Docker', 'Kubernetes', 'Go', 'Swin Transformer', 'Java',
+            'CAN bus', 'I2C', 'Tailwind CSS', 'Next.js', 'Kafka'
+        ],
+        Location: [
+            'Remote', 'Bangalore', 'Mumbai', 'Hyderabad', 'Chennai',
+            'Pune', 'Kochi', 'Coimbatore', 'Ahmedabad', 'Kolkata',
+            'London', 'Berlin', 'Singapore', 'Tokyo', 'Amsterdam', 'Toronto'
+        ],
+        Role: [
+            'Machine Learning Engineer', 'Data Engineer', 'Cloud Architect',
+            'Embedded Systems Developer', 'Fullstack Engineer', 'UI/UX Designer',
+            'QA Automation Engineer', 'DevOps Engineer', 'Backend Developer',
+            'Frontend Developer', 'IoT Systems Engineer'
+        ],
         Status: ['Applied', 'Interviewing', 'Offered', 'Rejected']
     };
 
@@ -36,46 +53,102 @@ function SavedCandidates(){
             if (skillsRef.current && !skillsRef.current.contains(event.target)) {
                 setShowSkillsDropdown(false);
             }
+            if (locationRef.current && !locationRef.current.contains(event.target)) {
+                setShowLocationDropdown(false);
+            }
+
+            const menuContainers = document.querySelectorAll('.menu-container');
+            let clickedInsideMenu = false;
+            menuContainers.forEach(container => {
+                if (container.contains(event.target)) clickedInsideMenu = true;
+            });
+            if (!clickedInsideMenu) setOpenMenuId(null);
+
+            const credentialContainers = document.querySelectorAll('.credential-container');
+            let clickedInsideCreds = false;
+            credentialContainers.forEach(container => {
+                if (container.contains(event.target)) clickedInsideCreds = true;
+            });
+            if (!clickedInsideCreds) setOpenCredentialMenuId(null);
         }
+
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
+    const normalizeFilterValue = (key, value) => {
+        if (Array.isArray(value)) {
+            return value
+                .map((item) => normalizeFilterValue(key, item))
+                .filter((item) => item !== null && item !== undefined && item !== '');
+        }
+
+        if (typeof value !== 'string') {
+            return value;
+        }
+
+        const normalizedKey = key.toLowerCase();
+
+        if (normalizedKey.includes('experience') || normalizedKey.includes('exp') || normalizedKey.includes('year')) {
+            const matches = value.match(/\d+/g);
+
+            if (matches && matches.length >= 2) {
+                return `${matches[0]}-${matches[matches.length - 1]}`;
+            }
+
+            if (matches && matches.length === 1) {
+                if (value.includes('+')) {
+                    return `${matches[0]}-50`; 
+                }
+                return matches[0];
+            }
+
+            return '';
+        }
+
+        return value;
+    };
+
     const getListData = async () => {
         try {
-            // Build dynamic query parameters safely using URLSearchParams
             const params = new URLSearchParams();
-            
+
             if (searchVar) {
                 params.append('search', searchVar);
             }
 
-            // Append filter keys if they hold user-selected options
             Object.keys(filterValues).forEach((key) => {
                 const val = filterValues[key];
-                if (Array.isArray(val)) {
-                    if (val.length > 0) {
-                        params.append(key.toLowerCase(), val.join(','));
+                // Pass lowercase key to match normalization checks reliably
+                const normalizedValue = normalizeFilterValue(key.toLowerCase(), val);
+
+                if (Array.isArray(normalizedValue)) {
+                    if (normalizedValue.length > 0) {
+                        params.append(key.toLowerCase(), normalizedValue.join(','));
                     }
-                } else if (val) {
-                    params.append(key.toLowerCase(), val);
+                } else if (normalizedValue !== null && normalizedValue !== undefined && normalizedValue !== '') {
+                    params.append(key.toLowerCase(), String(normalizedValue));
                 }
             });
 
             const queryString = params.toString();
-            const url = queryString 
+            const url = queryString
                 ? `http://localhost:5000/hireRadar/cndpermsavesearch?${queryString}`
                 : `http://localhost:5000/hireRadar/cndpermsave`;
 
             const response = await fetch(url);
-            const jsonData = await response.json();
-            setCandidates(jsonData);
-        } catch (err) {
-            console.error("Error fetching filtered saved candidates:", err.message);
-        }
-    }
+            if (!response.ok) {
+                throw new Error(`Request failed with status ${response.status}`);
+            }
 
-    // Automatically re-fetch data in real-time on search input changes or filter changes
+            const jsonData = await response.json();
+            setCandidates(Array.isArray(jsonData) ? jsonData : []);
+        } catch (err) {
+            console.error("Error fetching filtered saved candidates:", err.message || err);
+            setCandidates([]);
+        }
+    };
+
     useEffect(() => {
         getListData();
     }, [searchVar, filterValues]);
@@ -104,28 +177,56 @@ function SavedCandidates(){
                 ? currentSkills.filter((s) => s !== skill)
                 : [...currentSkills, skill];
 
-            const updated = { ...prev, Skills: updatedSkills };
-            if (updatedSkills.length === 0) delete updated['Skills'];
-            return updated;
-        });
-
-        setActiveFilters((prev) => {
-            const currentSkills = filterValues['Skills'] || [];
-            const isSkillCurrentlySelected = currentSkills.includes(skill);
-            const willHaveSkills = isSkillCurrentlySelected 
-                ? currentSkills.length > 1 
-                : true;
-
-            if (willHaveSkills && !prev.includes('Skills')) {
-                return [...prev, 'Skills'].sort();
-            } else if (!willHaveSkills && prev.includes('Skills')) {
-                return prev.filter((f) => f !== 'Skills');
+            const updated = { ...prev };
+            if (updatedSkills.length === 0) {
+                delete updated['Skills'];
+            } else {
+                updated['Skills'] = updatedSkills;
             }
-            return prev;
+
+            setActiveFilters((prevFilters) => {
+                const hasSkills = updatedSkills.length > 0;
+                if (hasSkills && !prevFilters.includes('Skills')) {
+                    return [...prevFilters, 'Skills'].sort();
+                } else if (!hasSkills && prevFilters.includes('Skills')) {
+                    return prevFilters.filter((f) => f !== 'Skills');
+                }
+                return prevFilters;
+            });
+
+            return updated;
         });
     }
 
-    async function deleteRecord(ID){
+    function handleLocationToggle(location) {
+        setFilterValues((prev) => {
+            const currentLocations = prev['Location'] || [];
+            const updatedLocations = currentLocations.includes(location)
+                ? currentLocations.filter((l) => l !== location)
+                : [...currentLocations, location];
+
+            const updated = { ...prev };
+            if (updatedLocations.length === 0) {
+                delete updated['Location'];
+            } else {
+                updated['Location'] = updatedLocations;
+            }
+
+            setActiveFilters((prevFilters) => {
+                const hasLocations = updatedLocations.length > 0;
+                if (hasLocations && !prevFilters.includes('Location')) {
+                    return [...prevFilters, 'Location'].sort();
+                } else if (!hasLocations && prevFilters.includes('Location')) {
+                    return prevFilters.filter((f) => f !== 'Location');
+                }
+                return prevFilters;
+            });
+
+            return updated;
+        });
+    }
+
+    async function deleteRecord(ID) {
         try {
             const response = await fetch(`http://localhost:5000/hireRadar/deleteCandidate/${String(ID)}`, {
                 method: 'DELETE'
@@ -143,46 +244,6 @@ function SavedCandidates(){
         }
     }
 
-    useEffect(() => {
-        function handleClickOutside(event) {
-            const menuContainers = document.querySelectorAll('.menu-container');
-            let clickedInsideMenu = false;
-            
-            menuContainers.forEach(container => {
-                if (container.contains(event.target)) {
-                    clickedInsideMenu = true;
-                }
-            });
-            
-            if (!clickedInsideMenu) {
-                setOpenMenuId(null);
-            }
-        }
-
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
-
-    useEffect(() => {
-        function handleClickOutside(event) {
-            const credentialContainers = document.querySelectorAll('.credential-container');
-            let clickedInsideMenu = false;
-            
-            credentialContainers.forEach(container => {
-                if (container.contains(event.target)) {
-                    clickedInsideMenu = true;
-                }
-            });
-            
-            if (!clickedInsideMenu) {
-                setOpenCredentialMenuId(null);
-            }
-        }
-
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
-
     const toggleMenu = (id) => {
         setOpenMenuId(openMenuId === id ? null : id);
     };
@@ -192,21 +253,28 @@ function SavedCandidates(){
     };
 
     const nav = useNavigate();
-    function navigateSavedCandidateProfile(id){
-        nav('/candidateProfile',{state:{tempCndId:null, permCndId:id}});
+
+    function navigateSavedCandidateProfile(id) {
+        nav('/candidateProfile', { state: { tempCndId: null, permCndId: id } });
     }
 
-    async function generateCredentials(ID){
+    async function generateCredentials(ID) {
         try {
             const username = nanoid(5);
             const password = nanoid(10);
             const response = await fetch("http://localhost:5000/hireRadar/insertTestDetails", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({'cndid':ID, 'username':username, 'password':password})
+                body: JSON.stringify({ cndid: ID, username, password })
             });
+
+            if (!response.ok) {
+                const text = await response.text();
+                throw new Error(text || 'Credential generation failed');
+            }
+
             await response.json();
-            
+
             setCredentials(prev => ({
                 ...prev,
                 [ID]: { username, password }
@@ -217,47 +285,62 @@ function SavedCandidates(){
         }
     }
 
-    const copyToClipboard = (text, n) => {
-        if(n===1){
-            setCopyText1('✓');
-            navigator.clipboard.writeText(text);
-            setTimeout(() => {
-                setCopyText1("Copy");
-            }, 2000);
-        } else {
-            setCopyText2('✓');
-            navigator.clipboard.writeText(text);
-            setTimeout(() => {
-                setCopyText2("Copy");
-            }, 2000);
+    const copyToClipboard = async (text, n) => {
+        try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                await navigator.clipboard.writeText(text);
+            } else {
+                throw new Error("Clipboard API unavailable");
+            }
+
+            if (n === 1) {
+                setCopyText1('✓');
+                setTimeout(() => setCopyText1("Copy"), 2000);
+            } else {
+                setCopyText2('✓');
+                setTimeout(() => setCopyText2("Copy"), 2000);
+            }
+        } catch (err) {
+            console.error('copyToClipboard error:', err.message || err);
+            if (n === 1) {
+                setCopyText1('Failed');
+                setTimeout(() => setCopyText1("Copy"), 2000);
+            } else {
+                setCopyText2('Failed');
+                setTimeout(() => setCopyText2("Copy"), 2000);
+            }
         }
     };
 
-    return(
+    return (
         <div style={{ display: "flex", minHeight: "100vh" }}>
             <Sidebar />
             <div className="flex-1 min-h-screen bg-slate-50 p-6 overflow-x-hidden">
                 <div className="mb-6">
                     <h1 className="text-4xl font-bold text-gray-900 mb-6">Saved Candidates</h1>
-                    
+
                     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 flex flex-col gap-4">
                         <div className="flex items-center justify-between gap-4">
-                            <input 
-                                type="text" 
-                                placeholder={`Search saved candidates by ${activeFilters.length === 0 ? 'name' : activeFilters.join(', ').toLowerCase()} ...`}
+                            <input
+                                type="text"
+                                placeholder={`Search saved candidates by name ...`}
                                 className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-lg"
                                 value={searchVar}
-                                onChange={(e)=>setSearchVar(e.target.value)}
+                                onChange={(e) => setSearchVar(e.target.value)}
                             />
-                            <button className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-lg font-semibold transition duration-200"
-                                onClick={()=>{
+                            <button
+                                className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-lg font-semibold transition duration-200"
+                                onClick={() => {
                                     setSearchVar("");
                                     setActiveFilters([]);
                                     setFilterValues({});
-                                }}>
+                                    setShowSkillsDropdown(false);
+                                    setShowLocationDropdown(false);
+                                }}
+                            >
                                 Reset
                             </button>
-                            
+
                             <button
                                 className={`border-2 px-6 py-3 rounded-lg font-semibold flex items-center gap-2 transition duration-200 bg-white ${
                                     showFilters || activeFilters.length > 0
@@ -283,8 +366,8 @@ function SavedCandidates(){
 
                                     if (filter === 'Skills') {
                                         const selectedSkills = filterValues['Skills'] || [];
-                                        const displayLabel = selectedSkills.length > 0 
-                                            ? `Skills (${selectedSkills.length})` 
+                                        const displayLabel = selectedSkills.length > 0
+                                            ? `Skills (${selectedSkills.length})`
                                             : 'Skills';
 
                                         return (
@@ -311,8 +394,8 @@ function SavedCandidates(){
                                                         {dropdownOptions.Skills.map((skill) => {
                                                             const isChecked = selectedSkills.includes(skill);
                                                             return (
-                                                                <label 
-                                                                    key={skill} 
+                                                                <label
+                                                                    key={skill}
                                                                     className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-purple-50 cursor-pointer text-sm text-gray-700 font-normal transition duration-150"
                                                                 >
                                                                     <input
@@ -322,6 +405,56 @@ function SavedCandidates(){
                                                                         className="rounded border-gray-300 text-purple-600 focus:ring-purple-500 h-4 w-4"
                                                                     />
                                                                     {skill}
+                                                                </label>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    }
+
+                                    if (filter === 'Location') {
+                                        const selectedLocations = filterValues['Location'] || [];
+                                        const displayLabel = selectedLocations.length > 0
+                                            ? `Location (${selectedLocations.length})`
+                                            : 'Location';
+
+                                        return (
+                                            <div key={filter} className="relative inline-block" ref={locationRef}>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowLocationDropdown((prev) => !prev)}
+                                                    className={`pl-4 pr-10 py-2 rounded-lg transition duration-200 border-2 bg-white text-sm font-medium flex items-center gap-2 cursor-pointer ${
+                                                        isActive
+                                                            ? 'border-purple-600 text-purple-700'
+                                                            : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+                                                    }`}
+                                                >
+                                                    {displayLabel}
+                                                    <div className={`absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none ${
+                                                        isActive ? 'text-purple-600' : 'text-gray-400'
+                                                    }`}>
+                                                        <ChevronDown size={16} strokeWidth={2.5} />
+                                                    </div>
+                                                </button>
+
+                                                {showLocationDropdown && (
+                                                    <div className="absolute left-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-xl z-50 p-2 flex flex-col gap-1 max-h-60 overflow-y-auto">
+                                                        {dropdownOptions.Location.map((loc) => {
+                                                            const isChecked = selectedLocations.includes(loc);
+                                                            return (
+                                                                <label
+                                                                    key={loc}
+                                                                    className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-purple-50 cursor-pointer text-sm text-gray-700 font-normal transition duration-150"
+                                                                >
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={isChecked}
+                                                                        onChange={() => handleLocationToggle(loc)}
+                                                                        className="rounded border-gray-300 text-purple-600 focus:ring-purple-500 h-4 w-4"
+                                                                    />
+                                                                    {loc}
                                                                 </label>
                                                             );
                                                         })}
@@ -361,7 +494,7 @@ function SavedCandidates(){
                         )}
                     </div>
                 </div>
-                
+
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden max-h-[calc(100vh-280px)] flex flex-col">
                     <div className="overflow-x-auto flex-1 overflow-y-auto">
                         <table className="w-full">
@@ -380,9 +513,9 @@ function SavedCandidates(){
                                     <tr key={candidate.cndid} className="hover:bg-gray-50 transition duration-150">
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
-                                                <img 
-                                                    src={candidate.cndphoto} 
-                                                    alt={candidate.cndname} 
+                                                <img
+                                                    src={candidate.cndphoto}
+                                                    alt={candidate.cndname}
                                                     className="h-12 w-12 rounded-full object-cover"
                                                 />
                                                 <div>
@@ -392,7 +525,7 @@ function SavedCandidates(){
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-gray-700">{candidate.cndrole}</td>
-                                        <td className="px-6 py-4 text-gray-700">{candidate.cndexperience}</td>
+                                        <td className="px-6 py-4 text-gray-700">{`${candidate.cndexperience} years`}</td>
                                         <td className="px-6 py-4">
                                             <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800">
                                                 {candidate.matchScore || '80%'}
@@ -401,7 +534,7 @@ function SavedCandidates(){
                                         <td className="px-6 py-4 text-gray-700">{candidate.searchDate || format(new Date(), 'dd/MM/yyyy')}</td>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
-                                                <button 
+                                                <button
                                                     onClick={() => navigateSavedCandidateProfile(candidate.cndid)}
                                                     className="text-purple-600 hover:text-purple-800 transition duration-200"
                                                     title="View profile"
@@ -410,8 +543,8 @@ function SavedCandidates(){
                                                 </button>
                                                 {credentials[candidate.cndid] && (
                                                     <div className="credential-container relative inline-block">
-                                                        <button 
-                                                            className="text-gray-600 hover:text-gray-800 transition duration-200" 
+                                                        <button
+                                                            className="text-gray-600 hover:text-gray-800 transition duration-200"
                                                             title="View credentials"
                                                             onClick={() => toggleCredentialMenu(candidate.cndid)}
                                                         >
@@ -422,8 +555,8 @@ function SavedCandidates(){
                                                                 <p className="text-xs font-semibold text-gray-600 mb-1">Username</p>
                                                                 <div className="flex items-center justify-between bg-gray-50 p-2 rounded">
                                                                     <p className="text-sm font-mono text-gray-900">{credentials[candidate.cndid].username}</p>
-                                                                    <button 
-                                                                        onClick={() => copyToClipboard(credentials[candidate.cndid].username,1)}
+                                                                    <button
+                                                                        onClick={() => copyToClipboard(credentials[candidate.cndid].username, 1)}
                                                                         className="text-xs text-purple-600 hover:text-purple-800"
                                                                     >
                                                                         {copyText1}
@@ -434,8 +567,8 @@ function SavedCandidates(){
                                                                 <p className="text-xs font-semibold text-gray-600 mb-1">Password</p>
                                                                 <div className="flex items-center justify-between bg-gray-50 p-2 rounded">
                                                                     <p className="text-sm font-mono text-gray-900">{credentials[candidate.cndid].password}</p>
-                                                                    <button 
-                                                                        onClick={() => copyToClipboard(credentials[candidate.cndid].password,2)}
+                                                                    <button
+                                                                        onClick={() => copyToClipboard(credentials[candidate.cndid].password, 2)}
                                                                         className="text-xs text-purple-600 hover:text-purple-800"
                                                                     >
                                                                         {copyText2}
@@ -446,8 +579,8 @@ function SavedCandidates(){
                                                     </div>
                                                 )}
                                                 <div className="menu-container relative inline-block">
-                                                    <button 
-                                                        className="text-gray-400 hover:text-gray-600 transition duration-200" 
+                                                    <button
+                                                        className="text-gray-400 hover:text-gray-600 transition duration-200"
                                                         title="More options"
                                                         onClick={() => toggleMenu(candidate.cndid)}
                                                     >
@@ -466,7 +599,7 @@ function SavedCandidates(){
                             </tbody>
                         </table>
                     </div>
-                    
+
                     <div className="border-t border-gray-200 px-6 py-4 bg-gray-50">
                         <p className="text-sm text-gray-700">Showing 1 to {candidates.length} of {candidates.length} results</p>
                     </div>

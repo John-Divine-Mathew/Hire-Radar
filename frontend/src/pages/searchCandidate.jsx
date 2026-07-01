@@ -8,17 +8,34 @@ function SearchCandidatePage() {
     const [showFilters, setShowFilters] = useState(false);
     const [activeFilters, setActiveFilters] = useState([]);
     const [filterValues, setFilterValues] = useState({});
-    
+
     const [showSkillsDropdown, setShowSkillsDropdown] = useState(false);
+    const [showLocationDropdown, setShowLocationDropdown] = useState(false);
     const skillsRef = useRef(null);
+    const locationRef = useRef(null);
 
     const filterOptions = ['Experience', 'Skills', 'Location', 'Role', 'Status'].sort();
 
     const dropdownOptions = {
         Experience: ['0-1 years', '1-3 years', '3-5 years', '5+ years'],
-        Skills: ['React', 'Node.js', 'Python', 'Tailwind CSS', 'TypeScript'],
-        Location: ['Remote', 'New York', 'San Francisco', 'London', 'India'],
-        Role: ['Frontend Developer', 'Backend Developer', 'Fullstack Engineer', 'UI/UX Designer'],
+        Skills: [
+            'React', 'Node.js', 'Python', 'TypeScript', 'PyTorch',
+            'Apache Spark', 'Figma', 'C++', 'RTOS', 'Selenium',
+            'AWS', 'Terraform', 'PostgreSQL', 'GraphQL', 'Modbus',
+            'Docker', 'Kubernetes', 'Go', 'Swin Transformer', 'Java',
+            'CAN bus', 'I2C', 'Tailwind CSS', 'Next.js', 'Kafka'
+        ],
+        Location: [
+            'Remote', 'Bangalore', 'Mumbai', 'Hyderabad', 'Chennai',
+            'Pune', 'Kochi', 'Coimbatore', 'Ahmedabad', 'Kolkata',
+            'London', 'Berlin', 'Singapore', 'Tokyo', 'Amsterdam', 'Toronto'
+        ],
+        Role: [
+            'Machine Learning Engineer', 'Data Engineer', 'Cloud Architect',
+            'Embedded Systems Developer', 'Fullstack Engineer', 'UI/UX Designer',
+            'QA Automation Engineer', 'DevOps Engineer', 'Backend Developer',
+            'Frontend Developer', 'IoT Systems Engineer'
+        ],
         Status: ['Applied', 'Interviewing', 'Offered', 'Rejected']
     };
 
@@ -26,6 +43,9 @@ function SearchCandidatePage() {
         function handleClickOutside(event) {
             if (skillsRef.current && !skillsRef.current.contains(event.target)) {
                 setShowSkillsDropdown(false);
+            }
+            if (locationRef.current && !locationRef.current.contains(event.target)) {
+                setShowLocationDropdown(false);
             }
         }
         document.addEventListener('mousedown', handleClickOutside);
@@ -56,24 +76,52 @@ function SearchCandidatePage() {
                 ? currentSkills.filter((s) => s !== skill)
                 : [...currentSkills, skill];
 
-            const updated = { ...prev, Skills: updatedSkills };
-            if (updatedSkills.length === 0) delete updated['Skills'];
+            const updated = { ...prev };
+            if (updatedSkills.length === 0) {
+                delete updated['Skills'];
+            } else {
+                updated['Skills'] = updatedSkills;
+            }
+
+            setActiveFilters((prevFilters) => {
+                const hasSkills = updatedSkills.length > 0;
+                if (hasSkills && !prevFilters.includes('Skills')) {
+                    return [...prevFilters, 'Skills'].sort();
+                } else if (!hasSkills && prevFilters.includes('Skills')) {
+                    return prevFilters.filter((f) => f !== 'Skills');
+                }
+                return prevFilters;
+            });
+
             return updated;
         });
+    }
 
-        setActiveFilters((prev) => {
-            const currentSkills = filterValues['Skills'] || [];
-            const isSkillCurrentlySelected = currentSkills.includes(skill);
-            const willHaveSkills = isSkillCurrentlySelected 
-                ? currentSkills.length > 1 
-                : true;
+    function handleLocationToggle(location) {
+        setFilterValues((prev) => {
+            const currentLocations = prev['Location'] || [];
+            const updatedLocations = currentLocations.includes(location)
+                ? currentLocations.filter((l) => l !== location)
+                : [...currentLocations, location];
 
-            if (willHaveSkills && !prev.includes('Skills')) {
-                return [...prev, 'Skills'].sort();
-            } else if (!willHaveSkills && prev.includes('Skills')) {
-                return prev.filter((f) => f !== 'Skills');
+            const updated = { ...prev };
+            if (updatedLocations.length === 0) {
+                delete updated['Location'];
+            } else {
+                updated['Location'] = updatedLocations;
             }
-            return prev;
+
+            setActiveFilters((prevFilters) => {
+                const hasLocations = updatedLocations.length > 0;
+                if (hasLocations && !prevFilters.includes('Location')) {
+                    return [...prevFilters, 'Location'].sort();
+                } else if (!hasLocations && prevFilters.includes('Location')) {
+                    return prevFilters.filter((f) => f !== 'Location');
+                }
+                return prevFilters;
+            });
+
+            return updated;
         });
     }
 
@@ -90,7 +138,7 @@ function SearchCandidatePage() {
                                 <input
                                     className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-lg"
                                     type="text"
-                                    placeholder={`Search Candidate by ${activeFilters.length === 0 ? 'name' : activeFilters.join(', ').toLowerCase()} ...`}
+                                    placeholder={`Search Candidate by name ...`}
                                     value={searchVar}
                                     onChange={(e) => setSearchVar(e.target.value)}
                                 />
@@ -102,6 +150,8 @@ function SearchCandidatePage() {
                                             setSearchVar("");
                                             setActiveFilters([]);
                                             setFilterValues({});
+                                            setShowSkillsDropdown(false);
+                                            setShowLocationDropdown(false);
                                         }}
                                     >
                                         Reset
@@ -129,15 +179,13 @@ function SearchCandidatePage() {
                             {showFilters && (
                                 <div className="flex flex-col gap-3 items-start">
                                     <div className="flex flex-wrap gap-2 items-center">
-
-                                        
                                         {filterOptions.map((filter) => {
                                             const isActive = activeFilters.includes(filter);
 
                                             if (filter === 'Skills') {
                                                 const selectedSkills = filterValues['Skills'] || [];
-                                                const displayLabel = selectedSkills.length > 0 
-                                                    ? `Skills (${selectedSkills.length})` 
+                                                const displayLabel = selectedSkills.length > 0
+                                                    ? `Skills (${selectedSkills.length})`
                                                     : 'Skills';
 
                                                 return (
@@ -164,8 +212,8 @@ function SearchCandidatePage() {
                                                                 {dropdownOptions.Skills.map((skill) => {
                                                                     const isChecked = selectedSkills.includes(skill);
                                                                     return (
-                                                                        <label 
-                                                                            key={skill} 
+                                                                        <label
+                                                                            key={skill}
                                                                             className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-purple-50 cursor-pointer text-sm text-gray-700 font-normal transition duration-150"
                                                                         >
                                                                             <input
@@ -175,6 +223,56 @@ function SearchCandidatePage() {
                                                                                 className="rounded border-gray-300 text-purple-600 focus:ring-purple-500 h-4 w-4"
                                                                             />
                                                                             {skill}
+                                                                        </label>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            }
+
+                                            if (filter === 'Location') {
+                                                const selectedLocations = filterValues['Location'] || [];
+                                                const displayLabel = selectedLocations.length > 0
+                                                    ? `Location (${selectedLocations.length})`
+                                                    : 'Location';
+
+                                                return (
+                                                    <div key={filter} className="relative inline-block" ref={locationRef}>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setShowLocationDropdown((prev) => !prev)}
+                                                            className={`pl-4 pr-10 py-2 rounded-lg transition duration-200 border-2 bg-white text-sm font-medium flex items-center gap-2 cursor-pointer ${
+                                                                isActive
+                                                                    ? 'border-purple-600 text-purple-700'
+                                                                    : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+                                                            }`}
+                                                        >
+                                                            {displayLabel}
+                                                            <div className={`absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none ${
+                                                                isActive ? 'text-purple-600' : 'text-gray-400'
+                                                            }`}>
+                                                                <ChevronDown size={16} strokeWidth={2.5} />
+                                                            </div>
+                                                        </button>
+
+                                                        {showLocationDropdown && (
+                                                            <div className="absolute left-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-xl z-50 p-2 flex flex-col gap-1 max-h-60 overflow-y-auto">
+                                                                {dropdownOptions.Location.map((loc) => {
+                                                                    const isChecked = selectedLocations.includes(loc);
+                                                                    return (
+                                                                        <label
+                                                                            key={loc}
+                                                                            className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-purple-50 cursor-pointer text-sm text-gray-700 font-normal transition duration-150"
+                                                                        >
+                                                                            <input
+                                                                                type="checkbox"
+                                                                                checked={isChecked}
+                                                                                onChange={() => handleLocationToggle(loc)}
+                                                                                className="rounded border-gray-300 text-purple-600 focus:ring-purple-500 h-4 w-4"
+                                                                            />
+                                                                            {loc}
                                                                         </label>
                                                                     );
                                                                 })}
