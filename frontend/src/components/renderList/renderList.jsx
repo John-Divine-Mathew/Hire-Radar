@@ -7,31 +7,63 @@ import { format } from 'date-fns';
 function RenderList({ var1, activeFilters, filterValues }) {
     const [list, setList] = useState([]);
 
+    const normalizeFilterValue = (key, value) => {
+        if (Array.isArray(value)) {
+            return value
+                .map((item) => normalizeFilterValue(key, item))
+                .filter((item) => item !== null && item !== undefined && item !== '');
+        }
+
+        if (typeof value !== 'string') {
+            return value;
+        }
+
+        const normalizedKey = key.toLowerCase();
+
+        if (normalizedKey.includes('experience') || normalizedKey.includes('exp') || normalizedKey.includes('year')) {
+            const matches = value.match(/\d+/g);
+
+            if (matches && matches.length >= 2) {
+                return `${matches[0]}-${matches[matches.length - 1]}`;
+            }
+
+            if (matches && matches.length === 1) {
+                // Check if the user selected a plus-bounded open range (e.g., "5+ years")
+                if (value.includes('+')) {
+                    return `${matches[0]}+`;
+                }
+                return matches[0];
+            }
+
+            return '';
+        }
+
+        return value;
+    };
+
     const getListData = async () => {
         try {
-            // Build real-time query string parameters
             const params = new URLSearchParams();
-            
+
             if (var1) {
                 params.append('search', var1);
             }
 
-            // Loop through selected filters and attach values to request
             Object.keys(filterValues).forEach((key) => {
                 const val = filterValues[key];
-                if (Array.isArray(val)) {
-                    // For multi-select fields like Skills
-                    if (val.length > 0) {
-                        params.append(key.toLowerCase(), val.join(','));
+                const normalizedValue = normalizeFilterValue(key, val);
+
+                if (Array.isArray(normalizedValue)) {
+                    if (normalizedValue.length > 0) {
+                        params.append(key.toLowerCase(), normalizedValue.join(','));
                     }
-                } else if (val) {
-                    params.append(key.toLowerCase(), val);
+                } else if (normalizedValue !== null && normalizedValue !== undefined && normalizedValue !== '') {
+                    params.append(key.toLowerCase(), String(normalizedValue));
                 }
             });
 
-            // If any filter or search value is present, call the multi-filter route
             const queryString = params.toString();
-            const url = queryString 
+            const url = queryString
                 ? `http://localhost:5000/hireRadar/cndtempsavesearch?${queryString}`
                 : `http://localhost:5000/hireRadar/cndtempsave`;
 
@@ -43,7 +75,6 @@ function RenderList({ var1, activeFilters, filterValues }) {
         }
     };
 
-    // Re-run whenever search term or filters change dynamically
     useEffect(() => {
         getListData();
     }, [var1, filterValues]);
@@ -61,22 +92,19 @@ function RenderList({ var1, activeFilters, filterValues }) {
             const response2 = await fetch(`http://localhost:5000/hireRadar/cndpersonaldetails/${cndid}`);
             const cndPersonalData = await response2.json();
 
-            const response3 = await fetch(`http://localhost:5000/hireRadar/cndworkdetails/${cndid}`);
-            const cndWorkData = await response3.json();
-
             const body = {
-                'date': new Date(),
-                "name": cndTempData.cndname,
-                "email": cndPersonalData.cndemail,
-                "phone": cndPersonalData.cndphone,
-                "age": cndPersonalData.cndage,
-                "gender": cndPersonalData.cndgender,
-                "role": cndPersonalData.cndrole,
-                "skills": cndWorkData.cndskills,
-                "texp": cndWorkData.cndtotalexperience,
-                "experience": cndTempData.cndexperience,
-                "location": cndPersonalData.cndlocation,
-                "status": cndTempData.cndstatus
+                date: new Date(),
+                name: cndTempData.cndname,
+                email: cndPersonalData.cndemail,
+                phone: cndPersonalData.cndphone,
+                age: cndPersonalData.cndage,
+                gender: cndPersonalData.cndgender,
+                role: cndPersonalData.cndrole,
+                skills: cndTempData.cndskills,
+                texp: cndTempData.cndexperience,
+                experience: cndTempData.cndexperience,
+                location: cndPersonalData.cndlocation,
+                status: cndTempData.cndstatus
             };
 
             const response = await fetch("http://localhost:5000/hireRadar/insertCandidate", {
@@ -107,7 +135,7 @@ function RenderList({ var1, activeFilters, filterValues }) {
                             />
                             <div className="flex-1">
                                 <h3 className="text-xl font-bold text-gray-900 mb-3">{i.cndname}</h3>
-                                <p className="text-gray-600 mb-3">{i.cndrole} • {i.cndexperience} • {i.cndlocation}</p>
+                                <p className="text-gray-600 mb-3">{i.cndrole} • {`${i.cndexperience} years`} • {i.cndlocation}</p>
                                 <div className="flex flex-wrap gap-2">
                                     {i.cndskills && i.cndskills.split(',').map((s) => (
                                         <span 
