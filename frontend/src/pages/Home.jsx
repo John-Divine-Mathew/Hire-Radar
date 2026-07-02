@@ -14,7 +14,7 @@ const Home = () => {
         <div className="max-w-7xl mx-auto px-10">
 
           <div className="text-center">
-
+             
             <h1 className="text-6xl font-bold mb-6">
               Welcome to Hire-Radar
             </h1>
@@ -34,14 +34,6 @@ const Home = () => {
                 <HeroButtons />
               </div>
 
-              <div>
-                <button
-                  onClick={() => setShowSupport(true)}
-                  className="mt-2 bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg font-medium transition"
-                >
-                  Support
-                </button>
-              </div>
             </div>
 
           </div>
@@ -289,17 +281,23 @@ function HeroButtons() {
     <>
       <button
         onClick={() => navigate("/admin-login")}
-        className="bg-white text-purple-700 px-8 py-3 rounded-lg font-semibold hover:scale-105 transition"
-      >
+        className="mt-2 bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg font-medium transition">
         HR / Admin Login
       </button>
 
       <button
         onClick={() => navigate("/admin-user")}
-        className="border border-white px-8 py-3 rounded-lg hover:bg-white hover:text-purple-700 transition"
+         className="mt-2 bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg font-medium transition"
       >
         User Login
       </button>
+
+      <button
+                  onClick={() => setShowSupport(true)}
+                  className="mt-2 bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg font-medium transition"
+                >
+                  Support
+                </button>
     </>
   );
 }
