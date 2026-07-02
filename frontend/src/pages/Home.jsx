@@ -9,12 +9,18 @@ const Home = () => {
       {/* Navbar removed from landing page (shown on admin dashboard only) */}
 
       {/* Hero Section */}
-      <section className="bg-gradient-to-r from-purple-700 to-indigo-700 text-white py-20">
+    <section className="relative overflow-hidden bg-gradient-to-br from-[#4F46E5] via-[#6D28D9] to-[#9333EA] text-white py-24">
 
         <div className="max-w-7xl mx-auto px-10">
 
           <div className="text-center">
-             
+            
+
+            <img
+    src="/hirotec-logo.webp"
+    alt="Hirotec Logo"
+    className="w-40 mx-auto mb-7 drop-shadow-2xl"
+/>
             <h1 className="text-6xl font-bold mb-6">
               Welcome to Hire-Radar
             </h1>
@@ -31,7 +37,7 @@ const Home = () => {
 
             <div className="mt-10 flex flex-col items-center gap-4">
               <div className="flex justify-center gap-5">
-                <HeroButtons />
+              <HeroButtons setShowSupport={setShowSupport} />
               </div>
 
             </div>
@@ -77,7 +83,7 @@ const Home = () => {
       {/* Key Features */}
 
       <section className="bg-white py-16">
-
+        
         <div className="max-w-7xl mx-auto px-10">
 
           <h2 className="text-4xl font-bold text-center text-purple-700 mb-12">
@@ -86,7 +92,7 @@ const Home = () => {
 
           <div className="grid md:grid-cols-3 gap-8">
 
-            <div className="bg-gray-50 p-6 rounded-xl shadow-md">
+            <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 border border-gray-100">
               <h3 className="text-xl font-bold text-purple-700 mb-3">
                 Multi-Platform Sourcing
               </h3>
@@ -97,7 +103,7 @@ const Home = () => {
               </p>
             </div>
 
-            <div className="bg-gray-50 p-6 rounded-xl shadow-md">
+            <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 border border-gray-100">
               <h3 className="text-xl font-bold text-purple-700 mb-3">
                 Match Score Analysis
               </h3>
@@ -108,7 +114,7 @@ const Home = () => {
               </p>
             </div>
 
-            <div className="bg-gray-50 p-6 rounded-xl shadow-md">
+            <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 border border-gray-100">
               <h3 className="text-xl font-bold text-purple-700 mb-3">
                 Candidate Pipeline
               </h3>
@@ -119,7 +125,7 @@ const Home = () => {
               </p>
             </div>
 
-            <div className="bg-gray-50 p-6 rounded-xl shadow-md">
+            <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 border border-gray-100">
               <h3 className="text-xl font-bold text-purple-700 mb-3">
                 Assessment Management
               </h3>
@@ -130,7 +136,7 @@ const Home = () => {
               </p>
             </div>
 
-            <div className="bg-gray-50 p-6 rounded-xl shadow-md">
+            <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 border border-gray-100">
               <h3 className="text-xl font-bold text-purple-700 mb-3">
                 Analytics Dashboard
               </h3>
@@ -141,7 +147,7 @@ const Home = () => {
               </p>
             </div>
 
-            <div className="bg-gray-50 p-6 rounded-xl shadow-md">
+            <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 border border-gray-100">
               <h3 className="text-xl font-bold text-purple-700 mb-3">
                 Interview Scheduling
               </h3>
@@ -168,23 +174,23 @@ const Home = () => {
 
         <div className="grid md:grid-cols-5 gap-4 text-center">
 
-          <div className="bg-purple-100 p-5 rounded-lg">
+          <div className="bg-white rounded-xl shadow-lg  p-6 hover:scale-105 transition-all">
             Search Candidates
           </div>
 
-          <div className="bg-purple-100 p-5 rounded-lg">
+          <div className="bg-white rounded-xl shadow-lg  p-6 hover:scale-105 transition-all">
             Analyze Profiles
           </div>
 
-          <div className="bg-purple-100 p-5 rounded-lg">
+          <div className="bg-white rounded-xl shadow-lg  p-6 hover:scale-105 transition-all">
             Conduct Assessment
           </div>
 
-          <div className="bg-purple-100 p-5 rounded-lg">
+          <div className="bg-white rounded-xl shadow-lg  p-6 hover:scale-105 transition-all">
             Schedule Interview
           </div>
 
-          <div className="bg-purple-100 p-5 rounded-lg">
+          <div className="bg-white rounded-xl shadow-lg  p-6 hover:scale-105 transition-all">
             Hire Talent
           </div>
 
@@ -274,30 +280,38 @@ const Home = () => {
 
 export default Home;
 
-function HeroButtons() {
+function HeroButtons({ setShowSupport }) {
   const navigate = useNavigate();
 
   return (
     <>
-      <button
-        onClick={() => navigate("/admin-login")}
-        className="mt-2 bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg font-medium transition">
-        HR / Admin Login
-      </button>
+     <div className="flex flex-wrap justify-center gap-5 mt-">
 
-      <button
-        onClick={() => navigate("/admin-user")}
-         className="mt-2 bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg font-medium transition"
-      >
-        User Login
-      </button>
+<button
+onClick={() => navigate("/admin-login")}
+className="px-8 py-4 rounded-xl bg-green-500 hover:bg-green-600 font-semibold shadow-xl transition-all duration-300 hover:scale-105">
 
-      <button
-                  onClick={() => setShowSupport(true)}
-                  className="mt-2 bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg font-medium transition"
-                >
-                  Support
-                </button>
+HR / Admin Login
+
+</button>
+
+<button
+onClick={() => navigate("/admin-user")}
+className="px-8 py-4 rounded-xl bg-red-500 hover:bg-red-600 font-semibold shadow-xl transition-all duration-300 hover:scale-105">
+
+Candidate Login
+
+</button>
+
+<button
+onClick={() => setShowSupport(true)}
+className="px-8 py-4 rounded-xl bg-orange-500 hover:bg-orange-600 font-semibold shadow-xl transition-all duration-300 hover:scale-105">
+
+Developer Support
+
+</button>
+
+</div>
     </>
   );
 }
