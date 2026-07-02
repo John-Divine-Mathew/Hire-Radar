@@ -314,12 +314,13 @@ function SavedCandidates() {
     };
 
     return (
-        <div style={{ display: "flex", minHeight: "100vh" }}>
+        <div className="flex h-screen flex-col overflow-hidden">
+            <Navbar />
+            <div className="flex flex-1 min-h-0">
             <Sidebar />
-            <div className="flex-1 min-h-screen bg-slate-50 p-6 overflow-x-hidden">
-                <Navbar />
+            <div className="flex min-w-0 flex-1 flex-col bg-slate-50 overflow-hidden">
 
-                <div className="mb-6">
+                <div className="shrink-0 border-b border-slate-200 bg-slate-50 p-6">
                     <h1 className="text-4xl font-bold text-gray-900 mb-6">Saved Candidates</h1>
 
                     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 flex flex-col gap-4">
@@ -498,7 +499,7 @@ function SavedCandidates() {
                     </div>
                 </div>
 
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden max-h-[calc(100vh-280px)] flex flex-col">
+                <div className="m-6 min-h-0 flex-1 bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden flex flex-col">
                     <div className="overflow-x-auto flex-1 overflow-y-auto">
                         <table className="w-full">
                             <thead className="bg-gray-50 border-b border-gray-200">
@@ -607,6 +608,7 @@ function SavedCandidates() {
                         <p className="text-sm text-gray-700">Showing 1 to {candidates.length} of {candidates.length} results</p>
                     </div>
                 </div>
+            </div>
             </div>
         </div>
     );

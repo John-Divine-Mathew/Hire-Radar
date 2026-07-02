@@ -127,15 +127,16 @@ function SearchCandidatePage() {
     }
 
     return (
-        <div style={{ display: "flex", minHeight: "100vh" }}>
+        <div className="flex h-screen flex-col overflow-hidden">
+            <Navbar />
+            <div className="flex flex-1 min-h-0">
             <Sidebar />
-            <div className="flex-1 min-h-screen bg-slate-50 p-6 overflow-x-hidden">
-                <Navbar />
+            <div className="flex min-w-0 flex-1 flex-col bg-slate-50 overflow-hidden">
 
-                <div className="mb-8">
+                <div className="shrink-0 border-b border-slate-200 bg-slate-50 p-6">
                     <h1 className="text-4xl font-bold text-gray-900 mb-6">Search Candidates</h1>
 
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                         <div className="flex flex-col gap-4">
                             <div className="flex gap-4 items-center">
                                 <input
@@ -318,7 +319,10 @@ function SearchCandidatePage() {
                     </div>
                 </div>
 
-                <RenderList var1={searchVar} activeFilters={activeFilters} filterValues={filterValues} />
+                <div className="flex-1 overflow-y-auto overflow-x-hidden p-6">
+                    <RenderList var1={searchVar} activeFilters={activeFilters} filterValues={filterValues} />
+                </div>
+            </div>
             </div>
         </div>
     );
