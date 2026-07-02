@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import Sidebar from "../../components/sideBar/sideBar";
+import Navbar from "../../components/navBar/navBar.jsx";
 import { ChevronDown } from "lucide-react";
 
 function AdminAssessment() {
@@ -128,7 +129,8 @@ function AdminAssessment() {
       <Sidebar />
 
       <div className="flex-1 flex flex-col h-full min-w-0">
-        
+        <Navbar />
+
         {/* STATIC HEADER AREA */}
         <div className="p-8 pb-4 bg-gray-100 border-b border-gray-200/50 shrink-0">
           <h1 className="text-4xl font-bold text-gray-900">

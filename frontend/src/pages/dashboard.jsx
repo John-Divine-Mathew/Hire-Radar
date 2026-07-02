@@ -8,6 +8,7 @@ import {
 } from "recharts";
 
 import Sidebar from "../components/sideBar/sideBar.jsx";
+import Navbar from "../components/navBar/navBar.jsx";
 
 const chartData = [
   { day: "Mon", value: 320 },
@@ -43,6 +44,9 @@ export default function Dashboard() {
       <Sidebar />
 
       <div className="flex-1 p-5 overflow-y-auto">
+
+        {/* Navbar for HR/Admin */}
+        <Navbar />
 
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
