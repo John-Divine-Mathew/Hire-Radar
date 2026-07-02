@@ -382,22 +382,12 @@ Important Assessment Rules
  
          {isSubmitted && score !== null && (
            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-6">
-             <div className="relative w-full max-w-lg rounded-2xl border border-green-200 bg-white p-8 text-center shadow-2xl">
-               <button
-                 onClick={() => {
-                   logoutUser();
-                   navigate("/home");
-                 }}
-                 className="absolute right-4 top-4 rounded-lg bg-purple-600 px-4 py-2 font-semibold text-white transition hover:bg-purple-700"
-               >
-                 Back to Home
-               </button>
-
+              <div className="relative w-full max-w-lg rounded-2xl border border-green-200 bg-white px-8 pb-24 pt-8 text-center shadow-2xl">
                <h2 className="text-3xl font-bold text-green-700">
                  Assessment Completed
                </h2>
 
-               <div className="mt-6 rounded-xl bg-green-50 p-6">
+               <div className="mt-3 rounded-xl bg-green-50 p-6">
                  <p className="text-xl font-semibold text-slate-800">
                    Score : {score}/{questions.length}
                  </p>
@@ -405,6 +395,16 @@ Important Assessment Rules
                    Your responses have been submitted successfully. Further modifications are not allowed.
                  </p>
                </div>
+
+               <button
+                 onClick={() => {
+                   logoutUser();
+                   navigate("/home");
+                 }}
+                 className="absolute bottom-6 left-1/2 -translate-x-1/2 rounded-lg bg-purple-600 px-4 py-2 font-semibold text-white transition hover:bg-purple-700"
+               >
+                 Back to Home
+               </button>
              </div>
            </div>
          )}
