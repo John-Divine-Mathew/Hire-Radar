@@ -95,10 +95,13 @@ export default function Dashboard() {
         <div className="flex-1 overflow-y-auto p-5">
         {/* Top Cards */}
         <div className="grid grid-cols-4 gap-5 mb-6">
-          <div className="bg-white rounded-xl p-5 shadow-sm border border-t-4 border-t-[#7E22CE]">
-            <p className="text-[#64748B] font-medium text-sm uppercase tracking-wider">Total Searches</p>
+
+          <div className="bg-white rounded-2xl p-6 shadow-lg border-l-4 border-purple-600 hover:shadow-xl duration-300">
+             <p className="text-gray-500 text-sm">Total Candidates</p>
             <h2 className="text-4xl font-bold mt-2 text-[#1E293B]">1,248</h2>
-            <p className="text-[#10B981] text-sm mt-2 font-semibold">+18.5% this month</p>
+           <p className="text-green-600 mt-2">
+            +14% This Week
+        </p>
           </div>
 
     <div className="bg-white rounded-2xl p-6 shadow-lg border-l-4 border-purple-600 hover:shadow-xl duration-300">
