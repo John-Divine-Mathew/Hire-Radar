@@ -40,16 +40,15 @@ export default function Dashboard() {
   const userEmail = user?.email || "hr@company.com";
 
   return (
-    <div className="flex h-screen bg-[#F8FAFC]">
+    <div className="flex h-screen flex-col overflow-hidden bg-[#F8FAFC]">
+      <Navbar />
+
+      <div className="flex min-h-0 flex-1">
       <Sidebar />
-
-      <div className="flex-1 p-5 overflow-y-auto">
-
-        {/* Navbar for HR/Admin */}
-        <Navbar />
+      <div className="flex min-w-0 flex-1 flex-col bg-slate-50">
 
         {/* Header */}
-        <div className="flex justify-between items-center mb-6">
+        <div className="shrink-0 flex justify-between items-center border-b border-slate-200 bg-slate-50 p-5">
           <h1 className="text-4xl font-bold text-[#1E293B]">Dashboard</h1>
 
           <div className="flex items-center gap-4">
@@ -68,6 +67,7 @@ export default function Dashboard() {
           </div>
         </div>
 
+        <div className="flex-1 overflow-y-auto p-5">
         {/* Top Cards */}
         <div className="grid grid-cols-4 gap-5 mb-6">
           <div className="bg-white rounded-xl p-5 shadow-sm border border-t-4 border-t-[#7E22CE]">
@@ -172,6 +172,8 @@ export default function Dashboard() {
           </div>
 
         </div>
+        </div>
+      </div>
       </div>
     </div>
   );

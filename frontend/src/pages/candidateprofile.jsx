@@ -1,4 +1,5 @@
 import Sidebar from '../components/sideBar/sideBar.jsx';
+import Navbar from "../components/navBar/navBar.jsx";
 import { ChevronLeft, Link, Download } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import React,{ useState, useEffect } from 'react';
@@ -35,9 +36,12 @@ function CandidateProfile(){
     }
 
     return( 
-        <div style={{ display: "flex", minHeight: "100vh" }}>
+        <div className="flex h-screen flex-col overflow-hidden">
+            <Navbar />
+            <div className="flex flex-1 min-h-0">
             <Sidebar />
-            <div className="flex-1 min-h-screen bg-slate-50 p-6 overflow-x-hidden">
+            <div className="flex min-w-0 flex-1 flex-col bg-slate-50 overflow-hidden">
+                <div className="shrink-0 border-b border-slate-200 bg-slate-50 p-6">
                 {/* Back Button */}
                 <button 
                     onClick={()=>backFunc()}
@@ -102,9 +106,10 @@ function CandidateProfile(){
                         ))}
                     </div>
                 </div>
+                </div>
 
                 {/* Content Section */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 overflow-y-auto p-6">
                     {/* About & Skills */}
                     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                         <h2 className="text-2xl font-bold text-gray-900 mb-4">About</h2>
@@ -149,6 +154,7 @@ function CandidateProfile(){
                         </div>
                     </div>
                 </div>
+            </div>
             </div>
         </div>
     );
