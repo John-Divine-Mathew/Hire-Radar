@@ -1,12 +1,32 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { getAuthUser, logoutUser, isAuthenticated } from "../../utils/auth";
 
 const Navbar = () => {
 
 
   const navigate = useNavigate();
 
-  const [showSupport, setShowSupport] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+
+  const authUser = getAuthUser();
+  // fallback to the 'user' key (used by AdminLogin) if hireRadarAuth is not set
+  const fallbackUser = (() => {
+    try {
+      return JSON.parse(localStorage.getItem("user"));
+    } catch (e) {
+      return null;
+    }
+  })();
+
+  const initial =
+    authUser?.name?.[0]?.toUpperCase() ||
+    authUser?.role?.[0]?.toUpperCase() ||
+    fallbackUser?.name?.[0]?.toUpperCase() ||
+    fallbackUser?.email?.[0]?.toUpperCase() ||
+    "H";
 
   return (
     <>
@@ -31,36 +51,61 @@ const Navbar = () => {
 
           </div>
 
-          {/* Buttons */}
+          {/* Buttons / Controls */}
 
           <div className="flex items-center gap-4">
 
-            {/* Support */}
+            {/* Search */}
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35m0 0A7 7 0 1116.65 16.65z" />
+                </svg>
+              </span>
+              <input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search candidates..."
+                className="pl-10 pr-4 py-2 border rounded-lg w-64 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
+            </div>
 
-            <button
-              onClick={() => setShowSupport(true)}
-              className="bg-orange-500 hover:bg-orange-600 text-white px-5 py-2 rounded-lg font-medium transition duration-300 shadow-md"
-            >
-              Support
+            {/* Calendar button */}
+            <button title="Calendar" className="p-2 rounded-lg hover:bg-gray-100">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3M3 11h18M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
             </button>
 
-            {/* HR Login */}
+            {/* Support removed from navbar (moved to landing page) */}
 
-            <button
-              onClick={() => navigate("/admin-login")}
-              className="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg font-medium transition duration-300 shadow-md"
-            >
-              HR / Admin Login
-            </button>
+            {/* Auth / User initial */}
+            {isAuthenticated() ? (
+              <div className="relative">
+                <button
+                  onClick={() => setShowDropdown((s) => !s)}
+                  className="h-10 w-10 rounded-full bg-purple-600 text-white flex items-center justify-center font-semibold shadow"
+                  aria-label="User menu"
+                >
+                  {initial}
+                </button>
 
-            {/* User Login */}
-
-            <button
-              onClick={() => navigate("/admin-user")}
-              className="bg-purple-700 hover:bg-purple-800 text-white px-5 py-2 rounded-lg font-medium transition duration-300 shadow-md"
-            >
-              User Login
-            </button>
+                {showDropdown && (
+                  <div className="absolute right-0 mt-2 w-40 bg-white border rounded-lg shadow-lg py-2">
+                    <button
+                      onClick={() => { setShowDropdown(false); setShowLogoutConfirm(true); }}
+                      className="w-full text-left px-4 py-2 hover:bg-gray-100"
+                    >
+                      Logout
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <>
+                
+              </>
+            )}
 
           </div>
 
@@ -68,85 +113,37 @@ const Navbar = () => {
 
       </nav>
 
-      {/* Support Modal */}
+      {/* Support removed from navbar (moved to landing page) */}
 
-      {showSupport && (
+      {/* Logout Confirmation Modal */}
 
+      {showLogoutConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+          <div className="bg-white w-[380px] rounded-2xl shadow-2xl p-6">
+            <h3 className="text-xl font-semibold text-gray-800 mb-4">Are you sure to quit?</h3>
+            <p className="text-sm text-gray-600 mb-6">You will be logged out from the admin session.</p>
 
-          <div className="bg-white w-[500px] rounded-2xl shadow-2xl p-8">
-
-            <h2 className="text-3xl font-bold text-center text-purple-700 mb-6">
-              Developer Support
-            </h2>
-
-            <div className="space-y-4 text-gray-700">
-
-              <div>
-                <h3 className="font-bold text-lg">
-                  Developers
-                </h3>
-
-                <ul className="list-disc ml-6 mt-2">
-                  <li>John Divine Mathew J</li>
-                  <li>Vijayanandha J</li>
-                  <li>Bharathsnehan</li>
-                </ul>
-              </div>
-
-              <div>
-                <h3 className="font-bold text-lg">
-                  Email
-                </h3>
-
-                <p>mathewdivine95@gmail.com</p>
-                <p>vijayanandhaj@gmail.com</p>
-                <p>bharathjeeva549@gmail.com</p>
-              </div>
-
-              <div>
-                <h3 className="font-bold text-lg">
-                  Phone & WhatsApp
-                </h3>
-
-                <p>+91 9626749641</p>
-                <p>+91 7373774847</p>
-                <p>+91 7448540072</p>
-              </div>
-
-              <div>
-                <h3 className="font-bold text-lg">
-                  Department
-                </h3>
-
-                <p>Automation</p>
-              </div>
-
-              <div>
-                <h3 className="font-bold text-lg">
-                  Working Hours
-                </h3>
-
-                <p>Monday - Friday</p>
-                <p>9:00 AM - 6:00 PM</p>
-              </div>
-            </div>
-
-            <div className="flex justify-center mt-8">
-
+            <div className="flex justify-end gap-3">
               <button
-                onClick={() => setShowSupport(false)}
-                className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg"
+                onClick={() => setShowLogoutConfirm(false)}
+                className="px-4 py-2 rounded-lg border hover:bg-gray-100"
               >
-                Close
+                Cancel
               </button>
 
+              <button
+                onClick={() => {
+                  logoutUser();
+                  setShowLogoutConfirm(false);
+                  navigate("/");
+                }}
+                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700"
+              >
+                Logout
+              </button>
             </div>
-
           </div>
-
         </div>
-
       )}
 
     </>

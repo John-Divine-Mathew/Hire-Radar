@@ -1,12 +1,12 @@
-import React from "react";
-import Navbar from "../components/navBar/navBar.jsx";
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 const Home = () => {
+  const [showSupport, setShowSupport] = useState(false);
   return (
     <div className="bg-slate-50 min-h-screen">
 
-      {/* Navbar */}
-      <Navbar />
+      {/* Navbar removed from landing page (shown on admin dashboard only) */}
 
       {/* Hero Section */}
       <section className="bg-gradient-to-r from-purple-700 to-indigo-700 text-white py-20">
@@ -29,16 +29,19 @@ const Home = () => {
               through intelligent candidate matching and analytics.
             </p>
 
-            <div className="mt-10 flex justify-center gap-5">
+            <div className="mt-10 flex flex-col items-center gap-4">
+              <div className="flex justify-center gap-5">
+                <HeroButtons />
+              </div>
 
-              <button className="bg-white text-purple-700 px-8 py-3 rounded-lg font-semibold hover:scale-105 transition">
-                Get Started
-              </button>
-
-              <button className="border border-white px-8 py-3 rounded-lg hover:bg-white hover:text-purple-700 transition">
-                Learn More
-              </button>
-
+              <div>
+                <button
+                  onClick={() => setShowSupport(true)}
+                  className="mt-2 bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg font-medium transition"
+                >
+                  Support
+                </button>
+              </div>
             </div>
 
           </div>
@@ -219,8 +222,84 @@ const Home = () => {
 
       </footer>
 
+      {/* Support Modal */}
+      {showSupport && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+          <div className="bg-white w-[500px] rounded-2xl shadow-2xl p-8">
+            <h2 className="text-3xl font-bold text-center text-purple-700 mb-6">Developer Support</h2>
+
+            <div className="space-y-4 text-gray-700">
+              <div>
+                <h3 className="font-bold text-lg">Developers</h3>
+                <ul className="list-disc ml-6 mt-2">
+                  <li>John Divine Mathew J</li>
+                  <li>Vijayanandha J</li>
+                  <li>Bharathsnehan</li>
+                </ul>
+              </div>
+
+              <div>
+                <h3 className="font-bold text-lg">Email</h3>
+                <p>mathewdivine95@gmail.com</p>
+                <p>vijayanandhaj@gmail.com</p>
+                <p>bharathjeeva549@gmail.com</p>
+              </div>
+
+              <div>
+                <h3 className="font-bold text-lg">Phone & WhatsApp</h3>
+                <p>+91 9626749641</p>
+                <p>+91 7373774847</p>
+                <p>+91 7448540072</p>
+              </div>
+
+              <div>
+                <h3 className="font-bold text-lg">Department</h3>
+                <p>Automation</p>
+              </div>
+
+              <div>
+                <h3 className="font-bold text-lg">Working Hours</h3>
+                <p>Monday - Friday</p>
+                <p>9:00 AM - 6:00 PM</p>
+              </div>
+            </div>
+
+            <div className="flex justify-center mt-8">
+              <button
+                onClick={() => setShowSupport(false)}
+                className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
 
 export default Home;
+
+function HeroButtons() {
+  const navigate = useNavigate();
+
+  return (
+    <>
+      <button
+        onClick={() => navigate("/admin-login")}
+        className="bg-white text-purple-700 px-8 py-3 rounded-lg font-semibold hover:scale-105 transition"
+      >
+        HR / Admin Login
+      </button>
+
+      <button
+        onClick={() => navigate("/admin-user")}
+        className="border border-white px-8 py-3 rounded-lg hover:bg-white hover:text-purple-700 transition"
+      >
+        User Login
+      </button>
+    </>
+  );
+}

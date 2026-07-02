@@ -44,12 +44,7 @@ function Sidebar(){
     const iconSize = 30;
     return(
         <div className='sidebar'>
-                <ul className="sidebartitle">
-                    <li className='brandTitle'>
-                        <img src="/hirotec-logo.webp" alt="Hirotec Logo" className='sidebarLogo' />
-                        <p className='headingP'>Hire Radar</p>
-                    </li>
-                </ul>
+               
                 <ul className="sidebarlist">
                     <li><button className='listitem' onClick={navigateDashboard}><House size={iconSize} /><p className='buttonP'>Dashboard</p></button></li>
                     <li><button className='listitem' onClick={navigateSearchCandidate}><Search size={iconSize} /><p className='buttonP'>Search Candidate</p></button></li>

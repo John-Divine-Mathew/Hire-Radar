@@ -1,4 +1,5 @@
 import Sidebar from "../components/sideBar/sideBar";
+import Navbar from "../components/navBar/navBar.jsx";
 import { Funnel, Eye, MoreVertical, UserKey, ChevronDown } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { format } from 'date-fns';
@@ -316,6 +317,8 @@ function SavedCandidates() {
         <div style={{ display: "flex", minHeight: "100vh" }}>
             <Sidebar />
             <div className="flex-1 min-h-screen bg-slate-50 p-6 overflow-x-hidden">
+                <Navbar />
+
                 <div className="mb-6">
                     <h1 className="text-4xl font-bold text-gray-900 mb-6">Saved Candidates</h1>
 

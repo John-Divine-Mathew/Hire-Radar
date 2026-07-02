@@ -11,6 +11,7 @@ import {
 } from "recharts";
 
 import Sidebar from "../components/sideBar/sideBar";
+import Navbar from "../components/navBar/navBar.jsx";
 
 const searchData = [
   { day: "May 10", value: 350 },
@@ -35,7 +36,8 @@ export default function Analytics() {
       <Sidebar />
 
       <div className="flex-1 p-5 overflow-y-auto">
-        
+        <Navbar />
+
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-4xl font-bold text-[#1E293B]">Analytics</h1>

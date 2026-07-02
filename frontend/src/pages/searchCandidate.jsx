@@ -1,4 +1,5 @@
 import Sidebar from '../components/sideBar/sideBar.jsx';
+import Navbar from "../components/navBar/navBar.jsx";
 import { Funnel, ChevronDown } from 'lucide-react';
 import RenderList from '../components/renderList/renderList.jsx';
 import { useState, useRef, useEffect } from 'react';
@@ -129,6 +130,8 @@ function SearchCandidatePage() {
         <div style={{ display: "flex", minHeight: "100vh" }}>
             <Sidebar />
             <div className="flex-1 min-h-screen bg-slate-50 p-6 overflow-x-hidden">
+                <Navbar />
+
                 <div className="mb-8">
                     <h1 className="text-4xl font-bold text-gray-900 mb-6">Search Candidates</h1>
 
