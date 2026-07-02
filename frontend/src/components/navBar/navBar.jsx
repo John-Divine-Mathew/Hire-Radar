@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getAuthUser, logoutUser, isAuthenticated } from "../../utils/auth";
+import { Search } from "lucide-react";
 
 const Navbar = () => {
 
@@ -32,20 +33,20 @@ const Navbar = () => {
     <>
       {/* Navbar */}
 
-      <nav className="sticky top-0 z-50 bg-white shadow-lg border-b">
+      <nav className="sticky top-0 z-50 w-full bg-white border-b border-slate-200">
 
-        <div className="max-w-7xl mx-auto px-8 py-4 flex justify-between items-center">
+        <div className="w-full px-6 py-3 flex justify-between items-center gap-6">
 
           {/* Logo */}
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 min-w-0">
             <img
               src="/hirotec-logo.webp" 
               alt="HIROTEC Logo"
-              className="h-20 w-auto object-contain" 
+              className="h-16 w-auto object-contain" 
             />
 
-            <h1 className="text-3xl font-extrabold text-purple-700 ">
+            <h1 className="text-3xl font-extrabold text-purple-700 whitespace-nowrap">
               Hire-Radar
             </h1>
 
@@ -53,20 +54,18 @@ const Navbar = () => {
 
           {/* Buttons / Controls */}
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 shrink-0">
 
             {/* Search */}
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35m0 0A7 7 0 1116.65 16.65z" />
-                </svg>
+            <div className="group relative h-10 w-10 overflow-hidden rounded-lg border border-transparent bg-white transition-all duration-200 hover:w-64 hover:border-slate-200 focus-within:w-64 focus-within:border-slate-200">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-700 pointer-events-none">
+                <Search className="h-5 w-5 text-current" />
               </span>
               <input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search candidates..."
-                className="pl-10 pr-4 py-2 border rounded-lg w-64 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="h-full w-full rounded-lg bg-transparent pl-10 pr-4 text-sm opacity-0 outline-none transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
               />
             </div>
 
