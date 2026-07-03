@@ -18,7 +18,20 @@ const chartData = [
   { day: "Fri", value: 610 },
   { day: "Sat", value: 540 },
   { day: "Sun", value: 690 },
+  { day: "Mon", value: 320 },
+  { day: "Tue", value: 450 },
+  { day: "Wed", value: 380 },
+  { day: "Thu", value: 520 },
+  { day: "Fri", value: 610 },
+  { day: "Sat", value: 540 },
+  { day: "Sun", value: 690 },
 ];
+
+const skills = [
+  { name: "React", value: 980 },
+  { name: "JavaScript", value: 820 },
+  { name: "Node.js", value: 650 },
+  { name: "Python", value: 540 },
 
 const skills = [
   { name: "React", value: 980 },
@@ -32,9 +45,15 @@ const recentSearches = [
   "Data Analyst",
   "Product Manager",
   "UI/UX Designer",
+const recentSearches = [
+  "Frontend Developer",
+  "Data Analyst",
+  "Product Manager",
+  "UI/UX Designer",
 ];
 
 export default function Dashboard() {
+  
   
 
   return (
@@ -49,6 +68,7 @@ export default function Dashboard() {
         <div className="shrink-0 flex justify-between items-center border-b border-slate-200 bg-slate-50 p-5">
           <h1 className="text-4xl font-bold text-[#1E293B]">Dashboard</h1>
 
+          <div className="flex items-center gap-4" />
           <div className="flex items-center gap-4" />
         </div>
 
@@ -69,13 +89,29 @@ export default function Dashboard() {
             <h2 className="text-4xl font-bold mt-2 text-[#1E293B]">8,732</h2>
             <p className="text-[#10B981] text-sm mt-2 font-semibold">+23.4% this month</p>
           </div>
+          <div className="bg-white rounded-xl p-5 shadow-sm border border-t-4 border-t-[#7E22CE]">
+            <p className="text-[#64748B] font-medium text-sm uppercase tracking-wider">Candidates Found</p>
+            <h2 className="text-4xl font-bold mt-2 text-[#1E293B]">8,732</h2>
+            <p className="text-[#10B981] text-sm mt-2 font-semibold">+23.4% this month</p>
+          </div>
 
           <div className="bg-white rounded-xl p-5 shadow-sm border border-t-4 border-t-[#7E22CE]">
             <p className="text-[#64748B] font-medium text-sm uppercase tracking-wider">Saved Candidates</p>
             <h2 className="text-4xl font-bold mt-2 text-[#1E293B]">312</h2>
             <p className="text-[#10B981] text-sm mt-2 font-semibold">+15.3% this month</p>
           </div>
+          <div className="bg-white rounded-xl p-5 shadow-sm border border-t-4 border-t-[#7E22CE]">
+            <p className="text-[#64748B] font-medium text-sm uppercase tracking-wider">Saved Candidates</p>
+            <h2 className="text-4xl font-bold mt-2 text-[#1E293B]">312</h2>
+            <p className="text-[#10B981] text-sm mt-2 font-semibold">+15.3% this month</p>
+          </div>
 
+          <div className="bg-white rounded-xl p-5 shadow-sm border border-t-4 border-t-[#7E22CE]">
+            <p className="text-[#64748B] font-medium text-sm uppercase tracking-wider">Profile Views</p>
+            <h2 className="text-4xl font-bold mt-2 text-[#1E293B]">2,152</h2>
+            <p className="text-[#10B981] text-sm mt-2 font-semibold">+19.2% this month</p>
+          </div>
+        </div>
           <div className="bg-white rounded-xl p-5 shadow-sm border border-t-4 border-t-[#7E22CE]">
             <p className="text-[#64748B] font-medium text-sm uppercase tracking-wider">Profile Views</p>
             <h2 className="text-4xl font-bold mt-2 text-[#1E293B]">2,152</h2>
@@ -89,6 +125,7 @@ export default function Dashboard() {
           {/* Chart Section */}
           <div className="col-span-5 bg-white p-5 rounded-xl border">
             <h2 className="font-bold text-lg mb-4 text-[#1E293B]">Search Overview...</h2>
+            <h2 className="font-bold text-lg mb-4 text-[#1E293B]">Search Overview...</h2>
             <ResponsiveContainer width="100%" height={300}>
               <AreaChart data={chartData}>
                 {/* Defining the purple gradient shade */}
@@ -99,6 +136,7 @@ export default function Dashboard() {
                   </linearGradient>
                 </defs>
                 
+                <XAxis dataKey="day" stroke="#64748B" />
                 <XAxis dataKey="day" stroke="#64748B" />
                 <YAxis stroke="#64748B" />
                 <Tooltip />
@@ -120,6 +158,7 @@ export default function Dashboard() {
           {/* Skills */}
           <div className="col-span-4 bg-white p-5 rounded-xl border">
             <h2 className="font-bold text-lg mb-5 text-[#1E293B]">Top Skills Searched</h2>
+            <h2 className="font-bold text-lg mb-5 text-[#1E293B]">Top Skills Searched</h2>
 
             {skills.map((skill) => (
               <div key={skill.name} className="mb-5">
@@ -133,6 +172,7 @@ export default function Dashboard() {
                     className="h-2 rounded-full bg-[#7E22CE]"
                     style={{
                       width: `${(skill.value / 1246) * 80}%`,
+                      width: `${(skill.value / 1246) * 80}%`,
                     }}
                   />  
                 </div>
@@ -144,6 +184,7 @@ export default function Dashboard() {
           <div className="col-span-3 bg-white p-5 rounded-xl border">
             <div className="flex justify-between mb-5">
               <h2 className="font-bold text-lg text-[#1E293B]">Recent Searches</h2>
+              <h2 className="font-bold text-lg text-[#1E293B]">Recent Searches</h2>
               <button className="text-[#7E22CE] font-semibold text-sm hover:underline">
                 View All
               </button>
@@ -153,6 +194,7 @@ export default function Dashboard() {
               <div key={i} className="flex items-center gap-3 mb-4">
                 <div>
                   <p className="font-medium text-[#1E293B]">{item}</p>
+                  <p className="text-xs text-gray-500">15 June 2026</p>
                   <p className="text-xs text-gray-500">15 June 2026</p>
                 </div>
               </div>
