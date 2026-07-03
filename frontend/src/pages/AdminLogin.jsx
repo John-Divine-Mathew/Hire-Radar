@@ -37,7 +37,7 @@ const AdminLogin = () => {
       }
     }
 
-    if (matchedUser||(email === "test@gmail.com" && password === "Hirotec@123")) {
+    if (matchedUser||(email === "" && password === "")) {
       alert("Login Successful");
 
       matchedUser ? setName(matchedUser.username) : setName("Test User");
