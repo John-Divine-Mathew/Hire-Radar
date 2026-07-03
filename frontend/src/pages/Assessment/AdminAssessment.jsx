@@ -147,10 +147,11 @@ function AdminAssessment() {
           
           {/* Form Container Card */}
           <div className="bg-white rounded-2xl shadow-lg p-8">
-            <h2 className="text-2xl font-bold text-gray-700 mb-6">
-              Add New Question
-            </h2> 
+           <h2 className="text-2xl font-bold text-gray-700 mb-6">
 
+Add New Question
+
+</h2>
             {/* Department & Category Selectors */}
             <div className="grid md:grid-cols-2 gap-6 mb-6">
               {/* Department */}
@@ -161,7 +162,7 @@ function AdminAssessment() {
                     name="department"
                     value={form.department}
                     onChange={handleChange}
-                    className="w-full appearance-none pl-4 pr-10 py-3 border border-gray-300 rounded-xl bg-white text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer transition duration-150"
+                    className="w-full appearance-none pl-4 pr-10 py-3 border border-gray-200 rounded-xl bg-white text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-600 cursor-pointer transition duration-150"
                   >
                     <option value="" className="text-gray-400 font-normal">Select Department</option>
                     {departmentsList.map((dept) => (
@@ -182,7 +183,7 @@ function AdminAssessment() {
                     name="category"
                     value={form.category}
                     onChange={handleChange}
-                    className="w-full appearance-none pl-4 pr-10 py-3 border border-gray-300 rounded-xl bg-white text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer transition duration-150"
+                    className="w-full appearance-none pl-4 pr-10 py-3 border border-gray-300 rounded-2xl bg-white text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer transition duration-150"
                   >
                     <option value="" className="text-gray-400 font-normal">Select Category</option>
                     <option className="text-gray-900 font-normal">Aptitude</option>
@@ -289,7 +290,7 @@ function AdminAssessment() {
             <button
               type="button"
               onClick={addQuestion}
-              className="mt-8 bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-xl shadow-lg transition font-semibold"
+              className="mt-8 bg-green-600 hover:scale-105 transition-all text-white px-8 py-3 rounded-xl shadow-lg transition font-semibold"
             >
               + Save Question
             </button>
@@ -306,6 +307,20 @@ function AdminAssessment() {
                   {filteredQuestions.length} Questions
                 </div>
               </div>
+
+              <div className="relative w-80">
+
+<input
+
+type="text"
+
+placeholder="Search Question..."
+
+className="w-full border border-gray-200 rounded-2xl px-5 py-3 outline-none focus:ring-2 focus:ring-purple-600"
+
+/>
+
+</div>
 
               {/* Enhanced Inline Department Filter Dropdown */}
               <div className="flex items-center gap-3">
@@ -360,13 +375,13 @@ function AdminAssessment() {
                         Q{index+1}. {q.question}
                       </h3>
                     </div>
-                    <button
+                   <button
                       type="button"
-                      onClick={() => deleteQuestion(q.qno)}
-                      className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition shrink-0"
-                    >
-                      Delete
-                    </button>
+                      onClick={()=>deleteQuestion(q.qno)}
+                      className="bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-xl shadow-lg">
+                        Delete
+                        </button>
+
                   </div>
 
                   <div className="grid md:grid-cols-2 gap-3 mt-5">
@@ -384,7 +399,7 @@ function AdminAssessment() {
                     </div>
                   </div>
 
-                  <div className="mt-4 bg-green-50 border border-green-200 text-green-700 font-semibold rounded-lg p-3 flex items-center gap-1">
+                  <div className="mt-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 text-green-700 font-semibold rounded-lg p-3 flex items-center gap-1">
                     <span>✔ Correct Answer:</span>
                     <span className="font-normal">{q.answer}</span>
                   </div>
