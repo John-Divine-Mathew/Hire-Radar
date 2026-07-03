@@ -29,7 +29,7 @@ const AdminLogin = () => {
 
     let matchedUser = null;
 
-    // 1. Check for a matching user immediately
+    
     for (const user of userCredentials) {
       if (user.useremail === email && user.password === password) {
         matchedUser = user;
@@ -37,11 +37,12 @@ const AdminLogin = () => {
       }
     }
 
-    if (matchedUser||(email === "test@gmail.com" && password === "Hirotec@123")) {
+    if (matchedUser) {
       alert("Login Successful");
+      const resolvedName = matchedUser.username;
+      setName(resolvedName);
 
-      matchedUser ? setName(matchedUser.username) : setName("Test User");
-      navigate("/dashboard", { state: { 'name': name, 'email': email } });
+      navigate("/dashboard", { state: { name: resolvedName, email: email } });
     } else {
       alert("Invalid Email or Password");
     }
