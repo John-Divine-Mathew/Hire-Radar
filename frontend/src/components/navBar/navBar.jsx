@@ -37,25 +37,29 @@ const Navbar = () => {
     <>
       {/* Navbar */}
       <nav className="sticky top-0 z-50 w-full bg-white border-b border-slate-200">
-        <div className="w-full px-6 py-3 flex justify-between items-center gap-6">
-          
+
+        <div className="w-full px-3 sm:px-6 py-3 flex justify-between items-center gap-3 sm:gap-6">
+
           {/* Logo */}
-          <div className="flex items-center gap-4 min-w-0">
+
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
             <img
               src="/hirotec-logo.webp" 
               alt="HIROTEC Logo"
-              className="h-16 w-auto object-contain" 
+              className="h-10 sm:h-12 md:h-16 w-auto object-contain" 
             />
-            <h1 className="text-3xl font-extrabold text-purple-700 whitespace-nowrap">
+
+            <h1 className="text-lg sm:text-2xl md:text-3xl font-extrabold text-purple-700 whitespace-nowrap">
               Hire-Radar
             </h1>
           </div>
 
           {/* Buttons / Controls */}
-          <div className="flex items-center gap-4 shrink-0">
+
+          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
 
             {/* Search */}
-            <div className="group relative h-10 w-10 overflow-hidden rounded-lg border border-transparent bg-white transition-all duration-200 hover:w-64 hover:border-slate-200 focus-within:w-64 focus-within:border-slate-200">
+            <div className="hidden sm:flex group relative h-10 w-10 overflow-hidden rounded-lg border border-transparent bg-white transition-all duration-200 hover:w-48 md:hover:w-64 hover:border-slate-200 focus-within:w-48 md:focus-within:w-64 focus-within:border-slate-200">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-700 pointer-events-none">
                 <Search className="h-5 w-5 text-current" />
               </span>
@@ -113,14 +117,15 @@ const Navbar = () => {
 
       {/* Logout Confirmation Modal */}
       {showLogoutConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-          <div className="bg-white w-[380px] rounded-2xl shadow-2xl p-6">
-            <h3 className="text-xl font-semibold text-gray-800 mb-4">Are you sure you want to logout?</h3>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
+          <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-4 sm:p-6">
+            <h3 className="text-lg sm:text-xl font-semibold text-gray-800 mb-2">Confirm Logout</h3>
+            <p className="text-gray-600 text-sm mb-6">Are you sure you want to logout? You will need to login again to continue.</p>
 
-            <div className="flex justify-end gap-3">
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-3">
               <button
                 onClick={() => setShowLogoutConfirm(false)}
-                className="px-4 py-2 rounded-lg border text-gray-700 hover:bg-gray-100 transition duration-150"
+                className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition-colors duration-150 font-medium"
               >
                 Cancel
               </button>
@@ -131,7 +136,7 @@ const Navbar = () => {
                   setShowLogoutConfirm(false);
                   navigate("/");
                 }}
-                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition duration-150"
+                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors duration-150 font-medium"
               >
                 Logout
               </button>
