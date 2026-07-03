@@ -6,47 +6,62 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-
+ 
 import Sidebar from "../components/sideBar/sideBar.jsx";
 import Navbar from "../components/navBar/navBar.jsx";
-
 const chartData = [
-  { day: "Mon", value: 320 },
-  { day: "Tue", value: 450 },
-  { day: "Wed", value: 380 },
-  { day: "Thu", value: 520 },
-  { day: "Fri", value: 610 },
-  { day: "Sat", value: 540 },
-  { day: "Sun", value: 690 },
-  { day: "Mon", value: 320 },
-  { day: "Tue", value: 450 },
-  { day: "Wed", value: 380 },
-  { day: "Thu", value: 520 },
-  { day: "Fri", value: 610 },
-  { day: "Sat", value: 540 },
-  { day: "Sun", value: 690 },
+ 
+{month:"Jan",value:220},
+ 
+{month:"Feb",value:310},
+ 
+{month:"Mar",value:420},
+ 
+{month:"Apr",value:610},
+ 
+{month:"May",value:720},
+ 
+{month:"Jun",value:950},
+ 
+{month:"Jul",value:1100},
+ 
 ];
-
-const skills = [
-  { name: "React", value: 980 },
-  { name: "JavaScript", value: 820 },
-  { name: "Node.js", value: 650 },
-  { name: "Python", value: 540 },
+const skills=[
+ 
+{name:"React Developer",value:98},
+ 
+{name:"Java Full Stack",value:92},
+ 
+{name:"Automation Testing",value:89},
+ 
+{name:"Python Developer",value:84},
+ 
+{name:"Mechanical Design",value:76},
+ 
+{name:"Quality Assurance",value:70},
+ 
 ];
-
-const recentSearches = [
-  "Frontend Developer",
-  "Data Analyst",
-  "Product Manager",
-  "UI/UX Designer",
+ 
+const recentSearches=[
+ 
+"Software Engineer shortlisted",
+ 
+"Interview scheduled for QA Engineer",
+ 
+"AI sourced 124 candidates",
+ 
+"Mechanical Designer hired",
+ 
+"Python Developer assessment completed",
+ 
+"Production Engineer added",
+ 
 ];
 
 export default function Dashboard() {
   
-  
-
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-[#F8FAFC]">
+    <div className="flex h-screen flex-col overflow-hidden bg-gray-100">
       <Navbar />
 
       <div className="flex min-h-0 flex-1">
@@ -72,32 +87,23 @@ export default function Dashboard() {
         </p>
           </div>
 
-          <div className="bg-white rounded-xl p-5 shadow-sm border border-t-4 border-t-[#7E22CE]">
-            <p className="text-[#64748B] font-medium text-sm uppercase tracking-wider">Candidates Found</p>
-            <h2 className="text-4xl font-bold mt-2 text-[#1E293B]">8,732</h2>
-            <p className="text-[#10B981] text-sm mt-2 font-semibold">+23.4% this month</p>
+         <div className="bg-white rounded-2xl p-6 shadow-lg border-l-4 border-purple-600 hover:shadow-xl duration-300">
+           <p className="text-gray-500 text-sm">Active Vacancies</p>
+             <h2  className="text-4xl font-bold mt-2 text-purple-700">1,248</h2>
+            <p className="text-green-600 mt-2">
+            +23.4% this month</p>
           </div>
-          <div className="bg-white rounded-xl p-5 shadow-sm border border-t-4 border-t-[#7E22CE]">
-            <p className="text-[#64748B] font-medium text-sm uppercase tracking-wider">Candidates Found</p>
-            <h2 className="text-4xl font-bold mt-2 text-[#1E293B]">8,732</h2>
-            <p className="text-[#10B981] text-sm mt-2 font-semibold">+23.4% this month</p>
-          </div>
-
-          <div className="bg-white rounded-xl p-5 shadow-sm border border-t-4 border-t-[#7E22CE]">
-            <p className="text-[#64748B] font-medium text-sm uppercase tracking-wider">Saved Candidates</p>
-            <h2 className="text-4xl font-bold mt-2 text-[#1E293B]">312</h2>
-            <p className="text-[#10B981] text-sm mt-2 font-semibold">+15.3% this month</p>
-          </div>
-          <div className="bg-white rounded-xl p-5 shadow-sm border border-t-4 border-t-[#7E22CE]">
-            <p className="text-[#64748B] font-medium text-sm uppercase tracking-wider">Saved Candidates</p>
-            <h2 className="text-4xl font-bold mt-2 text-[#1E293B]">312</h2>
-            <p className="text-[#10B981] text-sm mt-2 font-semibold">+15.3% this month</p>
+       <div className="bg-white rounded-2xl p-6 shadow-lg border-l-4 border-purple-600 hover:shadow-xl duration-300">
+            <p className="text-gray-500 text-sm">Interviews Scheduled</p>
+             <h2  className="text-4xl font-bold mt-2 text-purple-700">1,248</h2>
+            <p className="text-green-600 mt-2">
+            +23.4% this month</p>
           </div>
 
-          <div className="bg-white rounded-xl p-5 shadow-sm border border-t-4 border-t-[#7E22CE]">
-            <p className="text-[#64748B] font-medium text-sm uppercase tracking-wider">Profile Views</p>
-            <h2 className="text-4xl font-bold mt-2 text-[#1E293B]">2,152</h2>
-            <p className="text-[#10B981] text-sm mt-2 font-semibold">+19.2% this month</p>
+          <div className="bg-white rounded-2xl p-6 shadow-lg border-l-4 border-purple-600 hover:shadow-xl duration-300">
+            <p className="text-gray-500 text-sm">AI Match Success</p>
+            <h2 className="text-4xl font-bold mt-2 text-purple-700">312</h2>
+            <p className="text-green-600 text-sm mt-2 font-semibold">+15.3% this month</p>
           </div>
         </div>
 
@@ -105,24 +111,25 @@ export default function Dashboard() {
         <div className="grid grid-cols-12 gap-5">
 
           {/* Chart Section */}
-          <div className="col-span-5 bg-white p-5 rounded-xl border">
-            <h2 className="font-bold text-lg mb-4 text-[#1E293B]">Search Overview...</h2>
+         <div className="col-span-5 bg-white p-5 rounded-xl border">
+            <h2 className="font-bold text-lg mb-4 text-[#1E293B]">Candidate Hiring Trend...</h2>
             <ResponsiveContainer width="100%" height={300}>
               <AreaChart data={chartData}>
+
                 {/* Defining the purple gradient shade */}
-                <defs>
+                  <defs>
                   <linearGradient id="purpleShade" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#7E22CE" stopOpacity={0.4}/>
                     <stop offset="95%" stopColor="#7E22CE" stopOpacity={0.0}/>
                   </linearGradient>
                 </defs>
-                
-                <XAxis dataKey="day" stroke="#64748B" />
+               
+                <XAxis dataKey="month" stroke="#64748B" />
                 <YAxis stroke="#64748B" />
                 <Tooltip />
                 
                 {/* Changed from Line to Area */}
-                <Area
+              <Area
                   type="monotone"
                   dataKey="value"
                   stroke="#7E22CE"
@@ -134,24 +141,26 @@ export default function Dashboard() {
               </AreaChart>
             </ResponsiveContainer>
           </div>
+ 
 
           {/* Skills */}
-          <div className="col-span-4 bg-white p-5 rounded-xl border">
-            <h2 className="font-bold text-lg mb-5 text-[#1E293B]">Top Skills Searched</h2>
+           <div className="col-span-4 bg-white p-5 rounded-xl border">
+            <h2 className="font-bold text-lg mb-5 text-[#1E293B]">Top Hiring Skills</h2>
+ 
             {skills.map((skill) => (
               <div key={skill.name} className="mb-5">
                 <div className="flex justify-between mb-2 text-sm font-medium">
                   <span className="text-[#1E293B]">{skill.name}</span>
                   <span className="text-[#64748B]">{skill.value}</span>
                 </div>
-
+ 
                 <div className="h-2 bg-gray-200 rounded-full">
                   <div
                     className="h-2 rounded-full bg-[#7E22CE]"
                     style={{
-                      width: `${(skill.value / 1246) * 80}%`,
+                   width:`${skill.value}%`
                     }}
-                  />
+                  />  
                 </div>
               </div>
             ))}
@@ -160,22 +169,22 @@ export default function Dashboard() {
           {/* Recent Searches */}
           <div className="col-span-3 bg-white p-5 rounded-xl border">
             <div className="flex justify-between mb-5">
-              <h2 className="font-bold text-lg text-[#1E293B]">Recent Searches</h2>
+              <h2 className="font-bold text-lg text-[#1E293B]">Recent Recruitment Activities</h2>
               <button className="text-[#7E22CE] font-semibold text-sm hover:underline">
                 View All
               </button>
             </div>
-
+ 
             {recentSearches.map((item, i) => (
               <div key={i} className="flex items-center gap-3 mb-4">
                 <div>
                   <p className="font-medium text-[#1E293B]">{item}</p>
-                  <p className="text-xs text-gray-500">15 June 2026</p>
+                  <p className="text-xs text-gray-500">Today  2026</p>
                 </div>
               </div>
             ))}
           </div>
-
+ 
         </div>
         </div>
       </div>
@@ -183,3 +192,4 @@ export default function Dashboard() {
     </div>
   );
 }
+ 
