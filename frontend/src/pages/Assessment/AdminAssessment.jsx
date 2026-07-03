@@ -125,7 +125,7 @@ function AdminAssessment() {
     : questions;
 
   return (
-    <div className="flex bg-gradient-to-br from-slate-100 via-purple-50 to-indigo-100 h-screen w-screen flex-col overflow-hidden">
+    <div className="flex bg-gray-100 h-screen w-screen flex-col overflow-hidden">
       <Navbar />
 
       <div className="flex flex-1 min-h-0">
