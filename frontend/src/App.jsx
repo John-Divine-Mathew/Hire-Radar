@@ -3,6 +3,7 @@ import Home from "./pages/Home";
 import SearchCandidatePage from "./pages/searchCandidate.jsx";
 import CandidateProfile from "./pages/candidateProfile.jsx";
 import Analytics from "./pages/analytics.jsx";
+import Report from "./pages/Report.jsx";
 import Dashboard from "./pages/dashboard.jsx";
 import SavedCadidates from './pages/savedCandidates.jsx';
 import AssessmentForm from './pages/Assessment/AssessmentForm.jsx';
@@ -22,6 +23,7 @@ function App() {
         <Route path='/searchCandidate' element={<SearchCandidatePage />} />
         <Route path='/candidateProfile' element={<CandidateProfile />} />
         <Route path='/analytics' element={<Analytics />} />
+        <Route path='/report' element={<Report />} />
         <Route path='/savedCandidates' element={<SavedCadidates />} />
         <Route path='/assessmentform' element={<AssessmentForm />} />
         <Route path="/assessment-test" element={<AssessmentTest />} />

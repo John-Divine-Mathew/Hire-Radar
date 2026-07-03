@@ -69,51 +69,51 @@ export default function Dashboard() {
       <div className="flex min-w-0 flex-1 flex-col bg-slate-50">
 
         {/* Header */}
-        <div className="shrink-0 flex justify-between items-center border-b border-slate-200 bg-slate-50 p-5">
-          <h1 className="text-4xl font-bold text-[#1E293B]">Dashboard</h1>
+        <div className="shrink-0 flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-200 bg-slate-50 p-3 sm:p-5 gap-3">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-[#1E293B]">Dashboard</h1>
 
           <div className="flex items-center gap-4" />
         </div>
 
-        <div className="flex-1 overflow-y-auto p-5">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-5">
         {/* Top Cards */}
-        <div className="grid grid-cols-4 gap-5 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5 mb-6">
 
-          <div className="bg-white rounded-2xl p-6 shadow-lg border-l-4 border-purple-600 hover:shadow-xl duration-300">
-             <p className="text-gray-500 text-sm">Total Candidates</p>
-            <h2  className="text-4xl font-bold mt-2 text-purple-700">1,248</h2>
-           <p className="text-green-600 mt-2">
+          <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-lg border-l-4 border-purple-600 hover:shadow-xl duration-300">
+             <p className="text-gray-500 text-xs sm:text-sm">Total Candidates</p>
+            <h2  className="text-2xl sm:text-3xl md:text-4xl font-bold mt-2 text-purple-700">1,248</h2>
+           <p className="text-green-600 mt-2 text-xs sm:text-sm">
             +14% This Week
         </p>
           </div>
 
-         <div className="bg-white rounded-2xl p-6 shadow-lg border-l-4 border-purple-600 hover:shadow-xl duration-300">
-           <p className="text-gray-500 text-sm">Active Vacancies</p>
-             <h2  className="text-4xl font-bold mt-2 text-purple-700">1,248</h2>
-            <p className="text-green-600 mt-2">
+         <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-lg border-l-4 border-purple-600 hover:shadow-xl duration-300">
+           <p className="text-gray-500 text-xs sm:text-sm">Active Vacancies</p>
+             <h2  className="text-2xl sm:text-3xl md:text-4xl font-bold mt-2 text-purple-700">1,248</h2>
+            <p className="text-green-600 mt-2 text-xs sm:text-sm">
             +23.4% this month</p>
           </div>
-       <div className="bg-white rounded-2xl p-6 shadow-lg border-l-4 border-purple-600 hover:shadow-xl duration-300">
-            <p className="text-gray-500 text-sm">Interviews Scheduled</p>
-             <h2  className="text-4xl font-bold mt-2 text-purple-700">1,248</h2>
-            <p className="text-green-600 mt-2">
+       <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-lg border-l-4 border-purple-600 hover:shadow-xl duration-300">
+            <p className="text-gray-500 text-xs sm:text-sm">Interviews Scheduled</p>
+             <h2  className="text-2xl sm:text-3xl md:text-4xl font-bold mt-2 text-purple-700">1,248</h2>
+            <p className="text-green-600 mt-2 text-xs sm:text-sm">
             +23.4% this month</p>
           </div>
 
-          <div className="bg-white rounded-2xl p-6 shadow-lg border-l-4 border-purple-600 hover:shadow-xl duration-300">
-            <p className="text-gray-500 text-sm">AI Match Success</p>
-            <h2 className="text-4xl font-bold mt-2 text-purple-700">312</h2>
-            <p className="text-green-600 text-sm mt-2 font-semibold">+15.3% this month</p>
+          <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-lg border-l-4 border-purple-600 hover:shadow-xl duration-300">
+            <p className="text-gray-500 text-xs sm:text-sm">AI Match Success</p>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mt-2 text-purple-700">312</h2>
+            <p className="text-green-600 text-xs sm:text-sm mt-2 font-semibold">+15.3% this month</p>
           </div>
         </div>
 
         {/* Bottom Section */}
-        <div className="grid grid-cols-12 gap-5">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-5">
 
           {/* Chart Section */}
-         <div className="col-span-5 bg-white p-5 rounded-xl border">
-            <h2 className="font-bold text-lg mb-4 text-[#1E293B]">Candidate Hiring Trend...</h2>
-            <ResponsiveContainer width="100%" height={300}>
+         <div className="lg:col-span-6 bg-white p-4 sm:p-5 rounded-xl border">
+            <h2 className="font-bold text-base sm:text-lg mb-4 text-[#1E293B]">Candidate Hiring Trend...</h2>
+            <ResponsiveContainer width="100%" height={250}>
               <AreaChart data={chartData}>
 
                 {/* Defining the purple gradient shade */}
@@ -144,14 +144,14 @@ export default function Dashboard() {
  
 
           {/* Skills */}
-           <div className="col-span-4 bg-white p-5 rounded-xl border">
-            <h2 className="font-bold text-lg mb-5 text-[#1E293B]">Top Hiring Skills</h2>
+           <div className="lg:col-span-3 bg-white p-4 sm:p-5 rounded-xl border">
+            <h2 className="font-bold text-base sm:text-lg mb-5 text-[#1E293B]">Top Hiring Skills</h2>
  
             {skills.map((skill) => (
               <div key={skill.name} className="mb-5">
-                <div className="flex justify-between mb-2 text-sm font-medium">
-                  <span className="text-[#1E293B]">{skill.name}</span>
-                  <span className="text-[#64748B]">{skill.value}</span>
+                <div className="flex justify-between mb-2 text-xs sm:text-sm font-medium">
+                  <span className="text-[#1E293B] truncate">{skill.name}</span>
+                  <span className="text-[#64748B] ml-2 flex-shrink-0">{skill.value}</span>
                 </div>
  
                 <div className="h-2 bg-gray-200 rounded-full">
@@ -167,10 +167,10 @@ export default function Dashboard() {
           </div>
 
           {/* Recent Searches */}
-          <div className="col-span-3 bg-white p-5 rounded-xl border">
-            <div className="flex justify-between mb-5">
-              <h2 className="font-bold text-lg text-[#1E293B]">Recent Recruitment Activities</h2>
-              <button className="text-[#7E22CE] font-semibold text-sm hover:underline">
+          <div className="lg:col-span-3 bg-white p-4 sm:p-5 rounded-xl border">
+            <div className="flex justify-between mb-5 items-start">
+              <h2 className="font-bold text-base sm:text-lg text-[#1E293B]">Recent Recruitment Activities</h2>
+              <button className="text-[#7E22CE] font-semibold text-xs sm:text-sm hover:underline whitespace-nowrap ml-2">
                 View All
               </button>
             </div>
@@ -178,7 +178,7 @@ export default function Dashboard() {
             {recentSearches.map((item, i) => (
               <div key={i} className="flex items-center gap-3 mb-4">
                 <div>
-                  <p className="font-medium text-[#1E293B]">{item}</p>
+                  <p className="font-medium text-xs sm:text-sm text-[#1E293B] line-clamp-2">{item}</p>
                   <p className="text-xs text-gray-500">Today  2026</p>
                 </div>
               </div>
