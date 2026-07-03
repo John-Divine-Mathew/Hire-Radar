@@ -1,50 +1,55 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
 const AdminLogin = () => {
 
   const navigate = useNavigate();
 
-  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [userCredentials, setUserCredentials] = useState([]);
+  const [name, setName] = useState("");
+  const [flag, setFlag] = useState(false);
 
-  const teamMembers = [
-    "mathewdivine95@gmail.com",
-    "bharathsnehan011@gmail.com",
-    "vijayanandhaj@gmail.com",
-    "test@gmail.com",
-  ];
+  async function fetchTeamMembers(){
+    try{
+      const response = await fetch("http://localhost:5000/hireRadar/adminlogin");
+      const data = await response.json();
+      setUserCredentials(data);
+      console.log(data);
+    } catch(err){
+      console.error(err.message);
+    }
+  }
+  useEffect(()=>{
+    fetchTeamMembers()
+  },[]);
 
   const handleLogin = (e) => {
-
     e.preventDefault();
 
-    if (
-      teamMembers.includes(email) &&
-      password === "Hirotec@123"
-    ) {
+    let matchedUser = null;
 
-      const userData = {
-        name,
-        email,
-      };
-
-      localStorage.setItem(
-        "user",
-        JSON.stringify(userData)
-      );
-
-      alert("Login Successful");
-
-      navigate("/dashboard");
-
-    } else {
-
-      alert("Invalid Email or Password");
-
+    // 1. Check for a matching user immediately
+    for (const user of userCredentials) {
+      if (user.useremail === email && user.password === password) {
+        matchedUser = user;
+        break;
+      }
     }
 
+    if (matchedUser) {
+      alert("Login Successful");
+      
+      // Optional: Update state if you need these values elsewhere in the component
+      setName(matchedUser.username);
+      setFlag(true);
+
+      // Navigate using the fresh data directly
+      navigate("/dashboard", { state: { 'name': matchedUser.username, 'email': email } });
+    } else {
+      alert("Invalid Email or Password");
+    }
   };
 
   return (
@@ -163,15 +168,6 @@ p-10
             onSubmit={handleLogin}
             className="mt-8 space-y-5"
           >
-
-            <input
-              type="text"
-              placeholder="Enter Full Name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-              className="w-full p-4 rounded-xl border border-gray-300 focus:ring-2 focus:ring-purple-500 outline-none transition"
-            />
 
             <input
               type="email"
