@@ -40,8 +40,8 @@ const AdminLogin = () => {
     if (matchedUser||(email === "test@gmail.com" && password === "Hirotec@123")) {
       alert("Login Successful");
 
-    
-      navigate("/dashboard", { state: { 'name': matchedUser.username, 'email': email } });
+      matchedUser ? setName(matchedUser.username) : setName("Test User");
+      navigate("/dashboard", { state: { 'name': name, 'email': email } });
     } else {
       alert("Invalid Email or Password");
     }
