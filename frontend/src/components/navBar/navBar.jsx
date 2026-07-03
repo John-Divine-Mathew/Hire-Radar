@@ -11,6 +11,7 @@ const Navbar = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
   const authUser = getAuthUser();
   // fallback to the 'user' key (used by AdminLogin) if hireRadarAuth is not set
@@ -76,6 +77,37 @@ const Navbar = () => {
               </svg>
             </button>
 
+              {/* Logged-in info button (near calendar) */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowUserMenu((s) => !s)}
+                  title="Logged in user"
+                  className="h-10 w-10 rounded-full bg-purple-600 text-white flex items-center justify-center font-semibold shadow transition-all duration-200 ease-in-out hover:scale-110 hover:shadow-lg hover:bg-purple-700 relative"
+                  aria-label="User menu"
+                >
+                  {initial}
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-white absolute bottom-0 right-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                  </svg>
+                </button>
+
+                {showUserMenu && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white border rounded-lg shadow-lg py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="px-4 py-2 border-b">
+                      <p className="font-semibold text-sm">{authUser?.name || fallbackUser?.name || authUser?.email || fallbackUser?.email || 'HR Admin'}</p>
+                      <p className="text-xs text-gray-500">{authUser?.email || fallbackUser?.email || ''}</p>
+                </div>
+
+                    <button
+                      onClick={() => { setShowUserMenu(false); setShowLogoutConfirm(true); }}
+                      className="w-full text-left px-4 py-2 hover:bg-gray-100 transition-colors duration-150"
+                    >
+                      Logout
+                    </button>
+                  </div>
+                )}
+              </div>
+
             {/* Support removed from navbar (moved to landing page) */}
 
             {/* Auth / User initial */}
@@ -119,8 +151,7 @@ const Navbar = () => {
       {showLogoutConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
           <div className="bg-white w-[380px] rounded-2xl shadow-2xl p-6">
-            <h3 className="text-xl font-semibold text-gray-800 mb-4">Are you sure to quit?</h3>
-            <p className="text-sm text-gray-600 mb-6">You will be logged out from the admin session.</p>
+            <h3 className="text-xl font-semibold text-gray-800 mb-4">are u confirm to logout</h3>
 
             <div className="flex justify-end gap-3">
               <button
