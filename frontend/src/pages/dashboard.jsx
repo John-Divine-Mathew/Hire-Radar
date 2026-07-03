@@ -98,7 +98,7 @@ export default function Dashboard() {
 
           <div className="bg-white rounded-2xl p-6 shadow-lg border-l-4 border-purple-600 hover:shadow-xl duration-300">
              <p className="text-gray-500 text-sm">Total Candidates</p>
-            <h2 className="text-4xl font-bold mt-2 text-[#1E293B]">1,248</h2>
+            <h2  className="text-4xl font-bold mt-2 text-purple-700">1,248</h2>
            <p className="text-green-600 mt-2">
             +14% This Week
         </p>
