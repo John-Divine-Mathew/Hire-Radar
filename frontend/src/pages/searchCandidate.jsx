@@ -1,328 +1,371 @@
 import Sidebar from '../components/sideBar/sideBar.jsx';
 import Navbar from "../components/navBar/navBar.jsx";
-import { Funnel, ChevronDown } from 'lucide-react';
 import RenderList from '../components/renderList/renderList.jsx';
-import { useState, useRef, useEffect } from 'react';
+import { useState } from 'react';
 
 function SearchCandidatePage() {
     const [searchVar, setSearchVar] = useState('');
-    const [showFilters, setShowFilters] = useState(false);
-    const [activeFilters, setActiveFilters] = useState([]);
-    const [filterValues, setFilterValues] = useState({});
+    const [skillInput, setSkillInput] = useState('');
+    const [keywordInput, setKeywordInput] = useState('');
+    const [locationInput, setLocationInput] = useState(''); 
+    const [errorMessage, setErrorMessage] = useState('');
+    
+    const [activeSourcingFilters, setActiveSourcingFilters] = useState({
+        JobTitle: '', 
+        MinExp: '',
+        MaxExp: '',
+        Skills: [],   
+        Keywords: [],
+        LocationSearch: [], 
+        SidebarLocation: '',
+        SidebarExperience: '',
+        SidebarJobStatus: '',
+        SidebarOpenToWork: '',
+        SidebarSkills: ''
+    });
 
-    const [showSkillsDropdown, setShowSkillsDropdown] = useState(false);
-    const [showLocationDropdown, setShowLocationDropdown] = useState(false);
-    const skillsRef = useRef(null);
-    const locationRef = useRef(null);
+    const [filterValues, setFilterValues] = useState({ ...activeSourcingFilters });
 
-    const filterOptions = ['Experience', 'Skills', 'Location', 'Role', 'Status'].sort();
-
-    const dropdownOptions = {
-        Experience: ['0-1 years', '1-3 years', '3-5 years', '5+ years'],
-        Skills: [
-            'React', 'Node.js', 'Python', 'TypeScript', 'PyTorch',
-            'Apache Spark', 'Figma', 'C++', 'RTOS', 'Selenium',
-            'AWS', 'Terraform', 'PostgreSQL', 'GraphQL', 'Modbus',
-            'Docker', 'Kubernetes', 'Go', 'Swin Transformer', 'Java',
-            'CAN bus', 'I2C', 'Tailwind CSS', 'Next.js', 'Kafka'
-        ],
-        Location: [
-            'Remote', 'Bangalore', 'Mumbai', 'Hyderabad', 'Chennai',
-            'Pune', 'Kochi', 'Coimbatore', 'Ahmedabad', 'Kolkata',
-            'London', 'Berlin', 'Singapore', 'Tokyo', 'Amsterdam', 'Toronto'
-        ],
-        Role: [
-            'Machine Learning Engineer', 'Data Engineer', 'Cloud Architect',
-            'Embedded Systems Developer', 'Fullstack Engineer', 'UI/UX Designer',
-            'QA Automation Engineer', 'DevOps Engineer', 'Backend Developer',
-            'Frontend Developer', 'IoT Systems Engineer'
-        ],
-        Status: ['Applied', 'Interviewing', 'Offered', 'Rejected']
+    const handleSkillKeyDown = (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const trimmed = skillInput.trim();
+            if (trimmed && !filterValues.Skills.includes(trimmed)) {
+                setFilterValues({
+                    ...filterValues,
+                    Skills: [...filterValues.Skills, trimmed]
+                });
+            }
+            setSkillInput('');
+        }
     };
 
-    useEffect(() => {
-        function handleClickOutside(event) {
-            if (skillsRef.current && !skillsRef.current.contains(event.target)) {
-                setShowSkillsDropdown(false);
+    const removeSkillTag = (skillToRemove) => {
+        setFilterValues({
+            ...filterValues,
+            Skills: filterValues.Skills.filter(s => s !== skillToRemove)
+        });
+    };
+
+    const handleKeywordKeyDown = (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const trimmed = keywordInput.trim();
+            if (trimmed && !filterValues.Keywords.includes(trimmed)) {
+                setFilterValues({
+                    ...filterValues,
+                    Keywords: [...filterValues.Keywords, trimmed]
+                });
             }
-            if (locationRef.current && !locationRef.current.contains(event.target)) {
-                setShowLocationDropdown(false);
-            }
+            setKeywordInput('');
         }
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
+    };
 
-    function handleDropdownChange(filter, value) {
-        setFilterValues((prev) => {
-            const updated = { ...prev, [filter]: value };
-            if (!value) delete updated[filter];
-            return updated;
+    const removeKeywordTag = (keywordToRemove) => {
+        setFilterValues({
+            ...filterValues,
+            Keywords: filterValues.Keywords.filter(k => k !== keywordToRemove)
         });
+    };
 
-        setActiveFilters((prev) => {
-            if (value && !prev.includes(filter)) {
-                return [...prev, filter].sort();
-            } else if (!value && prev.includes(filter)) {
-                return prev.filter((f) => f !== filter);
+    const handleLocationKeyDown = (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const trimmed = locationInput.trim();
+            if (trimmed && !filterValues.LocationSearch.includes(trimmed)) {
+                setFilterValues({
+                    ...filterValues,
+                    LocationSearch: [...filterValues.LocationSearch, trimmed]
+                });
             }
-            return prev;
+            setLocationInput('');
+        }
+    };
+
+    const removeLocationTag = (locationToRemove) => {
+        setFilterValues({
+            ...filterValues,
+            LocationSearch: filterValues.LocationSearch.filter(l => l !== locationToRemove)
         });
-    }
+    };
 
-    function handleSkillToggle(skill) {
-        setFilterValues((prev) => {
-            const currentSkills = prev['Skills'] || [];
-            const updatedSkills = currentSkills.includes(skill)
-                ? currentSkills.filter((s) => s !== skill)
-                : [...currentSkills, skill];
+    const handleSearchSubmit = () => {
+        // Check if ANY other filter fields have data configured
+        const hasOtherFilters = !!(
+            filterValues.MinExp || 
+            filterValues.MaxExp || 
+            filterValues.Skills.length > 0 || 
+            filterValues.Keywords.length > 0 || 
+            filterValues.LocationSearch.length > 0 ||
+            filterValues.SidebarLocation.trim() ||
+            filterValues.SidebarExperience.trim() ||
+            filterValues.SidebarJobStatus.trim() ||
+            filterValues.SidebarOpenToWork.trim() ||
+            filterValues.SidebarSkills.trim()
+        );
 
-            const updated = { ...prev };
-            if (updatedSkills.length === 0) {
-                delete updated['Skills'];
-            } else {
-                updated['Skills'] = updatedSkills;
-            }
+        // Validation check: If other filters are active, Job Title is strictly required
+        if (hasOtherFilters && (!filterValues.JobTitle || filterValues.JobTitle.trim() === '')) {
+            setErrorMessage('Job Title is required when applying search filters.');
+            return;
+        }
 
-            setActiveFilters((prevFilters) => {
-                const hasSkills = updatedSkills.length > 0;
-                if (hasSkills && !prevFilters.includes('Skills')) {
-                    return [...prevFilters, 'Skills'].sort();
-                } else if (!hasSkills && prevFilters.includes('Skills')) {
-                    return prevFilters.filter((f) => f !== 'Skills');
-                }
-                return prevFilters;
-            });
+        setErrorMessage('');
+        setActiveSourcingFilters({ ...filterValues });
+    };
 
-            return updated;
-        });
-    }
-
-    function handleLocationToggle(location) {
-        setFilterValues((prev) => {
-            const currentLocations = prev['Location'] || [];
-            const updatedLocations = currentLocations.includes(location)
-                ? currentLocations.filter((l) => l !== location)
-                : [...currentLocations, location];
-
-            const updated = { ...prev };
-            if (updatedLocations.length === 0) {
-                delete updated['Location'];
-            } else {
-                updated['Location'] = updatedLocations;
-            }
-
-            setActiveFilters((prevFilters) => {
-                const hasLocations = updatedLocations.length > 0;
-                if (hasLocations && !prevFilters.includes('Location')) {
-                    return [...prevFilters, 'Location'].sort();
-                } else if (!hasLocations && prevFilters.includes('Location')) {
-                    return prevFilters.filter((f) => f !== 'Location');
-                }
-                return prevFilters;
-            });
-
-            return updated;
-        });
-    }
+    const handleClearFilters = () => {
+        setSearchVar("");
+        setSkillInput("");
+        setKeywordInput("");
+        setLocationInput("");
+        setErrorMessage("");
+        const cleared = {
+            JobTitle: '',
+            MinExp: '',
+            MaxExp: '',
+            Skills: [],
+            Keywords: [],
+            LocationSearch: [], 
+            SidebarLocation: '',
+            SidebarExperience: '',
+            SidebarJobStatus: '',
+            SidebarOpenToWork: '',
+            SidebarSkills: ''
+        };
+        setFilterValues(cleared);
+        setActiveSourcingFilters(cleared);
+    };
 
     return (
-        <div className="flex h-screen flex-col overflow-hidden">
+        <div className="flex h-screen w-screen flex-col overflow-hidden bg-slate-50">
             <Navbar />
-            <div className="flex flex-1 min-h-0">
-            <Sidebar />
-            <div className="flex min-w-0 flex-1 flex-col bg-slate-50 overflow-hidden">
+            <div className="flex flex-1 min-h-0 w-full overflow-hidden">
+                <Sidebar />
+                
+                <div className="flex-1 flex overflow-hidden min-w-0 h-full">
+                    
+                    {/* Left Pane: Sidebar Filters Input Panel */}
+                    <div className="w-64 bg-white border-r border-gray-200 flex flex-col p-5 shrink-0 overflow-hidden h-full">
+                        <div className="flex items-center justify-between mb-6 shrink-0">
+                            <h2 className="text-xl font-bold text-gray-900">Filters</h2>
+                            <button 
+                                onClick={handleClearFilters} 
+                                className="text-purple-600 hover:text-purple-700 text-sm font-semibold underline"
+                            >
+                                Clear Filters
+                            </button>
+                        </div>
 
-                <div className="shrink-0 border-b border-slate-200 bg-slate-50 p-6">
-                    <h1 className="text-4xl font-bold text-gray-900 mb-6">Search Candidates</h1>
-
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                        <div className="flex flex-col gap-4">
-                            <div className="flex gap-4 items-center">
-                                <input
-                                    className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-lg"
-                                    type="text"
-                                    placeholder={`Search Candidate by name ...`}
-                                    value={searchVar}
-                                    onChange={(e) => setSearchVar(e.target.value)}
+                        <div className="space-y-5 overflow-y-auto pr-1 flex-1 min-h-0">
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-600 mb-1.5">Location</label>
+                                <input 
+                                    type="text" 
+                                    placeholder="Select location" 
+                                    value={filterValues.SidebarLocation}
+                                    onChange={(e) => setFilterValues({...filterValues, SidebarLocation: e.target.value})}
+                                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-purple-500"
                                 />
+                            </div>
 
-                                <div className="flex items-center gap-3">
-                                    <button
-                                        className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-lg font-semibold transition duration-200"
-                                        onClick={() => {
-                                            setSearchVar("");
-                                            setActiveFilters([]);
-                                            setFilterValues({});
-                                            setShowSkillsDropdown(false);
-                                            setShowLocationDropdown(false);
-                                        }}
-                                    >
-                                        Reset
-                                    </button>
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-600 mb-1.5">Experience</label>
+                                <input 
+                                    type="text" 
+                                    placeholder="Select experience range" 
+                                    value={filterValues.SidebarExperience}
+                                    onChange={(e) => setFilterValues({...filterValues, SidebarExperience: e.target.value})}
+                                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-purple-500"
+                                />
+                            </div>
 
-                                    <button
-                                        className={`border-2 px-6 py-3 rounded-lg font-semibold flex items-center gap-2 transition duration-200 bg-white ${
-                                            showFilters || activeFilters.length > 0
-                                                ? 'border-purple-600 text-purple-700'
-                                                : 'border-gray-300 hover:bg-gray-50 text-gray-700'
-                                        }`}
-                                        onClick={() => setShowFilters((prev) => !prev)}
-                                    >
-                                        <Funnel size={20} />
-                                        <span>Filters</span>
-                                        {activeFilters.length > 0 && (
-                                            <span className="ml-1 text-purple-600 font-bold">
-                                                {activeFilters.length}
-                                            </span>
-                                        )}
-                                    </button>
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-600 mb-1.5">Job Status</label>
+                                <input 
+                                    type="text" 
+                                    placeholder="Select job status" 
+                                    value={filterValues.SidebarJobStatus}
+                                    onChange={(e) => setFilterValues({...filterValues, SidebarJobStatus: e.target.value})}
+                                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-purple-500"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-600 mb-1.5">Open to Work</label>
+                                <input 
+                                    type="text" 
+                                    placeholder="Select option" 
+                                    value={filterValues.SidebarOpenToWork}
+                                    onChange={(e) => setFilterValues({...filterValues, SidebarOpenToWork: e.target.value})}
+                                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-purple-500"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-600 mb-1.5">Skills</label>
+                                <input 
+                                    type="text" 
+                                    placeholder="Search by skills..." 
+                                    value={filterValues.SidebarSkills}
+                                    onChange={(e) => setFilterValues({...filterValues, SidebarSkills: e.target.value})}
+                                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-purple-500"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Right Pane: Sourcing Workspace Container */}
+                    <div className="flex-1 p-6 space-y-6 min-w-0 flex flex-col h-full overflow-hidden">
+                        
+                        {/* Top Input Form Container */}
+                        <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm grid grid-cols-12 gap-4 shrink-0">
+                            <div className="col-span-4">
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Job Title
+                                </label>
+                                <input 
+                                    type="text" 
+                                    value={filterValues.JobTitle}
+                                    onChange={(e) => {
+                                        setFilterValues({...filterValues, JobTitle: e.target.value});
+                                        if (e.target.value.trim()) setErrorMessage('');
+                                    }}
+                                    className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-1 ${errorMessage ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'border-gray-300 focus:ring-purple-500 focus:border-purple-500'}`}
+                                    placeholder="Search job title..."
+                                />
+                                {errorMessage && <p className="text-xs text-red-500 mt-1">{errorMessage}</p>}
+                            </div>
+
+                            <div className="col-span-4">
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Skills</label>
+                                <div className="w-full px-3 py-1.5 border border-gray-300 rounded-lg flex flex-wrap gap-1.5 items-center bg-white min-h-[38px] focus-within:ring-1 focus-within:ring-purple-500 focus-within:border-purple-500">
+                                    {filterValues.Skills.map(skill => (
+                                        <span key={skill} className="inline-flex items-center gap-1 bg-purple-50 text-purple-700 px-2 py-0.5 rounded text-xs border border-purple-100 font-medium">
+                                            {skill} 
+                                            <button 
+                                                type="button"
+                                                onClick={() => removeSkillTag(skill)}
+                                                className="font-bold text-purple-400 hover:text-purple-600 ml-0.5"
+                                            >
+                                                ×
+                                            </button>
+                                        </span>
+                                    ))}
+                                    <input 
+                                        type="text"
+                                        placeholder={filterValues.Skills.length === 0 ? "Add skill..." : ""}
+                                        value={skillInput}
+                                        onChange={(e) => setSkillInput(e.target.value)}
+                                        onKeyDown={handleSkillKeyDown}
+                                        className="flex-1 min-w-[60px] text-sm bg-transparent outline-none border-none p-0 focus:ring-0"
+                                    />
                                 </div>
                             </div>
 
-                            {showFilters && (
-                                <div className="flex flex-col gap-3 items-start">
-                                    <div className="flex flex-wrap gap-2 items-center">
-                                        {filterOptions.map((filter) => {
-                                            const isActive = activeFilters.includes(filter);
-
-                                            if (filter === 'Skills') {
-                                                const selectedSkills = filterValues['Skills'] || [];
-                                                const displayLabel = selectedSkills.length > 0
-                                                    ? `Skills (${selectedSkills.length})`
-                                                    : 'Skills';
-
-                                                return (
-                                                    <div key={filter} className="relative inline-block" ref={skillsRef}>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => setShowSkillsDropdown((prev) => !prev)}
-                                                            className={`pl-4 pr-10 py-2 rounded-lg transition duration-200 border-2 bg-white text-sm font-medium flex items-center gap-2 cursor-pointer ${
-                                                                isActive
-                                                                    ? 'border-purple-600 text-purple-700'
-                                                                    : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
-                                                            }`}
-                                                        >
-                                                            {displayLabel}
-                                                            <div className={`absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none ${
-                                                                isActive ? 'text-purple-600' : 'text-gray-400'
-                                                            }`}>
-                                                                <ChevronDown size={16} strokeWidth={2.5} />
-                                                            </div>
-                                                        </button>
-
-                                                        {showSkillsDropdown && (
-                                                            <div className="absolute left-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-xl z-50 p-2 flex flex-col gap-1 max-h-60 overflow-y-auto">
-                                                                {dropdownOptions.Skills.map((skill) => {
-                                                                    const isChecked = selectedSkills.includes(skill);
-                                                                    return (
-                                                                        <label
-                                                                            key={skill}
-                                                                            className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-purple-50 cursor-pointer text-sm text-gray-700 font-normal transition duration-150"
-                                                                        >
-                                                                            <input
-                                                                                type="checkbox"
-                                                                                checked={isChecked}
-                                                                                onChange={() => handleSkillToggle(skill)}
-                                                                                className="rounded border-gray-300 text-purple-600 focus:ring-purple-500 h-4 w-4"
-                                                                            />
-                                                                            {skill}
-                                                                        </label>
-                                                                    );
-                                                                })}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                );
-                                            }
-
-                                            if (filter === 'Location') {
-                                                const selectedLocations = filterValues['Location'] || [];
-                                                const displayLabel = selectedLocations.length > 0
-                                                    ? `Location (${selectedLocations.length})`
-                                                    : 'Location';
-
-                                                return (
-                                                    <div key={filter} className="relative inline-block" ref={locationRef}>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => setShowLocationDropdown((prev) => !prev)}
-                                                            className={`pl-4 pr-10 py-2 rounded-lg transition duration-200 border-2 bg-white text-sm font-medium flex items-center gap-2 cursor-pointer ${
-                                                                isActive
-                                                                    ? 'border-purple-600 text-purple-700'
-                                                                    : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
-                                                            }`}
-                                                        >
-                                                            {displayLabel}
-                                                            <div className={`absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none ${
-                                                                isActive ? 'text-purple-600' : 'text-gray-400'
-                                                            }`}>
-                                                                <ChevronDown size={16} strokeWidth={2.5} />
-                                                            </div>
-                                                        </button>
-
-                                                        {showLocationDropdown && (
-                                                            <div className="absolute left-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-xl z-50 p-2 flex flex-col gap-1 max-h-60 overflow-y-auto">
-                                                                {dropdownOptions.Location.map((loc) => {
-                                                                    const isChecked = selectedLocations.includes(loc);
-                                                                    return (
-                                                                        <label
-                                                                            key={loc}
-                                                                            className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-purple-50 cursor-pointer text-sm text-gray-700 font-normal transition duration-150"
-                                                                        >
-                                                                            <input
-                                                                                type="checkbox"
-                                                                                checked={isChecked}
-                                                                                onChange={() => handleLocationToggle(loc)}
-                                                                                className="rounded border-gray-300 text-purple-600 focus:ring-purple-500 h-4 w-4"
-                                                                            />
-                                                                            {loc}
-                                                                        </label>
-                                                                    );
-                                                                })}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                );
-                                            }
-
-                                            return (
-                                                <div key={filter} className="relative inline-block">
-                                                    <select
-                                                        value={filterValues[filter] ?? ''}
-                                                        onChange={(e) => handleDropdownChange(filter, e.target.value)}
-                                                        className={`appearance-none pl-4 pr-10 py-2 rounded-lg transition duration-200 border-2 bg-white text-sm font-medium cursor-pointer focus:outline-none tracking-wide ${
-                                                            isActive
-                                                                ? 'border-purple-600 text-purple-700'
-                                                                : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
-                                                        }`}
-                                                    >
-                                                        <option value="" className="text-gray-400 font-normal">{filter}</option>
-                                                        {dropdownOptions[filter]?.map((option) => (
-                                                            <option key={option} value={option} className="text-gray-900 font-normal">
-                                                                {option}
-                                                            </option>
-                                                        ))}
-                                                    </select>
-                                                    <div className={`absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none ${
-                                                        isActive ? 'text-purple-600' : 'text-gray-400'
-                                                    }`}>
-                                                        <ChevronDown size={16} strokeWidth={2.5} />
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
+                            <div className="col-span-4">
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Keywords</label>
+                                <div className="w-full px-3 py-1.5 border border-gray-300 rounded-lg flex flex-wrap gap-1.5 items-center bg-white min-h-[38px] focus-within:ring-1 focus-within:ring-purple-500 focus-within:border-purple-500">
+                                    {filterValues.Keywords.map(kw => (
+                                        <span key={kw} className="inline-flex items-center gap-1 bg-slate-100 text-gray-700 px-2 py-0.5 rounded text-xs border border-gray-200 font-medium">
+                                            {kw} 
+                                            <button 
+                                                type="button"
+                                                onClick={() => removeKeywordTag(kw)}
+                                                className="font-bold text-gray-400 hover:text-gray-600 ml-0.5"
+                                            >
+                                                ×
+                                            </button>
+                                        </span>
+                                    ))}
+                                    <input 
+                                        type="text"
+                                        placeholder={filterValues.Keywords.length === 0 ? "Add must include keywords..." : ""}
+                                        value={keywordInput}
+                                        onChange={(e) => setKeywordInput(e.target.value)}
+                                        onKeyDown={handleKeywordKeyDown}
+                                        className="flex-1 min-w-[60px] text-sm bg-transparent outline-none border-none p-0 focus:ring-0"
+                                    />
                                 </div>
-                            )}
+                            </div>
+
+                            <div className="col-span-4 flex gap-2">
+                                <div className="flex-1">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Experience (years)</label>
+                                    <input 
+                                        type="number" 
+                                        placeholder="Min"
+                                        value={filterValues.MinExp} 
+                                        onChange={(e) => setFilterValues({...filterValues, MinExp: e.target.value})}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-center focus:outline-none focus:border-purple-500"
+                                    />
+                                </div>
+                                <div className="flex-1">
+                                    <label className="block text-sm font-medium text-transparent mb-1">Max</label>
+                                    <input 
+                                        type="number" 
+                                        placeholder="Max"
+                                        value={filterValues.MaxExp} 
+                                        onChange={(e) => setFilterValues({...filterValues, MaxExp: e.target.value})}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-center focus:outline-none focus:border-purple-500"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="col-span-5">
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                                <div className="w-full px-3 py-1.5 border border-gray-300 rounded-lg flex flex-wrap gap-1.5 items-center bg-white min-h-[38px] focus-within:ring-1 focus-within:ring-purple-500 focus-within:border-purple-500">
+                                    {filterValues.LocationSearch.map(loc => (
+                                        <span key={loc} className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-xs border border-blue-100 font-medium">
+                                            {loc} 
+                                            <button 
+                                                type="button"
+                                                onClick={() => removeLocationTag(loc)}
+                                                className="font-bold text-blue-400 hover:text-blue-600 ml-0.5"
+                                            >
+                                                ×
+                                            </button>
+                                        </span>
+                                    ))}
+                                    <input 
+                                        type="text"
+                                        placeholder={filterValues.LocationSearch.length === 0 ? "Add location..." : ""}
+                                        value={locationInput}
+                                        onChange={(e) => setLocationInput(e.target.value)}
+                                        onKeyDown={handleLocationKeyDown}
+                                        className="flex-1 min-w-[60px] text-sm bg-transparent outline-none border-none p-0 focus:ring-0"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="col-span-3 flex justify-end items-end pb-1">
+                                <button 
+                                    onClick={handleSearchSubmit}
+                                    className="px-8 py-2.5 rounded-lg font-semibold tracking-wide transition duration-150 shadow-sm text-white bg-purple-600 hover:bg-purple-700"
+                                >
+                                    Search
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Candidates Workspace Card Area */}
+                        <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm flex flex-col flex-1 min-h-0 overflow-hidden">
+                            <div className="mb-6 shrink-0">
+                                <input 
+                                    type="text"
+                                    placeholder="Search candidates by name..."
+                                    value={searchVar}
+                                    onChange={(e) => setSearchVar(e.target.value)}
+                                    className="max-w-md w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                />
+                            </div>
+
+                            <div className="flex-1 min-h-0 overflow-hidden">
+                                <RenderList var1={searchVar} activeFilters={[]} filterValues={activeSourcingFilters} />
+                            </div>
                         </div>
                     </div>
                 </div>
-
-                <div className="flex-1 overflow-y-auto overflow-x-hidden p-6">
-                    <RenderList var1={searchVar} activeFilters={activeFilters} filterValues={filterValues} />
-                </div>
-            </div>
             </div>
         </div>
     );
