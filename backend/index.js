@@ -1,10 +1,38 @@
     const express = require('express');
+    const path = require('path');
+    const multer = require('multer');
     const app = express();
     const cors = require('cors');
     const pool = require('./db');
+    const { initializeSearchService, searchDocuments, listDocuments, saveUploadedFile, deleteDocument, UPLOAD_DIR } = require('./searchService');
 
     app.use(cors());
     app.use(express.json());
+    app.use(express.urlencoded({ extended: true }));
+    app.use('/uploads', express.static(UPLOAD_DIR));
+    initializeSearchService().catch((error) => console.error('Search service startup failed:', error.message));
+
+    const upload = multer({ dest: path.join(__dirname, 'uploads', 'tmp') });
+
+    function formatFileSize(bytes) {
+        if (!bytes && bytes !== 0) return '0 Bytes';
+        const units = ['Bytes', 'KB', 'MB', 'GB'];
+        const size = bytes === 0 ? 0 : Math.floor(Math.log(bytes) / Math.log(1024));
+        return `${(bytes / Math.pow(1024, size)).toFixed(size === 0 ? 0 : 1)} ${units[size]}`;
+    }
+
+    function normalizeDocument(row) {
+        return {
+            id: row.id,
+            fileName: row.file_name || row.fileName,
+            extension: row.extension,
+            fileSize: row.file_size || row.fileSize,
+            uploadedAt: row.uploaded_at || row.uploadedAt,
+            extractedText: row.extracted_text || row.extractedText,
+            fullPath: row.full_path || row.fullPath,
+            fileSizeLabel: formatFileSize(row.file_size || row.fileSize),
+        };
+    }
 
 
     app.get("/hireRadar/cndtempsave",async(req,res)=>{
@@ -342,6 +370,95 @@
         }catch(err){
             console.error(err.message);
         } 
+    });
+
+    app.get('/api/search', async (req, res) => {
+        try {
+            const q = String(req.query.q || '').trim();
+            const options = {
+                extension: req.query.extension || '',
+                sort: req.query.sort || 'relevance',
+                sizeFilter: req.query.sizeFilter || '',
+            };
+
+            const rows = await searchDocuments(q, options);
+            res.json(rows.map(normalizeDocument));
+        } catch (error) {
+            console.error('Search API error:', error.message);
+            res.status(500).json({ error: 'Unable to search documents.' });
+        }
+    });
+
+    app.get('/api/documents', async (req, res) => {
+        try {
+            const rows = await listDocuments({
+                extension: req.query.extension || '',
+                sort: req.query.sort || 'newest',
+                sizeFilter: req.query.sizeFilter || '',
+            });
+            res.json(rows.map(normalizeDocument));
+        } catch (error) {
+            console.error('Document listing error:', error.message);
+            res.status(500).json({ error: 'Unable to load documents.' });
+        }
+    });
+
+    app.post('/api/upload', upload.array('files', 20), async (req, res) => {
+        try {
+            if (!req.files || req.files.length === 0) {
+                return res.status(400).json({ error: 'No files were uploaded.' });
+            }
+
+            const uploadedDocuments = await Promise.all(req.files.map((file) => saveUploadedFile(file)));
+            res.json(uploadedDocuments);
+        } catch (error) {
+            console.error('Upload API error:', error.message);
+            res.status(500).json({ error: 'Unable to process upload.' });
+        }
+    });
+
+    app.delete('/api/documents/:id', async (req, res) => {
+        try {
+            const deleted = await deleteDocument(req.params.id);
+            res.json({ success: deleted });
+        } catch (error) {
+            console.error('Delete API error:', error.message);
+            res.status(500).json({ error: 'Unable to delete document.' });
+        }
+    });
+
+    app.get('/api/documents/:id/preview', async (req, res) => {
+        try {
+            const result = await pool.query('SELECT full_path, file_name FROM document_search_index WHERE id = $1', [req.params.id]);
+            if (result.rows.length === 0) {
+                return res.status(404).json({ error: 'Document not found.' });
+            }
+
+            const document = result.rows[0];
+            res.sendFile(document.full_path, {
+                headers: {
+                    'Content-Disposition': `inline; filename="${document.file_name}"`,
+                },
+            });
+        } catch (error) {
+            console.error('Preview API error:', error.message);
+            res.status(500).json({ error: 'Unable to preview document.' });
+        }
+    });
+
+    app.get('/api/documents/:id/download', async (req, res) => {
+        try {
+            const result = await pool.query('SELECT full_path, file_name FROM document_search_index WHERE id = $1', [req.params.id]);
+            if (result.rows.length === 0) {
+                return res.status(404).json({ error: 'Document not found.' });
+            }
+
+            const document = result.rows[0];
+            res.download(document.full_path, document.file_name);
+        } catch (error) {
+            console.error('Download API error:', error.message);
+            res.status(500).json({ error: 'Unable to download document.' });
+        }
     });
 
     app.listen(5000,()=>{
