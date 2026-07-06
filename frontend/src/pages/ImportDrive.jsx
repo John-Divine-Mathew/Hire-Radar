@@ -1,407 +1,446 @@
-import React, { useState, useRef } from 'react';
-import { CloudUpload, Download, X, Eye } from 'lucide-react';
+﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  CloudUpload,
+  Search,
+  Download,
+  Eye,
+  Trash2,
+  Sparkles,
+  FileText,
+  FileSpreadsheet,
+  FileArchive,
+  LoaderCircle,
+  Moon,
+  Sun,
+  X,
+} from 'lucide-react';
 import Sidebar from '../components/sideBar/sideBar.jsx';
-import Navbar from '../components/navBar/navBar.jsx';
- 
+import './ImportDrive.css';
+
+const API_BASE_URL = 'http://localhost:5000';
+
 function ImportDrive() {
   const [documents, setDocuments] = useState([]);
-  const [filteredDocuments, setFilteredDocuments] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [selectedExtension, setSelectedExtension] = useState('');
+  const [selectedSize, setSelectedSize] = useState('');
+  const [selectedSort, setSelectedSort] = useState('relevance');
+  const [history, setHistory] = useState([]);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
+  const [darkMode, setDarkMode] = useState(false);
   const fileInputRef = useRef(null);
- 
-  // Supported file extensions
-  const SUPPORTED_EXTENSIONS = [
-    'pdf', 'doc', 'docx', 'txt', 'csv', 'png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp', 'ppt', 'pptx', 'xls', 'xlsx', 'zip'
-  ];
- 
-  // Extract text from TXT files
-  const extractTextContent = async (file) => {
+
+  const supportedExtensions = useMemo(
+    () => ['pdf', 'docx', 'xlsx', 'txt', 'csv', 'json', 'pptx', 'png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'],
+    [],
+  );
+
+  const formatBytes = (bytes = 0) => {
+    const units = ['B', 'KB', 'MB', 'GB'];
+    if (bytes === 0) return '0 B';
+    if (!bytes) return '0 B';
+    const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+    return `${parseFloat((bytes / 1024 ** index).toFixed(index === 0 ? 0 : 1))} ${units[index]}`;
+  };
+
+  const normalizeDocument = (row) => ({
+    ...row,
+    fileName: row.file_name ?? row.fileName ?? 'Untitled',
+    extension: (row.extension ?? row.file_name?.split('.').pop() ?? row.fileName?.split('.').pop() ?? '').toLowerCase(),
+    fileSize: row.file_size ?? row.fileSize ?? 0,
+    fileSizeLabel: row.fileSizeLabel ?? formatBytes(row.file_size ?? row.fileSize ?? 0),
+    uploadedAt: row.uploaded_at ?? row.uploadedAt ?? null,
+    fullPath: row.full_path ?? row.fullPath ?? '',
+    extractedText: row.extracted_text ?? row.extractedText ?? '',
+  });
+
+  const formatDate = (value) => {
+    if (!value) return 'Recently added';
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? 'Recently added' : date.toLocaleDateString();
+  };
+
+  const persistHistory = (value) => {
+    const trimmed = value.trim();
+    if (!trimmed) return;
+
+    const nextHistory = [trimmed, ...history.filter((item) => item !== trimmed)].slice(0, 10);
+    setHistory(nextHistory);
+    localStorage.setItem('document-search-history', JSON.stringify(nextHistory));
+  };
+
+  const fetchDocuments = async (term = '', extension = '', size = '', sort = 'relevance') => {
+    setIsLoading(true);
     try {
-      return await file.text();
+      const params = new URLSearchParams();
+      if (term) params.set('q', term);
+      if (extension) params.set('extension', extension);
+      if (size) params.set('sizeFilter', size);
+      if (sort) params.set('sort', sort);
+
+      const response = await fetch(`${API_BASE_URL}/api/search?${params.toString()}`);
+      const result = await response.json();
+      setDocuments(Array.isArray(result) ? result.map(normalizeDocument) : []);
     } catch (error) {
-      console.error('Error extracting TXT content:', error);
-      return '';
+      console.error('Unable to fetch documents:', error);
+      setDocuments([]);
+    } finally {
+      setIsLoading(false);
     }
   };
- 
-  // Extract text from DOCX files
-  const extractDocxContent = async (file) => {
-    try {
-      return '(DOCX file - preview available)';
-    } catch (error) {
-      console.error('Error extracting DOCX content:', error);
-      return '(Unable to extract DOCX content)';
-    }
-  };
- 
-  // Extract text from CSV files
-  const extractCsvContent = async (file) => {
-    try {
-      return await file.text();
-    } catch (error) {
-      console.error('Error extracting CSV content:', error);
-      return '';
-    }
-  };
- 
-  // Extract content based on file type
-  const extractFileContent = async (file) => {
-    const ext = file.name.split('.').pop().toLowerCase();
-   
-    try {
-      if (['txt'].includes(ext)) {
-        return await extractTextContent(file);
-      } else if (['docx'].includes(ext)) {
-        return await extractDocxContent(file);
-      } else if (['csv'].includes(ext)) {
-        return await extractCsvContent(file);
-      } else if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext)) {
-        return '(Image file - preview available)';
-      } else if (['pdf'].includes(ext)) {
-        return '(PDF file - preview available)';
-      } else if (['xlsx', 'xls'].includes(ext)) {
-        return '(Excel file - sheet names available)';
-      } else if (['pptx', 'ppt'].includes(ext)) {
-        return '(PowerPoint file - slide information available)';
-      } else if (['zip'].includes(ext)) {
-        return '(ZIP file - metadata available)';
-      }
-      return '';
-    } catch (error) {
-      console.error('Error extracting content:', error);
-      return '';
-    }
-  };
- 
-  // Process files recursively
-  const processFilesRecursively = async (items) => {
-    const newDocuments = [];
- 
-    for (const item of items) {
-      if (item.kind === 'file') {
-        const file = await item.getFile();
-        const ext = file.name.split('.').pop().toLowerCase();
- 
-        if (SUPPORTED_EXTENSIONS.includes(ext)) {
-          const content = await extractFileContent(file);
-          const blobURL = URL.createObjectURL(file);
- 
-          newDocuments.push({
-            id: Date.now() + Math.random(),
-            fileName: file.name,
-            extension: ext.toUpperCase(),
-            size: formatFileSize(file.size),
-            sizeBytes: file.size,
-            path: file.webkitRelativePath || file.name,
-            lastModified: new Date(file.lastModified).toLocaleDateString(),
-            blobURL: blobURL,
-            content: content,
-            file: file,
-            type: file.type
-          });
-        }
-      } else if (item.kind === 'directory') {
-        const dirReader = item.createReader();
-        const entries = await new Promise((resolve, reject) => {
-          dirReader.readEntries(resolve, reject);
-        });
-        const subFiles = await processFilesRecursively(entries);
-        newDocuments.push(...subFiles);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('document-search-history');
+    if (saved) {
+      try {
+        setHistory(JSON.parse(saved));
+      } catch (err) {
+        console.error('Unable to restore search history:', err);
       }
     }
- 
-    return newDocuments;
-  };
- 
-  // Handle folder selection
-  const handleFolderSelect = async (event) => {
-    const items = event.dataTransfer?.items || event.target.files;
-   
-    if (!items) return;
- 
-    try {
-      const entries = [];
-     
-      if (event.dataTransfer?.items) {
-        // Drag and drop
-        for (let i = 0; i < items.length; i++) {
-          const entry = items[i].webkitGetAsEntry?.();
-          if (entry) {
-            entries.push(entry);
-          }
-        }
-      } else {
-        // File input
-        for (let i = 0; i < items.length; i++) {
-          const file = items[i];
-          if (file.webkitRelativePath || file.type) {
-            entries.push(file);
-          }
-        }
-      }
- 
-      if (entries.length > 0) {
-        const newDocs = await processFilesRecursively(entries);
-        const allDocs = [...newDocs, ...documents].sort((a, b) => b.id - a.id);
-        setDocuments(allDocs);
-        setFilteredDocuments(allDocs);
-      }
-    } catch (error) {
-      console.error('Error processing files:', error);
-    }
-  };
- 
-  // Handle drag and drop styling transitions
-  const handleDragOver = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    e.currentTarget.classList.add('bg-purple-100', 'border-purple-700', 'scale-[1.02]');
-  };
- 
-  const handleDragLeave = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    e.currentTarget.classList.remove('bg-purple-100', 'border-purple-700', 'scale-[1.02]');
-  };
- 
-  const handleDrop = async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    e.currentTarget.classList.remove('bg-purple-100', 'border-purple-700', 'scale-[1.02]');
-    await handleFolderSelect(e);
-  };
- 
-  // Format file size
-  const formatFileSize = (bytes) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
-  };
- 
-  // Real-time search
+  }, []);
+
+  useEffect(() => {
+    fetchDocuments(searchTerm, selectedExtension, selectedSize, selectedSort);
+  }, [selectedExtension, selectedSize, selectedSort]);
+
+  useEffect(() => {
+    document.body.classList.toggle('dark-mode', darkMode);
+  }, [darkMode]);
+
   const handleSearch = (value) => {
     setSearchTerm(value);
-   
-    if (value.trim() === '') {
-      setFilteredDocuments(documents);
-    } else {
-      const lowerSearch = value.toLowerCase();
-      const filtered = documents.filter(doc => {
-        const fileName = doc.fileName.toLowerCase();
-        const content = doc.content.toLowerCase();
-        return fileName.includes(lowerSearch) || content.includes(lowerSearch);
+    if (value.trim() !== '') persistHistory(value);
+    fetchDocuments(value, selectedExtension, selectedSize, selectedSort);
+  };
+
+  const handleUpload = async (event) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    const formData = new FormData();
+    Array.from(files).forEach((file) => formData.append('files', file));
+
+    setIsUploading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/upload`, {
+        method: 'POST',
+        body: formData,
       });
-      setFilteredDocuments(filtered);
+      if (response.ok) {
+        await fetchDocuments(searchTerm, selectedExtension, selectedSize, selectedSort);
+      }
+    } catch (error) {
+      console.error('Upload failed:', error);
+    } finally {
+      setIsUploading(false);
+      if (event.target) event.target.value = '';
     }
   };
- 
-  // Open preview modal
-  const openPreview = (file) => {
-    setSelectedFile(file);
+
+  const handleBrowseClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleDrop = async (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const droppedFiles = Array.from(event.dataTransfer.files || []);
+    if (!droppedFiles.length) return;
+
+    const formData = new FormData();
+    droppedFiles.forEach((file) => formData.append('files', file));
+
+    setIsUploading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/upload`, {
+        method: 'POST',
+        body: formData,
+      });
+      if (response.ok) {
+        await fetchDocuments(searchTerm, selectedExtension, selectedSize, selectedSort);
+      }
+    } catch (error) {
+      console.error('Upload failed:', error);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const openPreview = (document) => {
+    setSelectedFile(document);
     setPreviewOpen(true);
   };
- 
-  // Close preview modal
+
   const closePreview = () => {
     setPreviewOpen(false);
     setSelectedFile(null);
   };
- 
-  // Download file
-  const downloadFile = () => {
-    if (!selectedFile) return;
-    const link = document.createElement('a');
-    link.href = selectedFile.blobURL;
-    link.download = selectedFile.fileName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+
+  const downloadFile = (document) => {
+    if (!document) return;
+    window.open(`${API_BASE_URL}/api/documents/${document.id}/download`, '_blank');
   };
- 
-  // Render preview content based on file type
-  const renderPreviewContent = () => {
-    if (!selectedFile) return null;
- 
-    const ext = selectedFile.extension.toLowerCase();
- 
-    if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext)) {
-      return <img src={selectedFile.blobURL} alt={selectedFile.fileName} className="max-w-full max-h-full object-contain rounded-[15px]" />;
-    } else if (ext === 'pdf') {
-      return (
-        <iframe
-          src={selectedFile.blobURL}
-          title={selectedFile.fileName}
-          className="w-full h-full border-none"
-        />
-      );
-    } else if (['txt', 'csv', 'docx'].includes(ext)) {
-      return (
-        <div className="w-full h-full overflow-auto bg-white p-5 rounded-[15px] border border-gray-200">
-          <pre className="m-0 font-mono text-[13px] text-slate-600 white-space-pre-wrap break-all leading-relaxed">
-            {selectedFile.content || 'No content available'}
-          </pre>
-        </div>
-      );
-    } else {
-      return (
-        <div className="text-center text-slate-400 text-e16">
-          <p>Preview Not Available</p>
-          <p className="text-[13px] text-slate-300">File type: {selectedFile.extension}</p>
-        </div>
-      );
+
+  const deleteFile = async (document) => {
+    if (!document) return;
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/documents/${document.id}`, {
+        method: 'DELETE',
+      });
+      if (response.ok) {
+        await fetchDocuments(searchTerm, selectedExtension, selectedSize, selectedSort);
+      }
+    } catch (error) {
+      console.error('Delete failed:', error);
     }
   };
- 
+
+  const getDocumentIcon = (extension) => {
+    const ext = (extension || '').toLowerCase();
+    if (ext === 'pdf') return <FileText className="doc-icon pdf" />;
+    if (ext === 'docx' || ext === 'doc') return <FileText className="doc-icon docx" />;
+    if (ext === 'xlsx' || ext === 'xls' || ext === 'csv') return <FileSpreadsheet className="doc-icon excel" />;
+    if (ext === 'txt') return <FileText className="doc-icon txt" />;
+    return <FileArchive className="doc-icon generic" />;
+  };
+
+  const renderPreviewContent = () => {
+    if (!selectedFile) return null;
+    const ext = (selectedFile.extension || '').toLowerCase();
+
+    if (ext === 'pdf') {
+      return <iframe title={selectedFile.fileName} src={`${API_BASE_URL}/api/documents/${selectedFile.id}/preview`} className="preview-iframe" />;
+    }
+
+    if (['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'].includes(ext)) {
+      return <img alt={selectedFile.fileName} src={`${API_BASE_URL}/api/documents/${selectedFile.id}/preview`} className="preview-image" />;
+    }
+
+    if (['txt', 'csv', 'json', 'docx'].includes(ext)) {
+      return <pre className="preview-text">{selectedFile.extractedText || 'No preview text is available for this document.'}</pre>;
+    }
+
+    if (['xlsx', 'xls'].includes(ext)) {
+      return <div className="preview-unavailable">Spreadsheet preview is not available yet. Please download to view locally.</div>;
+    }
+
+    return <div className="preview-unavailable">Preview is available for supported file types such as PDF, images, and text.</div>;
+  };
+
   return (
-    <div className="flex h-screen w-screen flex-col overflow-hidden bg-slate-50">
-      {/* Global Header Navigation */}
-      <Navbar />
- 
-      {/* Main Container Layout */}
-      <div className="flex flex-1 min-h-0 w-full overflow-hidden">
+    <div className={`import-drive-container ${darkMode ? 'dark' : ''}`}>
+      <Sidebar />
+
+      <div className="import-drive-content">
        
-        {/* Left Side Navigation Panel */}
-        <Sidebar />
-       
-        {/* Right Side Workspace Pane */}
-        <div className="flex-1 p-6 md:p-10 space-y-6 min-w-0 overflow-y-auto h-full">
-         
-          {/* Workspace Branding Header */}
-          <div className="mb-2 shrink-0">
-            <h1 className="text-2xl font-bold text-gray-900">Import Workspace</h1>
-            <p className="text-sm text-gray-500">Upload entire root directories or specific backup data folders.</p>
-          </div>
- 
-          {/* Upload Dropzone Workspace Area */}
-          <div
-            className="bg-white border border-gray-200 border-dashed border-2 rounded-xl p-8 md:p-12 text-center transition-all duration-300 cursor-pointer relative shadow-sm hover:border-purple-500 hover:shadow-md"
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-          >
-            <CloudUpload size={44} className="text-purple-600 mx-auto mb-4 animate-[bounce_3s_infinite]" />
-            <h2 className="text-xl font-bold text-gray-800 mb-1">Import Entire Drive Directory</h2>
-            <p className="text-sm text-gray-500 mb-5">Supported formats: PDF, DOCX, TXT, Images, CSV, Sheets</p>
-           
-            <button
-              className="bg-purple-600 text-white px-6 py-2.5 rounded-lg text-sm font-semibold tracking-wide shadow-sm hover:bg-purple-700 transition duration-150"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              Browse Drive Folder
-            </button>
+          
+
+        <div className="search-container">
+          <div className="search-input-wrapper">
+            <Search size={20} className="search-icon" />
             <input
-              ref={fileInputRef}
-              type="file"
-              webkitdirectory="true"
-              directory="true"
-              mozdirectory="true"
-              multiple
-              className="hidden"
-              onChange={handleFolderSelect}
+              type="text"
+              placeholder="Search file name or document content..."
+              value={searchTerm}
+              onChange={(event) => handleSearch(event.target.value)}
+              className="search-input"
             />
+            {isLoading ? <LoaderCircle size={18} className="loading-icon" /> : null}
           </div>
- 
-          {/* Document Table Workspace Area */}
-          {filteredDocuments.length > 0 ? (
-            <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm overflow-hidden flex flex-col">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold text-gray-900">Imported Documents ({filteredDocuments.length})</h3>
-                <input
-                  type="text"
-                  placeholder="Filter local files..."
-                  value={searchTerm}
-                  onChange={(e) => handleSearch(e.target.value)}
-                  className="max-w-xs w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-purple-500"
-                />
-              </div>
-             
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse text-sm">
-                  <thead>
-                    <tr className="border-b border-gray-200 text-gray-500 text-left text-xs font-semibold uppercase tracking-wider">
-                      <th className="pb-3 font-semibold">File Name</th>
-                      <th className="pb-3 font-semibold">Type</th>
-                      <th className="pb-3 font-semibold">Size</th>
-                      <th className="pb-3 text-center font-semibold">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100 text-gray-700">
-                    {filteredDocuments.map((doc) => (
-                      <tr key={doc.id} className="hover:bg-slate-50 transition duration-150">
-                        <td className="py-3 font-medium text-gray-900 truncate max-w-xs">{doc.fileName}</td>
-                        <td className="py-3">
-                          <span className="bg-purple-50 text-purple-700 border border-purple-100 px-2 py-0.5 rounded text-xs font-medium">
-                            {doc.extension}
-                          </span>
-                        </td>
-                        <td className="py-3 text-gray-500 text-xs">{doc.size}</td>
-                        <td className="py-3 text-center">
-                          <button
-                            className="inline-flex items-center gap-1.5 bg-purple-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium shadow-sm hover:bg-purple-700 transition duration-150"
-                            onClick={() => openPreview(doc)}
-                            title="Preview File"
-                          >
-                            <Eye size={14} />
-                            Preview
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          ) : documents.length === 0 ? (
-            <div className="text-center px-6 py-12 bg-white rounded-xl border border-gray-200 shadow-sm text-gray-400 text-sm">
-              <p>No documents imported yet. Choose a workspace or folder root hierarchy above to begin parsing.</p>
-            </div>
-          ) : (
-            <div className="text-center px-6 py-12 bg-white rounded-xl border border-gray-200 shadow-sm text-gray-400 text-sm">
-              <p>No matching file or document details found.</p>
-            </div>
-          )}
         </div>
-      </div>
- 
-      {/* Preview Modal Backdrop View Component */}
-      {previewOpen && selectedFile && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[1000] backdrop-blur-sm animate-[fadeIn_0.2s_ease-in-out]" onClick={closePreview}>
-          <div className="bg-white rounded-xl max-w-3xl w-[92%] max-h-[85vh] overflow-hidden flex flex-col shadow-xl animate-[slideUp_0.2s_ease-out]" onClick={(e) => e.stopPropagation()}>
-           
-            {/* Modal Header */}
-            <div className="flex justify-between items-center p-4 border-b border-gray-100 bg-slate-50">
-              <h2 className="m-0 text-base font-bold text-gray-900 truncate max-w-md">{selectedFile.fileName}</h2>
-              <div className="flex gap-2 items-center">
-                <button className="bg-purple-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-sm hover:bg-purple-700 transition duration-150" onClick={downloadFile} title="Download file locally">
-                  <Download size={15} />
-                  Download
+
+        <div className="dashboard-summary-row">
+          <div className="metric-card">
+            <p className="metric-label">Total documents</p>
+            <h3>{documents.length}</h3>
+            <p className="metric-meta">Indexed files available for search</p>
+          </div>
+          <div className="metric-card">
+            <p className="metric-label">Filter status</p>
+            <h3>{selectedExtension || 'All types'}</h3>
+            <p className="metric-meta">Current document type filter</p>
+          </div>
+          <div className="metric-card">
+            <p className="metric-label">Recent activity</p>
+            <h3>{history[0] || 'No recent searches'}</h3>
+            <p className="metric-meta">Latest query or workspace action</p>
+          </div>
+        </div>
+
+        <div className="hero-card" onDragOver={(event) => event.preventDefault()} onDrop={handleDrop}>
+          <CloudUpload size={44} className="hero-upload-icon" />
+          <h2>Import Entire Drive</h2>
+          <p className="hero-description">Drag and drop files or browse a folder to import documents and start indexing immediately.</p>
+          <button type="button" className="browse-button" onClick={handleBrowseClick}>
+            {isUploading ? 'Uploading...' : 'Browse Drive'}
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            webkitdirectory="true"
+            directory="true"
+            multiple
+            accept=".pdf,.docx,.xlsx,.txt,.csv,.json,.pptx,.png,.jpg,.jpeg,.gif,.bmp,.webp"
+            style={{ display: 'none' }}
+            onChange={handleUpload}
+          />
+        </div>
+
+        <div className="toolbar-row">
+          <label className="filter-chip">
+            <span>Type</span>
+            <select value={selectedExtension} onChange={(event) => setSelectedExtension(event.target.value)}>
+              <option value="">All</option>
+              {supportedExtensions.map((ext) => (
+                <option key={ext} value={ext}>
+                  {ext.toUpperCase()}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="filter-chip">
+            <span>Size</span>
+            <select value={selectedSize} onChange={(event) => setSelectedSize(event.target.value)}>
+              <option value="">Any size</option>
+              <option value="small">Under 1 MB</option>
+              <option value="medium">1 MB - 10 MB</option>
+              <option value="large">10 MB+</option>
+            </select>
+          </label>
+
+          <label className="filter-chip">
+            <span>Sort</span>
+            <select value={selectedSort} onChange={(event) => setSelectedSort(event.target.value)}>
+              <option value="relevance">Most relevant</option>
+              <option value="newest">Newest</option>
+              <option value="oldest">Oldest</option>
+            </select>
+          </label>
+
+          <button type="button" className="refresh-button" onClick={() => fetchDocuments(searchTerm, selectedExtension, selectedSize, selectedSort)}>
+            Refresh
+          </button>
+        </div>
+
+        <div className="history-panel">
+         
+
+          <div className="history-list">
+            {history.length === 0 ? (
+              <span className="muted"></span>
+            ) : (
+              history.map((item) => (
+                <button key={item} type="button" className="history-item" onClick={() => handleSearch(item)}>
+                  {item}
                 </button>
-                <button className="bg-gray-100 text-gray-700 p-1.5 rounded-lg hover:bg-gray-200 transition duration-150" onClick={closePreview} title="Close Panel">
+              ))
+            )}
+          </div>
+        </div>
+
+        {isLoading ? (
+          <div className="empty-state">
+            <LoaderCircle size={28} className="loading-icon" />
+            <h3>Searching your documents...</h3>
+          </div>
+        ) : documents.length === 0 ? (
+          <div className="empty-state">
+            <Sparkles size={36} />
+            <h3>No matching documents found.</h3>
+            <p>Try a different keyword or upload a document to build your index.</p>
+          </div>
+        ) : (
+          <div className="documents-panel">
+            <div className="documents-summary">
+              <div>
+                <p className="summary-label">Search results</p>
+                <h2>{documents.length} documents found</h2>
+              </div>
+              <button type="button" className="summary-action" onClick={() => fetchDocuments(searchTerm, selectedExtension, selectedSize, selectedSort)}>
+                Refresh
+              </button>
+            </div>
+
+            <div className="documents-table-wrapper">
+              <table className="documents-table">
+                <thead>
+                  <tr>
+                    <th>File</th>
+                    <th>Type</th>
+                    <th>Size</th>
+                    <th>Uploaded</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {documents.map((document) => (
+                    <tr key={document.id} className="document-row" onClick={() => openPreview(document)}>
+                      <td className="file-name-cell">
+                        <div className="file-name-meta">
+                          <div className="document-icon-wrap">{getDocumentIcon(document.extension)}</div>
+                          <div>
+                            <div className="file-name-title">{document.fileName}</div>
+                            <div className="file-name-path">{document.fullPath || 'Local upload'}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>{(document.extension || '').toUpperCase()}</td>
+                      <td>{document.fileSizeLabel}</td>
+                      <td>{formatDate(document.uploadedAt)}</td>
+                      <td className="action-cell">
+                        <button type="button" onClick={(event) => { event.stopPropagation(); openPreview(document); }}>
+                          <Eye size={14} /> Preview
+                        </button>
+                        <button type="button" onClick={(event) => { event.stopPropagation(); downloadFile(document); }}>
+                          <Download size={14} /> Download
+                        </button>
+                        <button type="button" className="danger" onClick={(event) => { event.stopPropagation(); deleteFile(document); }}>
+                          <Trash2 size={14} /> Delete
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {previewOpen && selectedFile && (
+        <div className="preview-modal-overlay" onClick={closePreview}>
+          <div className="preview-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="preview-modal-header">
+              <div>
+                <h2>{selectedFile.fileName}</h2>
+                <p>{(selectedFile.extension || '').toUpperCase()} • {selectedFile.fileSizeLabel}</p>
+              </div>
+              <div className="preview-header-actions">
+                <button type="button" className="preview-action" onClick={() => downloadFile(selectedFile)}>
+                  <Download size={16} /> Download
+                </button>
+                <button type="button" className="close-btn" onClick={closePreview}>
                   <X size={18} />
                 </button>
               </div>
             </div>
- 
-            {/* Modal Info Meta Row */}
-            <div className="flex gap-4 px-5 py-2 bg-slate-100/50 border-b border-gray-100 items-center text-xs text-gray-500">
-              <span className="bg-purple-600 text-white px-1.5 py-0.5 rounded text-[10px] font-bold">{selectedFile.extension}</span>
-              <span>{selectedFile.size}</span>
-              <span>Modified: {selectedFile.lastModified}</span>
+            <div className="preview-toolbar">
+              <div className="preview-toolbar-item">View mode</div>
+              <div className="preview-toolbar-item">Fit to width</div>
+              <div className="preview-toolbar-item">Actual size</div>
             </div>
- 
-            {/* Modal Content Frame Viewport */}
-            <div className="flex-1 overflow-y-auto p-5 flex items-center justify-center bg-slate-50 min-h-[300px]">
-              {renderPreviewContent()}
-            </div>
+            <div className="preview-modal-content">{renderPreviewContent()}</div>
           </div>
         </div>
       )}
     </div>
   );
 }
- 
+
 export default ImportDrive;
