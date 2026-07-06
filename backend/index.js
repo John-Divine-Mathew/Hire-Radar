@@ -6,7 +6,7 @@
     const pool = require('./db');
     const { initializeSearchService, searchDocuments, listDocuments, saveUploadedFile, deleteDocument, UPLOAD_DIR } = require('./searchService');
 
-    app.use(cors());
+    app.use(cors({ origin: 'http://localhost:5173' }));
     app.use(express.json());
     app.use(express.urlencoded({ extended: true }));
     app.use('/uploads', express.static(UPLOAD_DIR));
@@ -63,6 +63,7 @@
             if (experience) {
                 const cleanExp = experience.replace(' years', '').trim();
                 if (cleanExp.includes('-')) {
+                    
                     const [min, max] = cleanExp.split('-').map(Number);
                     queryText += ` AND cndexperience >= $${paramCounter} AND cndexperience <= $${paramCounter + 1}`;
                     queryParams.push(min, max);
@@ -427,6 +428,10 @@
         }
     });
 
+    app.get('/api/status', (_req, res) => {
+        res.json({ status: 'ok', service: 'document-search' });
+    });
+
     app.get('/api/documents/:id/preview', async (req, res) => {
         try {
             const result = await pool.query('SELECT full_path, file_name FROM document_search_index WHERE id = $1', [req.params.id]);
@@ -461,6 +466,7 @@
         }
     });
 
-    app.listen(5000,()=>{
-        console.log('Server has started on port 5000');
+    const PORT = process.env.PORT || 5000;
+    app.listen(PORT, () => {
+        console.log(`Server has started on port ${PORT}`);
     });
