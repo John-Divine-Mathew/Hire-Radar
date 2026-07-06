@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
-import { CloudUpload, Search, Bell, Download, X, Eye } from 'lucide-react';
+import { CloudUpload, Download, X, Eye } from 'lucide-react';
 import Sidebar from '../components/sideBar/sideBar.jsx';
-import './ImportDrive.css';
+import Navbar from '../components/navBar/navBar.jsx';
 
 function ImportDrive() {
   const [documents, setDocuments] = useState([]);
@@ -26,7 +26,7 @@ function ImportDrive() {
     }
   };
 
-  // Extract text from DOCX files (if Mammoth is available)
+  // Extract text from DOCX files
   const extractDocxContent = async (file) => {
     try {
       return '(DOCX file - preview available)';
@@ -153,22 +153,23 @@ function ImportDrive() {
     }
   };
 
-  // Handle drag and drop
+  // Handle drag and drop styling transitions
   const handleDragOver = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    e.currentTarget.classList.add('drag-over');
+    e.currentTarget.classList.add('bg-purple-100', 'border-purple-700', 'scale-[1.02]');
   };
 
   const handleDragLeave = (e) => {
     e.preventDefault();
-    e.currentTarget.classList.remove('drag-over');
+    e.stopPropagation();
+    e.currentTarget.classList.remove('bg-purple-100', 'border-purple-700', 'scale-[1.02]');
   };
 
   const handleDrop = async (e) => {
     e.preventDefault();
     e.stopPropagation();
-    e.currentTarget.classList.remove('drag-over');
+    e.currentTarget.classList.remove('bg-purple-100', 'border-purple-700', 'scale-[1.02]');
     await handleFolderSelect(e);
   };
 
@@ -228,148 +229,172 @@ function ImportDrive() {
     const ext = selectedFile.extension.toLowerCase();
 
     if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext)) {
-      return <img src={selectedFile.blobURL} alt={selectedFile.fileName} className="preview-image" />;
+      return <img src={selectedFile.blobURL} alt={selectedFile.fileName} className="max-w-full max-h-full object-contain rounded-[15px]" />;
     } else if (ext === 'pdf') {
       return (
         <iframe
           src={selectedFile.blobURL}
           title={selectedFile.fileName}
-          className="preview-iframe"
+          className="w-full h-full border-none"
         />
       );
     } else if (['txt', 'csv', 'docx'].includes(ext)) {
       return (
-        <div className="preview-text">
-          <pre>{selectedFile.content || 'No content available'}</pre>
+        <div className="w-full h-full overflow-auto bg-white p-5 rounded-[15px] border border-gray-200">
+          <pre className="m-0 font-mono text-[13px] text-slate-600 white-space-pre-wrap break-all leading-relaxed">
+            {selectedFile.content || 'No content available'}
+          </pre>
         </div>
       );
     } else {
       return (
-        <div className="preview-unavailable">
+        <div className="text-center text-slate-400 text-e16">
           <p>Preview Not Available</p>
-          <p className="text-secondary">File type: {selectedFile.extension}</p>
+          <p className="text-[13px] text-slate-300">File type: {selectedFile.extension}</p>
         </div>
       );
     }
   };
 
   return (
-    <div className="import-drive-container">
-      <Sidebar />
-      
-      <div className="import-drive-content">
-        {/* Search Bar */}
-        <div className="search-container">
-          <div className="search-input-wrapper">
-            <Search size={20} className="search-icon" />
-            <input
-              type="text"
-              placeholder="Search file name or document content..."
-              value={searchTerm}
-              onChange={(e) => handleSearch(e.target.value)}
-              className="search-input"
-            />
-            <Bell size={20} className="notification-icon" />
-          </div>
-        </div>
+    <div className="flex h-screen w-screen flex-col overflow-hidden bg-slate-50">
+      {/* Global Header Navigation */}
+      <Navbar />
 
-        {/* Upload Area */}
-        <div
-          className="upload-area"
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-        >
-          <CloudUpload size={48} className="upload-icon" />
-          <h2 className="upload-title">Import Entire Drive</h2>
-          <p className="upload-subtitle">PDF, DOCX, TXT, Images</p>
-          <button
-            className="browse-button"
-            onClick={() => fileInputRef.current?.click()}
+      {/* Main Container Layout */}
+      <div className="flex flex-1 min-h-0 w-full overflow-hidden">
+        
+        {/* Left Side Navigation Panel */}
+        <Sidebar />
+        
+        {/* Right Side Workspace Pane */}
+        <div className="flex-1 p-6 md:p-10 space-y-6 min-w-0 overflow-y-auto h-full">
+          
+          {/* Workspace Branding Header */}
+          <div className="mb-2 shrink-0">
+            <h1 className="text-2xl font-bold text-gray-900">Import Workspace</h1>
+            <p className="text-sm text-gray-500">Upload entire root directories or specific backup data folders.</p>
+          </div>
+
+          {/* Upload Dropzone Workspace Area */}
+          <div
+            className="bg-white border border-gray-200 border-dashed border-2 rounded-xl p-8 md:p-12 text-center transition-all duration-300 cursor-pointer relative shadow-sm hover:border-purple-500 hover:shadow-md"
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
           >
-            Browse Drive
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            webkitdirectory="true"
-            directory="true"
-            mozdirectory="true"
-            multiple
-            style={{ display: 'none' }}
-            onChange={handleFolderSelect}
-          />
-        </div>
+            <CloudUpload size={44} className="text-purple-600 mx-auto mb-4 animate-[bounce_3s_infinite]" />
+            <h2 className="text-xl font-bold text-gray-800 mb-1">Import Entire Drive Directory</h2>
+            <p className="text-sm text-gray-500 mb-5">Supported formats: PDF, DOCX, TXT, Images, CSV, Sheets</p>
+            
+            <button
+              className="bg-purple-600 text-white px-6 py-2.5 rounded-lg text-sm font-semibold tracking-wide shadow-sm hover:bg-purple-700 transition duration-150"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              Browse Drive Folder
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              webkitdirectory="true"
+              directory="true"
+              mozdirectory="true"
+              multiple
+              className="hidden"
+              onChange={handleFolderSelect}
+            />
+          </div>
 
-        {/* Document Table */}
-        {filteredDocuments.length > 0 ? (
-          <div className="documents-table">
-            <h3 className="table-title">Documents ({filteredDocuments.length})</h3>
-            <table>
-              <thead>
-                <tr>
-                  <th>File Name</th>
-                  <th>Type</th>
-                  <th>Size</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredDocuments.map((doc) => (
-                  <tr key={doc.id}>
-                    <td className="file-name">{doc.fileName}</td>
-                    <td className="file-type">{doc.extension}</td>
-                    <td className="file-size">{doc.size}</td>
-                    <td className="action-cell">
-                      <button
-                        className="preview-button"
-                        onClick={() => openPreview(doc)}
-                        title="Preview"
-                      >
-                        <Eye size={18} />
-                        Preview
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : documents.length === 0 ? (
-          <div className="no-documents">
-            <p>No documents imported yet. Start by selecting a folder above.</p>
-          </div>
-        ) : (
-          <div className="no-documents">
-            <p>No matching documents found</p>
-          </div>
-        )}
+          {/* Document Table Workspace Area */}
+          {filteredDocuments.length > 0 ? (
+            <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm overflow-hidden flex flex-col">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-gray-900">Imported Documents ({filteredDocuments.length})</h3>
+                <input 
+                  type="text"
+                  placeholder="Filter local files..."
+                  value={searchTerm}
+                  onChange={(e) => handleSearch(e.target.value)}
+                  className="max-w-xs w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-purple-500"
+                />
+              </div>
+              
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-200 text-gray-500 text-left text-xs font-semibold uppercase tracking-wider">
+                      <th className="pb-3 font-semibold">File Name</th>
+                      <th className="pb-3 font-semibold">Type</th>
+                      <th className="pb-3 font-semibold">Size</th>
+                      <th className="pb-3 text-center font-semibold">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 text-gray-700">
+                    {filteredDocuments.map((doc) => (
+                      <tr key={doc.id} className="hover:bg-slate-50 transition duration-150">
+                        <td className="py-3 font-medium text-gray-900 truncate max-w-xs">{doc.fileName}</td>
+                        <td className="py-3">
+                          <span className="bg-purple-50 text-purple-700 border border-purple-100 px-2 py-0.5 rounded text-xs font-medium">
+                            {doc.extension}
+                          </span>
+                        </td>
+                        <td className="py-3 text-gray-500 text-xs">{doc.size}</td>
+                        <td className="py-3 text-center">
+                          <button
+                            className="inline-flex items-center gap-1.5 bg-purple-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium shadow-sm hover:bg-purple-700 transition duration-150"
+                            onClick={() => openPreview(doc)}
+                            title="Preview File"
+                          >
+                            <Eye size={14} />
+                            Preview
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : documents.length === 0 ? (
+            <div className="text-center px-6 py-12 bg-white rounded-xl border border-gray-200 shadow-sm text-gray-400 text-sm">
+              <p>No documents imported yet. Choose a workspace or folder root hierarchy above to begin parsing.</p>
+            </div>
+          ) : (
+            <div className="text-center px-6 py-12 bg-white rounded-xl border border-gray-200 shadow-sm text-gray-400 text-sm">
+              <p>No matching file or document details found.</p>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Preview Modal */}
+      {/* Preview Modal Backdrop View Component */}
       {previewOpen && selectedFile && (
-        <div className="preview-modal-overlay" onClick={closePreview}>
-          <div className="preview-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="preview-modal-header">
-              <h2>{selectedFile.fileName}</h2>
-              <div className="preview-modal-actions">
-                <button className="download-btn" onClick={downloadFile} title="Download">
-                  <Download size={20} />
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[1000] backdrop-blur-sm animate-[fadeIn_0.2s_ease-in-out]" onClick={closePreview}>
+          <div className="bg-white rounded-xl max-w-3xl w-[92%] max-h-[85vh] overflow-hidden flex flex-col shadow-xl animate-[slideUp_0.2s_ease-out]" onClick={(e) => e.stopPropagation()}>
+            
+            {/* Modal Header */}
+            <div className="flex justify-between items-center p-4 border-b border-gray-100 bg-slate-50">
+              <h2 className="m-0 text-base font-bold text-gray-900 truncate max-w-md">{selectedFile.fileName}</h2>
+              <div className="flex gap-2 items-center">
+                <button className="bg-purple-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-sm hover:bg-purple-700 transition duration-150" onClick={downloadFile} title="Download file locally">
+                  <Download size={15} />
                   Download
                 </button>
-                <button className="close-btn" onClick={closePreview} title="Close">
-                  <X size={24} />
+                <button className="bg-gray-100 text-gray-700 p-1.5 rounded-lg hover:bg-gray-200 transition duration-150" onClick={closePreview} title="Close Panel">
+                  <X size={18} />
                 </button>
               </div>
             </div>
 
-            <div className="preview-modal-info">
-              <span className="info-badge">{selectedFile.extension}</span>
-              <span className="info-text">{selectedFile.size}</span>
-              <span className="info-text">{selectedFile.lastModified}</span>
+            {/* Modal Info Meta Row */}
+            <div className="flex gap-4 px-5 py-2 bg-slate-100/50 border-b border-gray-100 items-center text-xs text-gray-500">
+              <span className="bg-purple-600 text-white px-1.5 py-0.5 rounded text-[10px] font-bold">{selectedFile.extension}</span>
+              <span>{selectedFile.size}</span>
+              <span>Modified: {selectedFile.lastModified}</span>
             </div>
 
-            <div className="preview-modal-content">
+            {/* Modal Content Frame Viewport */}
+            <div className="flex-1 overflow-y-auto p-5 flex items-center justify-center bg-slate-50 min-h-[300px]">
               {renderPreviewContent()}
             </div>
           </div>

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { getAuthUser, logoutUser, isAuthenticated } from "../../utils/auth";
 import { Search } from "lucide-react";
@@ -9,6 +9,23 @@ const Navbar = () => {
   
   // Safely capture destructuring with a fallback to avoid crash if location.state is null
   const { name, email } = location.state || {};
+
+  // Synchronize state to localStorage on mount/update so it persists across page switches & refreshes
+  useEffect(() => {
+    if (name || email) {
+      try {
+        const existingUser = JSON.parse(localStorage.getItem("user")) || {};
+        const updatedUser = {
+          ...existingUser,
+          ...(name && { name }),
+          ...(email && { email }),
+        };
+        localStorage.setItem("user", JSON.stringify(updatedUser));
+      } catch (e) {
+        console.error("Failed to save user session backup", e);
+      }
+    }
+  }, [name, email]);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -37,25 +54,21 @@ const Navbar = () => {
     <>
       {/* Navbar */}
       <nav className="sticky top-0 z-50 w-full bg-white border-b border-slate-200">
-
         <div className="w-full px-3 sm:px-6 py-3 flex justify-between items-center gap-3 sm:gap-6">
 
           {/* Logo */}
-
           <div className="flex items-center gap-2 sm:gap-4 min-w-0">
             <img
               src="/hirotec-logo.webp" 
               alt="HIROTEC Logo"
               className="h-10 sm:h-12 md:h-16 w-auto object-contain" 
             />
-
             <h1 className="text-lg sm:text-2xl md:text-3xl font-extrabold text-purple-700 whitespace-nowrap">
-              Hire-Radar
+              Hire radar
             </h1>
           </div>
 
           {/* Buttons / Controls */}
-
           <div className="flex items-center gap-2 sm:gap-4 shrink-0">
 
             {/* Search */}
@@ -133,6 +146,10 @@ const Navbar = () => {
               <button
                 onClick={() => {
                   logoutUser();
+                  
+                  // --- CLEARING STORAGE AT END OF SESSION ---
+                  localStorage.clear(); 
+                  
                   setShowLogoutConfirm(false);
                   navigate("/");
                 }}
