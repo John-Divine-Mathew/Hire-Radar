@@ -1,377 +1,323 @@
-import React, { useState, useRef } from 'react';
-import { CloudUpload, Search, Bell, Download, X, Eye } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { CloudUpload, Search, Download, Eye, Trash2, Sparkles, FileText, FileSpreadsheet, FileArchive, LoaderCircle } from 'lucide-react';
 import Sidebar from '../components/sideBar/sideBar.jsx';
 import './ImportDrive.css';
 
+const API_BASE_URL = 'http://localhost:5000';
+
 function ImportDrive() {
   const [documents, setDocuments] = useState([]);
-  const [filteredDocuments, setFilteredDocuments] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [selectedExtension, setSelectedExtension] = useState('');
+  const [selectedSize, setSelectedSize] = useState('');
+  const [selectedSort, setSelectedSort] = useState('relevance');
+  const [history, setHistory] = useState([]);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const fileInputRef = useRef(null);
 
-  // Supported file extensions
-  const SUPPORTED_EXTENSIONS = [
-    'pdf', 'doc', 'docx', 'txt', 'csv', 'png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp', 'ppt', 'pptx', 'xls', 'xlsx', 'zip'
-  ];
+  const supportedExtensions = useMemo(() => ['pdf', 'docx', 'xlsx', 'txt', 'csv', 'json', 'pptx'], []);
 
-  // Extract text from TXT files
-  const extractTextContent = async (file) => {
+  const fetchDocuments = async (term = '', extension = '', size = '', sort = 'relevance') => {
+    setIsLoading(true);
     try {
-      return await file.text();
+      const params = new URLSearchParams();
+      if (term) params.set('q', term);
+      if (extension) params.set('extension', extension);
+      if (size) params.set('sizeFilter', size);
+      if (sort) params.set('sort', sort);
+
+      const response = await fetch(`${API_BASE_URL}/api/search?${params.toString()}`);
+      const result = await response.json();
+      setDocuments(Array.isArray(result) ? result : []);
     } catch (error) {
-      console.error('Error extracting TXT content:', error);
-      return '';
+      console.error('Unable to fetch indexed documents:', error);
+      setDocuments([]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // Extract text from DOCX files (if Mammoth is available)
-  const extractDocxContent = async (file) => {
-    try {
-      return '(DOCX file - preview available)';
-    } catch (error) {
-      console.error('Error extracting DOCX content:', error);
-      return '(Unable to extract DOCX content)';
-    }
-  };
+  useEffect(() => {
+    fetchDocuments(searchTerm, selectedExtension, selectedSize, selectedSort);
+  }, [selectedExtension, selectedSize, selectedSort]);
 
-  // Extract text from CSV files
-  const extractCsvContent = async (file) => {
-    try {
-      return await file.text();
-    } catch (error) {
-      console.error('Error extracting CSV content:', error);
-      return '';
-    }
-  };
-
-  // Extract content based on file type
-  const extractFileContent = async (file) => {
-    const ext = file.name.split('.').pop().toLowerCase();
-    
-    try {
-      if (['txt'].includes(ext)) {
-        return await extractTextContent(file);
-      } else if (['docx'].includes(ext)) {
-        return await extractDocxContent(file);
-      } else if (['csv'].includes(ext)) {
-        return await extractCsvContent(file);
-      } else if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext)) {
-        return '(Image file - preview available)';
-      } else if (['pdf'].includes(ext)) {
-        return '(PDF file - preview available)';
-      } else if (['xlsx', 'xls'].includes(ext)) {
-        return '(Excel file - sheet names available)';
-      } else if (['pptx', 'ppt'].includes(ext)) {
-        return '(PowerPoint file - slide information available)';
-      } else if (['zip'].includes(ext)) {
-        return '(ZIP file - metadata available)';
-      }
-      return '';
-    } catch (error) {
-      console.error('Error extracting content:', error);
-      return '';
-    }
-  };
-
-  // Process files recursively
-  const processFilesRecursively = async (items) => {
-    const newDocuments = [];
-
-    for (const item of items) {
-      if (item.kind === 'file') {
-        const file = await item.getFile();
-        const ext = file.name.split('.').pop().toLowerCase();
-
-        if (SUPPORTED_EXTENSIONS.includes(ext)) {
-          const content = await extractFileContent(file);
-          const blobURL = URL.createObjectURL(file);
-
-          newDocuments.push({
-            id: Date.now() + Math.random(),
-            fileName: file.name,
-            extension: ext.toUpperCase(),
-            size: formatFileSize(file.size),
-            sizeBytes: file.size,
-            path: file.webkitRelativePath || file.name,
-            lastModified: new Date(file.lastModified).toLocaleDateString(),
-            blobURL: blobURL,
-            content: content,
-            file: file,
-            type: file.type
-          });
-        }
-      } else if (item.kind === 'directory') {
-        const dirReader = item.createReader();
-        const entries = await new Promise((resolve, reject) => {
-          dirReader.readEntries(resolve, reject);
-        });
-        const subFiles = await processFilesRecursively(entries);
-        newDocuments.push(...subFiles);
+  useEffect(() => {
+    const saved = localStorage.getItem('document-search-history');
+    if (saved) {
+      try {
+        setHistory(JSON.parse(saved));
+      } catch (error) {
+        console.error('Unable to restore history:', error);
       }
     }
+  }, []);
 
-    return newDocuments;
+  const persistHistory = (value) => {
+    const trimmed = value.trim();
+    if (!trimmed) return;
+
+    const nextHistory = [trimmed, ...history.filter((entry) => entry !== trimmed)].slice(0, 10);
+    setHistory(nextHistory);
+    localStorage.setItem('document-search-history', JSON.stringify(nextHistory));
   };
 
-  // Handle folder selection
-  const handleFolderSelect = async (event) => {
-    const items = event.dataTransfer?.items || event.target.files;
-    
-    if (!items) return;
-
-    try {
-      const entries = [];
-      
-      if (event.dataTransfer?.items) {
-        // Drag and drop
-        for (let i = 0; i < items.length; i++) {
-          const entry = items[i].webkitGetAsEntry?.();
-          if (entry) {
-            entries.push(entry);
-          }
-        }
-      } else {
-        // File input
-        for (let i = 0; i < items.length; i++) {
-          const file = items[i];
-          if (file.webkitRelativePath || file.type) {
-            entries.push(file);
-          }
-        }
-      }
-
-      if (entries.length > 0) {
-        const newDocs = await processFilesRecursively(entries);
-        const allDocs = [...newDocs, ...documents].sort((a, b) => b.id - a.id);
-        setDocuments(allDocs);
-        setFilteredDocuments(allDocs);
-      }
-    } catch (error) {
-      console.error('Error processing files:', error);
-    }
-  };
-
-  // Handle drag and drop
-  const handleDragOver = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    e.currentTarget.classList.add('drag-over');
-  };
-
-  const handleDragLeave = (e) => {
-    e.preventDefault();
-    e.currentTarget.classList.remove('drag-over');
-  };
-
-  const handleDrop = async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    e.currentTarget.classList.remove('drag-over');
-    await handleFolderSelect(e);
-  };
-
-  // Format file size
-  const formatFileSize = (bytes) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
-  };
-
-  // Real-time search
   const handleSearch = (value) => {
-    setSearchTerm(value);
-    
-    if (value.trim() === '') {
-      setFilteredDocuments(documents);
-    } else {
-      const lowerSearch = value.toLowerCase();
-      const filtered = documents.filter(doc => {
-        const fileName = doc.fileName.toLowerCase();
-        const content = doc.content.toLowerCase();
-        return fileName.includes(lowerSearch) || content.includes(lowerSearch);
+    const nextValue = value;
+    setSearchTerm(nextValue);
+
+    if (nextValue.trim().length > 0) {
+      persistHistory(nextValue);
+    }
+
+    if (nextValue.trim() === '') {
+      fetchDocuments('', selectedExtension, selectedSize, selectedSort);
+      return;
+    }
+
+    fetchDocuments(nextValue, selectedExtension, selectedSize, selectedSort);
+  };
+
+  const handleUpload = async (event) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    const formData = new FormData();
+    Array.from(files).forEach((file) => formData.append('files', file));
+
+    setIsUploading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/upload`, {
+        method: 'POST',
+        body: formData,
       });
-      setFilteredDocuments(filtered);
+      if (response.ok) {
+        await fetchDocuments(searchTerm, selectedExtension, selectedSize, selectedSort);
+      }
+    } catch (error) {
+      console.error('Upload failed:', error);
+    } finally {
+      setIsUploading(false);
+      event.target.value = '';
     }
   };
 
-  // Open preview modal
-  const openPreview = (file) => {
-    setSelectedFile(file);
+  const handleDrop = async (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const droppedFiles = Array.from(event.dataTransfer.files || []);
+    if (!droppedFiles.length) return;
+
+    const formData = new FormData();
+    droppedFiles.forEach((file) => formData.append('files', file));
+
+    setIsUploading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/upload`, {
+        method: 'POST',
+        body: formData,
+      });
+      if (response.ok) {
+        await fetchDocuments(searchTerm, selectedExtension, selectedSize, selectedSort);
+      }
+    } catch (error) {
+      console.error('Upload failed:', error);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const openPreview = (document) => {
+    setSelectedFile(document);
     setPreviewOpen(true);
   };
 
-  // Close preview modal
   const closePreview = () => {
     setPreviewOpen(false);
     setSelectedFile(null);
   };
 
-  // Download file
-  const downloadFile = () => {
-    if (!selectedFile) return;
-    const link = document.createElement('a');
-    link.href = selectedFile.blobURL;
-    link.download = selectedFile.fileName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const downloadFile = async (document) => {
+    if (!document) return;
+    window.open(`${API_BASE_URL}/api/documents/${document.id}/download`, '_blank');
   };
 
-  // Render preview content based on file type
+  const deleteFile = async (document) => {
+    if (!document) return;
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/documents/${document.id}`, { method: 'DELETE' });
+      if (response.ok) {
+        await fetchDocuments(searchTerm, selectedExtension, selectedSize, selectedSort);
+      }
+    } catch (error) {
+      console.error('Delete failed:', error);
+    }
+  };
+
+  const formatDate = (value) => {
+    if (!value) return 'Recently added';
+    return new Date(value).toLocaleDateString();
+  };
+
+  const getDocumentIcon = (extension) => {
+    const ext = (extension || '').toLowerCase();
+    if (ext === 'pdf') return <FileText className="doc-icon pdf" />;
+    if (ext === 'docx' || ext === 'doc') return <FileText className="doc-icon docx" />;
+    if (ext === 'xlsx' || ext === 'xls' || ext === 'csv') return <FileSpreadsheet className="doc-icon excel" />;
+    if (ext === 'txt') return <FileText className="doc-icon txt" />;
+    return <FileArchive className="doc-icon generic" />;
+  };
+
   const renderPreviewContent = () => {
     if (!selectedFile) return null;
+    const ext = (selectedFile.extension || '').toLowerCase();
 
-    const ext = selectedFile.extension.toLowerCase();
-
-    if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext)) {
-      return <img src={selectedFile.blobURL} alt={selectedFile.fileName} className="preview-image" />;
-    } else if (ext === 'pdf') {
-      return (
-        <iframe
-          src={selectedFile.blobURL}
-          title={selectedFile.fileName}
-          className="preview-iframe"
-        />
-      );
-    } else if (['txt', 'csv', 'docx'].includes(ext)) {
-      return (
-        <div className="preview-text">
-          <pre>{selectedFile.content || 'No content available'}</pre>
-        </div>
-      );
-    } else {
-      return (
-        <div className="preview-unavailable">
-          <p>Preview Not Available</p>
-          <p className="text-secondary">File type: {selectedFile.extension}</p>
-        </div>
-      );
+    if (ext === 'pdf') {
+      return <iframe title={selectedFile.fileName} src={`${API_BASE_URL}/api/documents/${selectedFile.id}/preview`} className="preview-iframe" />;
     }
+
+    if (ext === 'txt' || ext === 'csv' || ext === 'json') {
+      return <pre className="preview-text">{selectedFile.extractedText || 'No preview text is available for this document.'}</pre>;
+    }
+
+    return <div className="preview-unavailable">Preview is available after the document is opened or downloaded.</div>;
   };
 
   return (
     <div className="import-drive-container">
       <Sidebar />
-      
+
       <div className="import-drive-content">
-        {/* Search Bar */}
+        <div className="hero-panel">
+          <div>
+            <p className="eyebrow">Enterprise Document Search</p>
+            <h1>Browse Drive</h1>
+            <p className="hero-copy">Search file names and document contents with the speed of modern cloud storage.</p>
+          </div>
+          <div className="hero-badge">
+            <Sparkles size={18} />
+            Indexed & secured
+          </div>
+        </div>
+
         <div className="search-container">
           <div className="search-input-wrapper">
             <Search size={20} className="search-icon" />
             <input
               type="text"
-              placeholder="Search file name or document content..."
+              placeholder="Search document names or contents..."
               value={searchTerm}
-              onChange={(e) => handleSearch(e.target.value)}
+              onChange={(event) => handleSearch(event.target.value)}
               className="search-input"
             />
-            <Bell size={20} className="notification-icon" />
+            {isLoading ? <LoaderCircle size={18} className="loading-icon" /> : null}
           </div>
         </div>
 
-        {/* Upload Area */}
-        <div
-          className="upload-area"
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-        >
-          <CloudUpload size={48} className="upload-icon" />
-          <h2 className="upload-title">Import Entire Drive</h2>
-          <p className="upload-subtitle">PDF, DOCX, TXT, Images</p>
-          <button
-            className="browse-button"
-            onClick={() => fileInputRef.current?.click()}
-          >
-            Browse Drive
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            webkitdirectory="true"
-            directory="true"
-            mozdirectory="true"
-            multiple
-            style={{ display: 'none' }}
-            onChange={handleFolderSelect}
-          />
+        <div className="toolbar-row">
+          <label className="filter-chip">
+            <span>Type</span>
+            <select value={selectedExtension} onChange={(event) => setSelectedExtension(event.target.value)}>
+              <option value="">All</option>
+              {supportedExtensions.map((ext) => <option key={ext} value={ext}>{ext.toUpperCase()}</option>)}
+            </select>
+          </label>
+
+          <label className="filter-chip">
+            <span>Size</span>
+            <select value={selectedSize} onChange={(event) => setSelectedSize(event.target.value)}>
+              <option value="">Any size</option>
+              <option value="small">Under 1 MB</option>
+              <option value="medium">1 MB - 10 MB</option>
+              <option value="large">10 MB+</option>
+            </select>
+          </label>
+
+          <label className="filter-chip">
+            <span>Sort</span>
+            <select value={selectedSort} onChange={(event) => setSelectedSort(event.target.value)}>
+              <option value="relevance">Most relevant</option>
+              <option value="newest">Newest</option>
+              <option value="oldest">Oldest</option>
+            </select>
+          </label>
         </div>
 
-        {/* Document Table */}
-        {filteredDocuments.length > 0 ? (
-          <div className="documents-table">
-            <h3 className="table-title">Documents ({filteredDocuments.length})</h3>
-            <table>
-              <thead>
-                <tr>
-                  <th>File Name</th>
-                  <th>Type</th>
-                  <th>Size</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredDocuments.map((doc) => (
-                  <tr key={doc.id}>
-                    <td className="file-name">{doc.fileName}</td>
-                    <td className="file-type">{doc.extension}</td>
-                    <td className="file-size">{doc.size}</td>
-                    <td className="action-cell">
-                      <button
-                        className="preview-button"
-                        onClick={() => openPreview(doc)}
-                        title="Preview"
-                      >
-                        <Eye size={18} />
-                        Preview
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        <div className="upload-area" onDragOver={(event) => event.preventDefault()} onDrop={handleDrop}>
+          <CloudUpload size={42} className="upload-icon" />
+          <h2 className="upload-title">Import documents for intelligent search</h2>
+          <p className="upload-subtitle">Upload PDF, DOCX, XLSX, TXT, and more. Indexing starts immediately.</p>
+          <label className="browse-button">
+            {isUploading ? 'Uploading…' : 'Browse Drive'}
+            <input ref={fileInputRef} type="file" multiple style={{ display: 'none' }} onChange={handleUpload} />
+          </label>
+        </div>
+
+        <div className="history-panel">
+          <div className="history-header">
+            <h3>Recent searches</h3>
+            <button type="button" className="history-clear" onClick={() => { setHistory([]); localStorage.removeItem('document-search-history'); }}>
+              Clear
+            </button>
           </div>
+          <div className="history-list">
+            {history.length === 0 ? <span className="muted">No recent searches yet.</span> : history.map((item) => (
+              <button key={item} type="button" className="history-item" onClick={() => handleSearch(item)}>{item}</button>
+            ))}
+          </div>
+        </div>
+
+        {isLoading ? (
+          <div className="empty-state"><LoaderCircle size={28} className="loading-icon" />Searching your documents…</div>
         ) : documents.length === 0 ? (
-          <div className="no-documents">
-            <p>No documents imported yet. Start by selecting a folder above.</p>
+          <div className="empty-state">
+            <Sparkles size={36} />
+            <h3>No matching documents found.</h3>
+            <p>Try a different keyword or upload a document to build your index.</p>
           </div>
         ) : (
-          <div className="no-documents">
-            <p>No matching documents found</p>
+          <div className="documents-grid">
+            {documents.map((document) => (
+              <article key={document.id} className="document-card">
+                <div className="document-card-top">
+                  <div className="document-icon-wrap">{getDocumentIcon(document.extension)}</div>
+                  <div className="document-meta">
+                    <h3>{document.fileName}</h3>
+                    <p>{(document.extension || '').toUpperCase()} • {document.fileSizeLabel}</p>
+                  </div>
+                </div>
+
+                <div className="preview-snippet">
+                  {document.extractedText ? document.extractedText.slice(0, 220) : 'The document is indexed and ready for search.'}
+                </div>
+
+                <div className="document-footer">
+                  <span>{formatDate(document.uploadedAt)}</span>
+                  <div className="action-row">
+                    <button type="button" onClick={() => openPreview(document)}><Eye size={16} /> Preview</button>
+                    <button type="button" onClick={() => downloadFile(document)}><Download size={16} /> Download</button>
+                    <button type="button" className="danger" onClick={() => deleteFile(document)}><Trash2 size={16} /> Delete</button>
+                  </div>
+                </div>
+              </article>
+            ))}
           </div>
         )}
       </div>
 
-      {/* Preview Modal */}
       {previewOpen && selectedFile && (
         <div className="preview-modal-overlay" onClick={closePreview}>
-          <div className="preview-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="preview-modal" onClick={(event) => event.stopPropagation()}>
             <div className="preview-modal-header">
-              <h2>{selectedFile.fileName}</h2>
-              <div className="preview-modal-actions">
-                <button className="download-btn" onClick={downloadFile} title="Download">
-                  <Download size={20} />
-                  Download
-                </button>
-                <button className="close-btn" onClick={closePreview} title="Close">
-                  <X size={24} />
-                </button>
+              <div>
+                <h2>{selectedFile.fileName}</h2>
+                <p>{(selectedFile.extension || '').toUpperCase()} • {selectedFile.fileSizeLabel}</p>
               </div>
+              <button type="button" className="close-btn" onClick={closePreview}>✕</button>
             </div>
-
-            <div className="preview-modal-info">
-              <span className="info-badge">{selectedFile.extension}</span>
-              <span className="info-text">{selectedFile.size}</span>
-              <span className="info-text">{selectedFile.lastModified}</span>
-            </div>
-
-            <div className="preview-modal-content">
-              {renderPreviewContent()}
-            </div>
+            <div className="preview-modal-content">{renderPreviewContent()}</div>
           </div>
         </div>
       )}
