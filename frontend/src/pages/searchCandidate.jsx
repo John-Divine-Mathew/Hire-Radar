@@ -7,14 +7,16 @@ function SearchCandidatePage() {
     const [searchVar, setSearchVar] = useState('');
     const [skillInput, setSkillInput] = useState('');
     const [keywordInput, setKeywordInput] = useState('');
+    const [locationInput, setLocationInput] = useState(''); 
+    const [errorMessage, setErrorMessage] = useState('');
     
     const [activeSourcingFilters, setActiveSourcingFilters] = useState({
-        JobTitle: 'Software Developer', 
-        MinExp: '2',
-        MaxExp: '6',
-        Skills: ['React', 'Next.js'],   
-        Keywords: ['communication skills'],
-        LocationSearch: 'Coimbatore, Tamil Nadu, India',
+        JobTitle: '', 
+        MinExp: '',
+        MaxExp: '',
+        Skills: [],   
+        Keywords: [],
+        LocationSearch: [], 
         SidebarLocation: '',
         SidebarExperience: '',
         SidebarJobStatus: '',
@@ -66,8 +68,49 @@ function SearchCandidatePage() {
         });
     };
 
+    const handleLocationKeyDown = (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const trimmed = locationInput.trim();
+            if (trimmed && !filterValues.LocationSearch.includes(trimmed)) {
+                setFilterValues({
+                    ...filterValues,
+                    LocationSearch: [...filterValues.LocationSearch, trimmed]
+                });
+            }
+            setLocationInput('');
+        }
+    };
+
+    const removeLocationTag = (locationToRemove) => {
+        setFilterValues({
+            ...filterValues,
+            LocationSearch: filterValues.LocationSearch.filter(l => l !== locationToRemove)
+        });
+    };
+
     const handleSearchSubmit = () => {
-        if (!filterValues.JobTitle.trim()) return;
+        // Check if ANY other filter fields have data configured
+        const hasOtherFilters = !!(
+            filterValues.MinExp || 
+            filterValues.MaxExp || 
+            filterValues.Skills.length > 0 || 
+            filterValues.Keywords.length > 0 || 
+            filterValues.LocationSearch.length > 0 ||
+            filterValues.SidebarLocation.trim() ||
+            filterValues.SidebarExperience.trim() ||
+            filterValues.SidebarJobStatus.trim() ||
+            filterValues.SidebarOpenToWork.trim() ||
+            filterValues.SidebarSkills.trim()
+        );
+
+        // Validation check: If other filters are active, Job Title is strictly required
+        if (hasOtherFilters && (!filterValues.JobTitle || filterValues.JobTitle.trim() === '')) {
+            setErrorMessage('Job Title is required when applying search filters.');
+            return;
+        }
+
+        setErrorMessage('');
         setActiveSourcingFilters({ ...filterValues });
     };
 
@@ -75,13 +118,15 @@ function SearchCandidatePage() {
         setSearchVar("");
         setSkillInput("");
         setKeywordInput("");
+        setLocationInput("");
+        setErrorMessage("");
         const cleared = {
             JobTitle: '',
             MinExp: '',
             MaxExp: '',
             Skills: [],
             Keywords: [],
-            LocationSearch: '',
+            LocationSearch: [], 
             SidebarLocation: '',
             SidebarExperience: '',
             SidebarJobStatus: '',
@@ -92,19 +137,12 @@ function SearchCandidatePage() {
         setActiveSourcingFilters(cleared);
     };
 
-    const isSearchDisabled = !filterValues.JobTitle.trim();
-
     return (
         <div className="flex h-screen w-screen flex-col overflow-hidden bg-slate-50">
             <Navbar />
             <div className="flex flex-1 min-h-0 w-full overflow-hidden">
                 <Sidebar />
                 
-                {/* 
-                  Main Sub-Workspace Viewport Frame:
-                  Enforced strict h-full layout alignment bounds to prevent child components 
-                  from overlapping the Navbar container space.
-                */}
                 <div className="flex-1 flex overflow-hidden min-w-0 h-full">
                     
                     {/* Left Pane: Sidebar Filters Input Panel */}
@@ -120,7 +158,6 @@ function SearchCandidatePage() {
                         </div>
 
                         <div className="space-y-5 overflow-y-auto pr-1 flex-1 min-h-0">
-                            {/* Location Box */}
                             <div>
                                 <label className="block text-sm font-semibold text-gray-600 mb-1.5">Location</label>
                                 <input 
@@ -132,7 +169,6 @@ function SearchCandidatePage() {
                                 />
                             </div>
 
-                            {/* Experience Box */}
                             <div>
                                 <label className="block text-sm font-semibold text-gray-600 mb-1.5">Experience</label>
                                 <input 
@@ -144,7 +180,6 @@ function SearchCandidatePage() {
                                 />
                             </div>
 
-                            {/* Job Status Box */}
                             <div>
                                 <label className="block text-sm font-semibold text-gray-600 mb-1.5">Job Status</label>
                                 <input 
@@ -156,7 +191,6 @@ function SearchCandidatePage() {
                                 />
                             </div>
 
-                            {/* Open to Work Box */}
                             <div>
                                 <label className="block text-sm font-semibold text-gray-600 mb-1.5">Open to Work</label>
                                 <input 
@@ -168,7 +202,6 @@ function SearchCandidatePage() {
                                 />
                             </div>
 
-                            {/* Skills Box */}
                             <div>
                                 <label className="block text-sm font-semibold text-gray-600 mb-1.5">Skills</label>
                                 <input 
@@ -188,14 +221,20 @@ function SearchCandidatePage() {
                         {/* Top Input Form Container */}
                         <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm grid grid-cols-12 gap-4 shrink-0">
                             <div className="col-span-4">
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Job Title*</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Job Title
+                                </label>
                                 <input 
                                     type="text" 
                                     value={filterValues.JobTitle}
-                                    onChange={(e) => setFilterValues({...filterValues, JobTitle: e.target.value})}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-purple-500"
-                                    placeholder="Required to run search"
+                                    onChange={(e) => {
+                                        setFilterValues({...filterValues, JobTitle: e.target.value});
+                                        if (e.target.value.trim()) setErrorMessage('');
+                                    }}
+                                    className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-1 ${errorMessage ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'border-gray-300 focus:ring-purple-500 focus:border-purple-500'}`}
+                                    placeholder="Search job title..."
                                 />
+                                {errorMessage && <p className="text-xs text-red-500 mt-1">{errorMessage}</p>}
                             </div>
 
                             <div className="col-span-4">
@@ -255,6 +294,7 @@ function SearchCandidatePage() {
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Experience (years)</label>
                                     <input 
                                         type="number" 
+                                        placeholder="Min"
                                         value={filterValues.MinExp} 
                                         onChange={(e) => setFilterValues({...filterValues, MinExp: e.target.value})}
                                         className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-center focus:outline-none focus:border-purple-500"
@@ -264,6 +304,7 @@ function SearchCandidatePage() {
                                     <label className="block text-sm font-medium text-transparent mb-1">Max</label>
                                     <input 
                                         type="number" 
+                                        placeholder="Max"
                                         value={filterValues.MaxExp} 
                                         onChange={(e) => setFilterValues({...filterValues, MaxExp: e.target.value})}
                                         className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-center focus:outline-none focus:border-purple-500"
@@ -273,24 +314,34 @@ function SearchCandidatePage() {
 
                             <div className="col-span-5">
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-                                <input 
-                                    type="text" 
-                                    placeholder="Search location (Optional)" 
-                                    value={filterValues.LocationSearch}
-                                    onChange={(e) => setFilterValues({...filterValues, LocationSearch: e.target.value})}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-purple-500"
-                                />
+                                <div className="w-full px-3 py-1.5 border border-gray-300 rounded-lg flex flex-wrap gap-1.5 items-center bg-white min-h-[38px] focus-within:ring-1 focus-within:ring-purple-500 focus-within:border-purple-500">
+                                    {filterValues.LocationSearch.map(loc => (
+                                        <span key={loc} className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-xs border border-blue-100 font-medium">
+                                            {loc} 
+                                            <button 
+                                                type="button"
+                                                onClick={() => removeLocationTag(loc)}
+                                                className="font-bold text-blue-400 hover:text-blue-600 ml-0.5"
+                                            >
+                                                ×
+                                            </button>
+                                        </span>
+                                    ))}
+                                    <input 
+                                        type="text"
+                                        placeholder={filterValues.LocationSearch.length === 0 ? "Add location..." : ""}
+                                        value={locationInput}
+                                        onChange={(e) => setLocationInput(e.target.value)}
+                                        onKeyDown={handleLocationKeyDown}
+                                        className="flex-1 min-w-[60px] text-sm bg-transparent outline-none border-none p-0 focus:ring-0"
+                                    />
+                                </div>
                             </div>
 
                             <div className="col-span-3 flex justify-end items-end pb-1">
                                 <button 
                                     onClick={handleSearchSubmit}
-                                    disabled={isSearchDisabled}
-                                    className={`px-8 py-2.5 rounded-lg font-semibold tracking-wide transition duration-150 shadow-sm text-white ${
-                                        isSearchDisabled 
-                                        ? 'bg-gray-300 cursor-not-allowed opacity-60' 
-                                        : 'bg-purple-600 hover:bg-purple-700'
-                                    }`}
+                                    className="px-8 py-2.5 rounded-lg font-semibold tracking-wide transition duration-150 shadow-sm text-white bg-purple-600 hover:bg-purple-700"
                                 >
                                     Search
                                 </button>
@@ -299,35 +350,22 @@ function SearchCandidatePage() {
 
                         {/* Candidates Workspace Card Area */}
                         <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm flex flex-col flex-1 min-h-0 overflow-hidden">
-                            
-                            {/* Inner Actions Row (Stays Static at Top) */}
-                            <div className="flex justify-between items-center mb-6 gap-4 shrink-0">
+                            <div className="mb-6 shrink-0">
                                 <input 
                                     type="text"
-                                    placeholder="Search candidates..."
+                                    placeholder="Search candidates by name..."
                                     value={searchVar}
                                     onChange={(e) => setSearchVar(e.target.value)}
                                     className="max-w-md w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
                                 />
-                                <div className="flex items-center gap-2">
-                                    <button className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition duration-150 flex items-center gap-1.5">
-                                        📞 Get all phone
-                                    </button>
-                                    <button className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition duration-150 flex items-center gap-1.5">
-                                        ✉️ Get all email
-                                    </button>
-                                </div>
                             </div>
 
-                            {/* Enforced layout wrapper boundary to securely isolate RenderList rendering scope */}
                             <div className="flex-1 min-h-0 overflow-hidden">
                                 <RenderList var1={searchVar} activeFilters={[]} filterValues={activeSourcingFilters} />
                             </div>
                         </div>
-
                     </div>
                 </div>
-
             </div>
         </div>
     );
