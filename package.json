@@ -16,7 +16,7 @@
   "type": "commonjs",
   "main": "index.js",
   "scripts": {
-    "backend": "npm start --prefix backend",
+    "backend": "npm run dev --prefix backend",
     "frontend": "npm run dev --prefix frontend",
     "dev": "concurrently \"npm run backend\" \"npm run frontend\""
   },
@@ -27,7 +27,9 @@
     "mammoth": "^1.12.0",
     "multer": "^2.2.0",
     "nanoid": "^5.1.14",
+    "node-fetch": "^3.3.2",
     "pdf-parse": "^2.4.5",
+    "wait-on": "^9.0.10",
     "xlsx": "^0.18.5"
   }
 }

@@ -4,8 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "node index",
-    "dev": "nodemon index"
+    "server": "wait-on tcp:127.0.0.1:5001 && nodemon index.js",
+    "python": "python -u app.py",
+    "dev": "concurrently --kill-others \"npm run python\" \"npm run server\""
   },
   "keywords": [],
   "author": "",
@@ -13,11 +14,13 @@
   "type": "commonjs",
   "dependencies": {
     "chokidar": "^3.5.4",
+    "concurrently": "^10.0.3",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "mammoth": "^1.4.18",
     "multer": "^2.2.0",
+    "node-fetch": "^3.3.2",
     "pdf-parse": "^1.1.1",
     "pg": "^8.21.0",
     "xlsx": "^0.18.5"

@@ -19,6 +19,8 @@ import * as pdfjsLib from 'pdfjs-dist/build/pdf';
 import mammoth from 'mammoth';
 import * as XLSX from 'xlsx';
 
+const API_BASE_URL = 'http://localhost:5000';
+
 function ImportDrive() {
   const [documents, setDocuments] = useState([]);
   const [filteredDocuments, setFilteredDocuments] = useState([]);
@@ -33,13 +35,22 @@ function ImportDrive() {
   const [selectedFile, setSelectedFile] = useState(null);
   const fileInputRef = useRef(null);
 
-  // Supported file extensions
+  // Supported file extensions (Removed 'zip')
   const supportedExtensions = useMemo(
-    () => ['pdf', 'doc', 'docx', 'txt', 'csv', 'png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp', 'ppt', 'pptx', 'xls', 'xlsx', 'zip'],
+    () => ['pdf', 'doc', 'docx', 'txt', 'csv', 'png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp', 'ppt', 'pptx', 'xls', 'xlsx'],
     []
   );
 
-  // Format file size
+  // Central validation gate for file filtering rule requirements
+  const isValidFile = (fileName) => {
+    if (!fileName) return false;
+    const ext = fileName.split('.').pop().toLowerCase();
+    const isTemporary = fileName.startsWith('~$');
+    const isZip = ext === 'zip';
+    return !isTemporary && !isZip && supportedExtensions.includes(ext);
+  };
+
+  // Format file size helper
   const formatFileSize = (bytes) => {
     if (bytes === 0 || !bytes) return '0 B';
     const k = 1024;
@@ -48,30 +59,67 @@ function ImportDrive() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(i === 0 ? 0 : 1)) + ' ' + sizes[i];
   };
 
-  // Restore Search History on Mount
-  useEffect(() => {
-    const savedHistory = localStorage.getItem('document-search-history');
-    if (savedHistory) {
-      try {
-        setHistory(JSON.parse(savedHistory));
-      } catch (err) {
-        console.error('Unable to restore search history:', err);
-      }
+  // Fetch baseline dataset records directly from Backend Database pipelines on startup
+  const fetchBackendDocuments = async (searchQuery = '', ext = '', size = '', sortOrder = 'relevance') => {
+    setIsLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (searchQuery.trim()) params.append('q', searchQuery);
+      if (ext) params.append('extension', ext);
+      if (size) params.append('sizeFilter', size);
+      if (sortOrder) params.append('sort', sortOrder);
+
+      const route = searchQuery.trim() ? '/api/search' : '/api/documents';
+      const response = await fetch(`${API_BASE_URL}${route}?${params.toString()}`);
+      if (!response.ok) throw new Error('Network failed to fetch documents');
+      
+      const data = await response.json();
+      // Normalize backend items structural format to align seamlessly with local schemas
+      const normalizedData = data.map(doc => ({
+        id: doc.id || crypto.randomUUID(),
+        fileName: doc.fileName,
+        extension: (doc.extension || '').toLowerCase(),
+        size: doc.fileSizeLabel || formatFileSize(doc.sizeBytes),
+        sizeBytes: doc.sizeBytes || 0,
+        path: doc.path || 'Remote Storage Node',
+        lastModified: doc.updatedAt ? new Date(doc.updatedAt).toLocaleDateString() : new Date().toLocaleDateString(),
+        blobURL: doc.blobURL || `${API_BASE_URL}/api/documents/${doc.id}/download`,
+        content: doc.extractedText || doc.content || '',
+      }));
+      setDocuments(normalizedData);
+    } catch (err) {
+      console.error('Unable to fetch updated search index from server backend:', err);
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  // Initial runtime fetch on component mount only (No local storage restore hooks)
+  useEffect(() => {
+    fetchBackendDocuments('', '', '', 'newest');
+
+    // Garbage collector routine: Revoke temporary object memory references when component shifts out
+    return () => {
+      documents.forEach(doc => {
+        if (doc.blobURL && doc.blobURL.startsWith('blob:')) {
+          URL.revokeObjectURL(doc.blobURL);
+        }
+      });
+    };
   }, []);
 
-  // Handle Search and Filter Logic Locally
+  // Hybrid Real-time Client-Side Search and Filter Logic Processor
   useEffect(() => {
     setIsLoading(true);
     let result = [...documents];
 
-    // 1. Text Search Filter
+    // 1. Text Search Filter (scans dynamic string contents + names)
     if (searchTerm.trim() !== '') {
       const lowerSearch = searchTerm.toLowerCase();
       result = result.filter(
         (doc) =>
           doc.fileName.toLowerCase().includes(lowerSearch) ||
-          doc.content.toLowerCase().includes(lowerSearch)
+          (doc.content && doc.content.toLowerCase().includes(lowerSearch))
       );
     }
 
@@ -80,7 +128,7 @@ function ImportDrive() {
       result = result.filter((doc) => doc.extension.toLowerCase() === selectedExtension.toLowerCase());
     }
 
-    // 3. Size Filter
+    // 3. Size Filter bounds
     if (selectedSize) {
       result = result.filter((doc) => {
         const sizeInMb = doc.sizeBytes / (1024 * 1024);
@@ -91,11 +139,11 @@ function ImportDrive() {
       });
     }
 
-    // 4. Sort Filter
+    // 4. Sorting rules matrices
     if (selectedSort === 'newest') {
-      result.sort((a, b) => b.id.localeCompare(a.id)); // Safe comparison for string UUIDs
+      result.sort((a, b) => String(b.id).localeCompare(String(a.id)));
     } else if (selectedSort === 'oldest') {
-      result.sort((a, b) => a.id.localeCompare(b.id));
+      result.sort((a, b) => String(a.id).localeCompare(String(b.id)));
     } else if (selectedSort === 'relevance' && searchTerm.trim() !== '') {
       const lowerSearch = searchTerm.toLowerCase();
       result.sort((a, b) => {
@@ -109,13 +157,12 @@ function ImportDrive() {
     setIsLoading(false);
   }, [documents, searchTerm, selectedExtension, selectedSize, selectedSort]);
 
-  // Persist history limits to 10 entries
-  const persistHistory = (value) => {
+  // Track search query parameters temporarily within raw component execution runtime state context only
+  const updateTemporaryHistory = (value) => {
     const trimmed = value.trim();
     if (!trimmed) return;
     const nextHistory = [trimmed, ...history.filter((item) => item !== trimmed)].slice(0, 10);
     setHistory(nextHistory);
-    localStorage.setItem('document-search-history', JSON.stringify(nextHistory));
   };
 
   const handleSearchChange = (value) => {
@@ -124,18 +171,16 @@ function ImportDrive() {
 
   const executeSearch = (value) => {
     setSearchTerm(value);
-    if (value.trim() !== '') persistHistory(value);
-  };
-
-  // Local file reader capabilities
-  const extractTextContent = async (file) => {
-    try {
-      return await file.text();
-    } catch (error) {
-      console.error('Error extracting TXT content:', error);
-      return '';
+    if (value.trim() !== '') {
+      updateTemporaryHistory(value);
     }
   };
+
+  // Local clientside offline stream reader tools implementation
+  const extractTextContent = async (file) => {
+    try { return await file.text(); } catch (e) { return ''; }
+  };
+  
   pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
   const extractImageText = async (file) => {
@@ -149,77 +194,72 @@ function ImportDrive() {
   };
 
   const extractPdfText = async (file) => {
-    const arrayBuffer = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    let text = '';
-    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum += 1) {
-      const page = await pdf.getPage(pageNum);
-      const content = await page.getTextContent();
-      text += content.items.map((item) => item.str).join(' ') + '\n';
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      let text = '';
+      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum += 1) {
+        const page = await pdf.getPage(pageNum);
+        const content = await page.getTextContent();
+        text += content.items.map((item) => item.str).join(' ') + '\n';
+      }
+      return text.trim();
+    } catch (e) {
+      return '';
     }
-    return text.trim();
   };
 
   const extractDocxContent = async (file) => {
-    const arrayBuffer = await file.arrayBuffer();
-    const result = await mammoth.extractRawText({ arrayBuffer });
-    return result.value.trim();
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const result = await mammoth.extractRawText({ arrayBuffer });
+      return result.value.trim();
+    } catch (e) {
+      return '';
+    }
   };
 
   const extractXlsxText = async (file) => {
-    const arrayBuffer = await file.arrayBuffer();
-    const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-    let text = '';
-    workbook.SheetNames.forEach((sheetName) => {
-      const sheet = workbook.Sheets[sheetName];
-      text += XLSX.utils.sheet_to_csv(sheet) + '\n';
-    });
-    return text.trim();
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+      let text = '';
+      workbook.SheetNames.forEach((sheetName) => {
+        const sheet = workbook.Sheets[sheetName];
+        text += XLSX.utils.sheet_to_csv(sheet) + '\n';
+      });
+      return text.trim();
+    } catch (e) {
+      return '';
+    }
   };
 
   const extractFileContent = async (file) => {
     const ext = file.name.split('.').pop().toLowerCase();
-
-    if (['txt', 'csv'].includes(ext)) {
-      return extractTextContent(file);
-    }
-
-    if (['docx'].includes(ext)) {
-      return extractDocxContent(file);
-    }
-
-    if (['pdf'].includes(ext)) {
-      return extractPdfText(file);
-    }
-
-    if (['xlsx', 'xls'].includes(ext)) {
-      return extractXlsxText(file);
-    }
-
-    if (['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'].includes(ext)) {
-      return extractImageText(file);
-    }
-
+    if (['txt', 'csv'].includes(ext)) return extractTextContent(file);
+    if (['docx'].includes(ext)) return extractDocxContent(file);
+    if (['pdf'].includes(ext)) return extractPdfText(file);
+    if (['xlsx', 'xls'].includes(ext)) return extractXlsxText(file);
+    if (['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'].includes(ext)) return extractImageText(file);
     return '';
   };
-
-
 
   const processFilesRecursively = async (items) => {
     const newDocuments = [];
     for (const item of items) {
       if (item.kind === 'file') {
-        const file = await item.getFile();
-        const ext = file.name.split('.').pop().toLowerCase();
-
-        if (supportedExtensions.includes(ext)) {
+        const file = typeof item.getFile === 'function' ? await item.getFile() : item;
+        
+        // Block processing if the structural filename fails verification checks
+        if (isValidFile(file.name)) {
+          const ext = file.name.split('.').pop().toLowerCase();
           const content = await extractFileContent(file);
           const blobURL = URL.createObjectURL(file);
 
           newDocuments.push({
-            id: crypto.randomUUID(), // Guaranteed Unique
+            id: crypto.randomUUID(),
             fileName: file.name,
-            extension: ext.toUpperCase(),
+            extension: ext,
             size: formatFileSize(file.size),
             sizeBytes: file.size,
             path: file.webkitRelativePath || file.name,
@@ -228,7 +268,7 @@ function ImportDrive() {
             content: content,
           });
         }
-      } else if (item.kind === 'directory') {
+      } else if (item.kind === 'directory' || item.isDirectory) {
         const dirReader = item.createReader();
         const entries = await new Promise((resolve, reject) => {
           dirReader.readEntries(resolve, reject);
@@ -240,13 +280,16 @@ function ImportDrive() {
     return newDocuments;
   };
 
+  // Sync Form Data files directly upstream to Server Storage Engines
   const handleFolderSelect = async (event) => {
     const items = event.dataTransfer?.items || event.target.files;
-    if (!items) return;
+    if (!items || items.length === 0) return;
 
     setIsUploading(true);
     try {
       const entries = [];
+      const filesToUpload = [];
+
       if (event.dataTransfer?.items) {
         for (let i = 0; i < items.length; i++) {
           const entry = items[i].webkitGetAsEntry?.();
@@ -255,7 +298,8 @@ function ImportDrive() {
       } else {
         for (let i = 0; i < items.length; i++) {
           const file = items[i];
-          if (file.webkitRelativePath || file.type || file.name) {
+          if (isValidFile(file.name)) {
+            filesToUpload.push(file);
             entries.push({
               kind: 'file',
               getFile: async () => file
@@ -264,9 +308,31 @@ function ImportDrive() {
         }
       }
 
+      // 1. Process items locally for UI optimization layout rendering
       if (entries.length > 0) {
         const newDocs = await processFilesRecursively(entries);
         setDocuments((prev) => [...newDocs, ...prev]);
+      }
+
+      // 2. Continuous stream background dispatch pipeline synchronization
+      const targetUploadList = event.target.files || filesToUpload;
+      for (let i = 0; i < targetUploadList.length; i++) {
+        const file = targetUploadList[i];
+        
+        // Skip background uploads for files starting with ~$ or matching .zip
+        if (!isValidFile(file.name)) continue;
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+          await fetch(`${API_BASE_URL}/api/upload`, {
+            method: 'POST',
+            body: formData,
+          });
+        } catch (uploadErr) {
+          console.error(`Failed pushing ${file.name} to express backend architecture:`, uploadErr);
+        }
       }
     } catch (error) {
       console.error('Error processing uploaded items hierarchy:', error);
@@ -307,18 +373,27 @@ function ImportDrive() {
 
   const downloadFile = (file) => {
     if (!file) return;
-    const link = document.createElement('a');
-    link.href = file.blobURL;
-    link.download = file.fileName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    if (file.blobURL && file.blobURL.startsWith('blob:')) {
+      const link = document.createElement('a');
+      link.href = file.blobURL;
+      link.download = file.fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      window.open(`${API_BASE_URL}/api/documents/${file.id}/download`, '_blank');
+    }
   };
 
-  const deleteFile = (id) => {
-    // Memory Leak Preventative Countermeasure
+  const deleteFile = async (id) => {
+    try {
+      await fetch(`${API_BASE_URL}/api/documents/${id}`, { method: 'DELETE' });
+    } catch (err) {
+      console.error('Server cleanup omitted or unreachable, discarding context references locally:', err);
+    }
+
     const fileToDelete = documents.find((doc) => doc.id === id);
-    if (fileToDelete?.blobURL) {
+    if (fileToDelete?.blobURL && fileToDelete.blobURL.startsWith('blob:')) {
       URL.revokeObjectURL(fileToDelete.blobURL);
     }
 
@@ -326,11 +401,29 @@ function ImportDrive() {
     if (selectedFile?.id === id) closePreview();
   };
 
+  // Keyword highlighter tool implementation matching initial styles
+  const highlightSnippet = (text = '', searchKeyword = '') => {
+    if (!searchKeyword.trim() || !text) return text.slice(0, 140) + '...';
+    
+    const index = text.toLowerCase().indexOf(searchKeyword.toLowerCase());
+    if (index === -1) return text.slice(0, 140) + '...';
+
+    const start = Math.max(0, index - 40);
+    const end = Math.min(text.length, index + searchKeyword.length + 80);
+    const snippet = text.slice(start, end);
+
+    return (
+      <span>
+        ...{snippet.replace(new RegExp(`(${searchKeyword})`, 'gi'), '⭐$1⭐')}...
+      </span>
+    );
+  };
+
   const getDocumentIcon = (extension) => {
     const ext = (extension || '').toLowerCase();
     if (ext === 'pdf') return <FileText className="text-red-500 w-5 h-5" />;
-    if (ext === 'docx' || ext === 'doc') return <FileText className="text-blue-500 w-5 h-5" />;
-    if (ext === 'xlsx' || ext === 'xls' || ext === 'csv') return <FileSpreadsheet className="text-green-500 w-5 h-5" />;
+    if (['docx', 'doc'].includes(ext)) return <FileText className="text-blue-500 w-5 h-5" />;
+    if (['xlsx', 'xls', 'csv'].includes(ext)) return <FileSpreadsheet className="text-green-500 w-5 h-5" />;
     if (ext === 'txt') return <FileText className="text-slate-500 w-5 h-5" />;
     return <FileArchive className="text-amber-500 w-5 h-5" />;
   };
@@ -345,11 +438,11 @@ function ImportDrive() {
     if (ext === 'pdf') {
       return <iframe src={selectedFile.blobURL} title={selectedFile.fileName} className="w-full h-[60vh] border-none rounded-lg" />;
     }
-    if (['txt', 'csv', 'docx', 'json'].includes(ext)) {
+    if (['txt', 'csv', 'docx', 'json'].includes(ext) || selectedFile.content) {
       return (
         <div className="w-full max-h-[60vh] overflow-auto bg-white p-4 rounded-lg border border-gray-200">
           <pre className="text-xs text-slate-700 font-mono whitespace-pre-wrap break-all leading-relaxed">
-            {selectedFile.content || 'No content available.'}
+            {selectedFile.content || 'No context database content index extracted for this item.'}
           </pre>
         </div>
       );
@@ -357,7 +450,7 @@ function ImportDrive() {
     return (
       <div className="text-center p-8 text-slate-400">
         <p className="font-semibold">Preview Not Available</p>
-        <p className="text-xs text-slate-400 mt-1">Please download file to view contents. File extension: {selectedFile.extension}</p>
+        <p className="text-xs text-slate-400 mt-1">Please download file to view contents. File extension: {selectedFile.extension.toUpperCase()}</p>
       </div>
     );
   };
@@ -374,7 +467,7 @@ function ImportDrive() {
           <div className="flex justify-between items-center mb-2 shrink-0">
             <div>
               <h1 className="text-2xl font-bold">Import Workspace</h1>
-              <p className="text-sm text-gray-500">Upload entire root directories or specific backup data folders.</p>
+              <p className="text-sm text-gray-500">Upload documents to scan and search strings inside file contents instantly.</p>
             </div>
           </div>
 
@@ -401,10 +494,11 @@ function ImportDrive() {
 
           {/* Upload Dropzone Area */}
           <div
-            className="bg-white border-gray-200 border-dashed border-2 rounded-xl p-8 md:p-12 text-center transition-all duration-300 relative shadow-sm hover:border-purple-500 hover:shadow-md"
+            className="bg-white border-gray-200 border-dashed border-2 rounded-xl p-8 md:p-12 text-center transition-all duration-300 relative shadow-sm hover:border-purple-500 hover:shadow-md cursor-pointer"
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
+            onClick={() => fileInputRef.current?.click()}
           >
             <CloudUpload size={44} className="text-purple-600 mx-auto mb-4 animate-[bounce_3s_infinite]" />
             <h2 className="text-xl font-bold mb-1">Import Entire Drive Directory</h2>
@@ -414,7 +508,7 @@ function ImportDrive() {
 
             <button
               className="bg-purple-600 text-white px-6 py-2.5 rounded-lg text-sm font-semibold tracking-wide shadow-sm hover:bg-purple-700 transition duration-150"
-              onClick={() => fileInputRef.current?.click()}
+              onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
             >
               {isUploading ? 'Processing File Trees...' : 'Browse Drive Folder'}
             </button>
@@ -435,7 +529,7 @@ function ImportDrive() {
               <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search file name or content metrics locally..."
+                placeholder="Search matching content metrics inside database..."
                 value={searchTerm}
                 onChange={(e) => handleSearchChange(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && executeSearch(searchTerm)}
@@ -511,7 +605,7 @@ function ImportDrive() {
                 <table className="w-full border-collapse text-sm text-left">
                   <thead>
                     <tr className="border-b border-gray-200 text-gray-500 text-xs font-semibold uppercase tracking-wider">
-                      <th className="pb-3 font-semibold">File Name</th>
+                      <th className="pb-3 font-semibold">File Name & Content Matches</th>
                       <th className="pb-3 font-semibold">Type</th>
                       <th className="pb-3 font-semibold">Size</th>
                       <th className="pb-3 text-center font-semibold">Actions</th>
@@ -520,19 +614,24 @@ function ImportDrive() {
                   <tbody className="divide-y divide-gray-100 text-gray-700">
                     {filteredDocuments.map((doc) => (
                       <tr key={doc.id} className="hover:bg-slate-50 transition duration-150">
-                        <td className="py-3 font-medium text-gray-900 truncate max-w-xs">
-                          <div className="flex items-center gap-2">
-                            {getDocumentIcon(doc.extension)}
-                            <div>
-                              <div className="truncate">{doc.fileName}</div>
+                        <td className="py-3 font-medium text-gray-900 max-w-md">
+                          <div className="flex items-start gap-3">
+                            <div className="mt-1">{getDocumentIcon(doc.extension)}</div>
+                            <div className="min-w-0 flex-1">
+                              <div className="truncate font-medium text-gray-900">{doc.fileName}</div>
                               <div className="text-[10px] text-gray-400 truncate max-w-[200px]" title={doc.path}>
                                 {doc.path || 'Local upload path'}
                               </div>
+                              {doc.content && (
+                                <div className="text-xs text-purple-600 mt-1 bg-purple-50/50 rounded p-1 border border-purple-100/40 font-serif whitespace-normal break-all">
+                                  {highlightSnippet(doc.content, searchTerm)}
+                                </div>
+                              )}
                             </div>
                           </div>
                         </td>
                         <td className="py-3">
-                          <span className="bg-purple-50 text-purple-700 border border-purple-100 px-2 py-0.5 rounded text-xs font-medium">
+                          <span className="bg-purple-50 text-purple-700 border border-purple-100 px-2 py-0.5 rounded text-xs font-mono uppercase font-medium">
                             {doc.extension}
                           </span>
                         </td>
@@ -607,7 +706,7 @@ function ImportDrive() {
             </div>
 
             <div className="flex gap-4 px-5 py-2 bg-slate-100/50 border-b border-gray-100 items-center text-xs text-gray-500">
-              <span className="bg-purple-600 text-white px-1.5 py-0.5 rounded text-[10px] font-bold">{selectedFile.extension}</span>
+              <span className="bg-purple-600 text-white px-1.5 py-0.5 rounded text-[10px] font-bold uppercase">{selectedFile.extension}</span>
               <span>Size: {selectedFile.size}</span>
               <span>Modified: {selectedFile.lastModified}</span>
             </div>
