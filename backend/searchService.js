@@ -8,26 +8,13 @@ const pool = require('./db');
 
 const UPLOAD_DIR = path.join(__dirname, 'uploads');
 const SUPPORTED_EXTENSIONS = new Set([
-  '.pdf',
-  '.docx',
-  '.xlsx',
-  '.xls',
-  '.txt',
-  '.csv',
-  '.json',
-  '.pptx',
-  '.png',
-  '.jpg',
-  '.jpeg',
-  '.gif',
-  '.bmp',
-  '.webp',
+  '.pdf', '.docx', '.xlsx', '.xls', '.txt', '.csv', '.json', '.pptx',
+  '.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp',
 ]);
 const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp']);
 
 let watcher = null;
 let isInitializing = false;
-let reindexTimer = null;
 
 function ensureUploadDirectory() {
   fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -45,42 +32,27 @@ function getFileExtension(fileName) {
   return path.extname(fileName).toLowerCase();
 }
 
-function getMimeType(extension) {
-  switch (extension) {
-    case '.pdf':
-      return 'application/pdf';
-    case '.docx':
-      return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-    case '.xlsx':
-    case '.xls':
-      return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-    case '.txt':
-    case '.csv':
-      return 'text/plain';
-    case '.json':
-      return 'application/json';
-    case '.png':
-      return 'image/png';
-    case '.jpg':
-    case '.jpeg':
-      return 'image/jpeg';
-    case '.gif':
-      return 'image/gif';
-    case '.bmp':
-      return 'image/bmp';
-    case '.webp':
-      return 'image/webp';
-    case '.pptx':
-      return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
-    default:
-      return 'application/octet-stream';
-  }
-}
-
 function normalizeExtension(extension = '') {
   const ext = String(extension).trim().toLowerCase();
   if (!ext) return '';
   return ext.startsWith('.') ? ext : `.${ext}`;
+}
+
+// Call Python service to handle Tesseract OCR & spaCy analysis
+async function enrichWithPythonBackend(filePath, textContent = '') {
+  try {
+    const response = await fetch('http://localhost:5001/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ file_path: filePath, text_content: textContent })
+    });
+    if (response.ok) {
+      return await response.json();
+    }
+  } catch (err) {
+    console.error(`Python microservice communication error: ${err.message}`);
+  }
+  return { success: false, entities: [] };
 }
 
 async function extractText(filePath) {
@@ -88,7 +60,16 @@ async function extractText(filePath) {
 
   try {
     if (extension === '.pdf') {
+      const originalWrite = process.stdout.write;
+      process.stdout.write = function (chunk, encoding, callback) {
+        if (chunk.toString().includes('TT: undefined function: 32')) {
+          if (typeof callback === 'function') callback();
+          return true;
+        }
+        return originalWrite.apply(process.stdout, arguments);
+      };
       const data = await pdfParse(fs.readFileSync(filePath));
+      process.stdout.write = originalWrite;
       return data.text || '';
     }
 
@@ -108,16 +89,8 @@ async function extractText(filePath) {
       return content;
     }
 
-    if (extension === '.txt' || extension === '.csv' || extension === '.json') {
+    if (['.txt', '.csv', '.json'].includes(extension)) {
       return fs.readFileSync(filePath, 'utf8');
-    }
-
-    if (IMAGE_EXTENSIONS.has(extension)) {
-      return 'Image document indexed by file name and metadata. Text preview is unavailable.';
-    }
-
-    if (extension === '.pptx') {
-      return 'PowerPoint content is indexed by filename and metadata; full preview support is planned for later.';
     }
 
     return '';
@@ -137,7 +110,8 @@ async function ensureSchema() {
       uploaded_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       extracted_text TEXT DEFAULT '',
       full_path TEXT NOT NULL UNIQUE,
-      search_vector TSVECTOR
+      search_vector TSVECTOR,
+      nlp_entities JSONB DEFAULT '[]'::jsonb
     )
   `);
 
@@ -149,29 +123,46 @@ async function ensureSchema() {
 
 async function indexFile(filePath) {
   const extension = getFileExtension(filePath);
-  if (!SUPPORTED_EXTENSIONS.has(extension)) {
-    return null;
-  }
+  if (!SUPPORTED_EXTENSIONS.has(extension)) return null;
 
   const stat = fs.statSync(filePath);
-  const extractedText = await extractText(filePath);
+  let extractedText = '';
+  let entities = [];
+
+  if (IMAGE_EXTENSIONS.has(extension)) {
+    // Let Tesseract fetch data in the Python Microservice
+    const pyResult = await enrichWithPythonBackend(filePath, '');
+    if (pyResult.success) {
+      extractedText = pyResult.extracted_text || '';
+      entities = pyResult.entities || [];
+    }
+  } else {
+    // Extract via node libraries, then send plain text to spaCy
+    extractedText = await extractText(filePath);
+    const pyResult = await enrichWithPythonBackend(filePath, extractedText);
+    if (pyResult.success) {
+      entities = pyResult.entities || [];
+    }
+  }
+
   const fileName = path.basename(filePath);
   const searchText = `${fileName} ${extractedText}`.trim();
 
   const result = await pool.query(
     `
-      INSERT INTO document_search_index (file_name, extension, file_size, uploaded_at, extracted_text, full_path, search_vector)
-      VALUES ($1, $2, $3, $4, $5, $6, to_tsvector('simple', $7))
+      INSERT INTO document_search_index (file_name, extension, file_size, uploaded_at, extracted_text, full_path, search_vector, nlp_entities)
+      VALUES ($1, $2, $3, $4, $5, $6, to_tsvector('simple', $7), $8)
       ON CONFLICT (full_path) DO UPDATE SET
         file_name = EXCLUDED.file_name,
         extension = EXCLUDED.extension,
         file_size = EXCLUDED.file_size,
         uploaded_at = EXCLUDED.uploaded_at,
         extracted_text = EXCLUDED.extracted_text,
-        search_vector = to_tsvector('simple', EXCLUDED.file_name || ' ' || EXCLUDED.extracted_text)
+        search_vector = to_tsvector('simple', EXCLUDED.file_name || ' ' || EXCLUDED.extracted_text),
+        nlp_entities = EXCLUDED.nlp_entities
       RETURNING id
     `,
-    [fileName, extension, stat.size, new Date(stat.mtimeMs), extractedText, filePath, searchText]
+    [fileName, extension, stat.size, new Date(stat.mtimeMs), extractedText, filePath, searchText, JSON.stringify(entities)]
   );
 
   return result.rows[0];
@@ -210,13 +201,8 @@ async function scanUploadDirectory() {
 
 async function indexChangedFile(filePath) {
   const extension = getFileExtension(filePath);
-  if (!SUPPORTED_EXTENSIONS.has(extension)) {
-    return;
-  }
-
-  if (!fs.existsSync(filePath)) {
-    return removeIndexedFile(filePath);
-  }
+  if (!SUPPORTED_EXTENSIONS.has(extension)) return;
+  if (!fs.existsSync(filePath)) return removeIndexedFile(filePath);
 
   try {
     await indexFile(filePath);
@@ -225,25 +211,8 @@ async function indexChangedFile(filePath) {
   }
 }
 
-function scheduleReindex(filePath) {
-  if (reindexTimer) {
-    clearTimeout(reindexTimer);
-  }
-
-  reindexTimer = setTimeout(async () => {
-    try {
-      await scanUploadDirectory();
-    } catch (error) {
-      console.error('Reindexing failed:', error.message);
-    }
-  }, 800);
-}
-
 async function initializeSearchService() {
-  if (isInitializing) {
-    return;
-  }
-
+  if (isInitializing) return;
   isInitializing = true;
   ensureUploadDirectory();
 
@@ -260,17 +229,9 @@ async function initializeSearchService() {
       });
 
       watcher
-        .on('add', (filePath) => {
-          if (path.extname(filePath).toLowerCase() === '.tmp') return;
-          indexChangedFile(filePath);
-        })
-        .on('change', (filePath) => {
-          if (path.extname(filePath).toLowerCase() === '.tmp') return;
-          indexChangedFile(filePath);
-        })
-        .on('unlink', (filePath) => {
-          removeIndexedFile(filePath).catch((error) => console.error('Failed to remove index entry:', error.message));
-        });
+        .on('add', (filePath) => { if (path.extname(filePath).toLowerCase() !== '.tmp') indexChangedFile(filePath); })
+        .on('change', (filePath) => { if (path.extname(filePath).toLowerCase() !== '.tmp') indexChangedFile(filePath); })
+        .on('unlink', (filePath) => { removeIndexedFile(filePath).catch((err) => console.error(err.message)); });
     }
   } catch (error) {
     console.error('Search service initialization failed:', error.message);
@@ -282,7 +243,7 @@ async function initializeSearchService() {
 async function listDocuments(options = {}) {
   const extension = normalizeExtension(options.extension || '');
   const { sort = 'newest', sizeFilter } = options;
-  let query = 'SELECT id, file_name, extension, file_size, uploaded_at, extracted_text, full_path FROM document_search_index WHERE 1=1';
+  let query = 'SELECT id, file_name, extension, file_size, uploaded_at, extracted_text, full_path, nlp_entities FROM document_search_index WHERE 1=1';
   const values = [];
   let index = 1;
 
@@ -293,23 +254,12 @@ async function listDocuments(options = {}) {
   }
 
   if (sizeFilter) {
-    if (sizeFilter === 'small') {
-      query += ` AND file_size < $${index}`;
-      values.push(1024 * 1024);
-      index += 1;
-    } else if (sizeFilter === 'medium') {
-      query += ` AND file_size >= $${index} AND file_size < $${index + 1}`;
-      values.push(1024 * 1024, 10 * 1024 * 1024);
-      index += 2;
-    } else if (sizeFilter === 'large') {
-      query += ` AND file_size >= $${index}`;
-      values.push(10 * 1024 * 1024);
-      index += 1;
-    }
+    if (sizeFilter === 'small') { query += ` AND file_size < $${index}`; values.push(1024 * 1024); index += 1; }
+    else if (sizeFilter === 'medium') { query += ` AND file_size >= $${index} AND file_size < $${index + 1}`; values.push(1024 * 1024, 10 * 1024 * 1024); index += 2; }
+    else if (sizeFilter === 'large') { query += ` AND file_size >= $${index}`; values.push(10 * 1024 * 1024); index += 1; }
   }
 
   query += ` ORDER BY uploaded_at ${sort === 'oldest' ? 'ASC' : 'DESC'}`;
-
   const result = await pool.query(query, values);
   return result.rows;
 }
@@ -326,7 +276,7 @@ async function searchDocuments(queryText, options = {}) {
   const values = [sanitizedQuery];
   let index = 2;
   let query = `
-    SELECT id, file_name, extension, file_size, uploaded_at, extracted_text, full_path,
+    SELECT id, file_name, extension, file_size, uploaded_at, extracted_text, full_path, nlp_entities,
            ts_rank(search_vector, websearch_to_tsquery('simple', $1)) AS rank
     FROM document_search_index
     WHERE 1=1
@@ -339,24 +289,13 @@ async function searchDocuments(queryText, options = {}) {
   }
 
   if (sizeFilter) {
-    if (sizeFilter === 'small') {
-      query += ` AND file_size < $${index}`;
-      values.push(1024 * 1024);
-      index += 1;
-    } else if (sizeFilter === 'medium') {
-      query += ` AND file_size >= $${index} AND file_size < $${index + 1}`;
-      values.push(1024 * 1024, 10 * 1024 * 1024);
-      index += 2;
-    } else if (sizeFilter === 'large') {
-      query += ` AND file_size >= $${index}`;
-      values.push(10 * 1024 * 1024);
-      index += 1;
-    }
+    if (sizeFilter === 'small') { query += ` AND file_size < $${index}`; values.push(1024 * 1024); index += 1; }
+    else if (sizeFilter === 'medium') { query += ` AND file_size >= $${index} AND file_size < $${index + 1}`; values.push(1024 * 1024, 10 * 1024 * 1024); index += 2; }
+    else if (sizeFilter === 'large') { query += ` AND file_size >= $${index}`; values.push(10 * 1024 * 1024); index += 1; }
   }
 
   const tokens = sanitizedQuery.split(/\s+/).filter(Boolean);
-  query += ` AND (`;
-  query += `search_vector @@ websearch_to_tsquery('simple', $1)`;
+  query += ` AND (search_vector @@ websearch_to_tsquery('simple', $1)`;
 
   const exactPhraseValue = `%${sanitizedQuery.toLowerCase()}%`;
   query += ` OR LOWER(file_name) LIKE $${index} OR LOWER(extracted_text) LIKE $${index}`;
@@ -382,9 +321,7 @@ async function searchDocuments(queryText, options = {}) {
 async function saveUploadedFile(file, destinationDir = UPLOAD_DIR) {
   const extension = path.extname(file.originalname).toLowerCase();
   if (!SUPPORTED_EXTENSIONS.has(extension)) {
-    if (fs.existsSync(file.path)) {
-      fs.unlinkSync(file.path);
-    }
+    if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
     throw new Error(`Unsupported file type: ${extension}`);
   }
 
@@ -403,14 +340,10 @@ async function saveUploadedFile(file, destinationDir = UPLOAD_DIR) {
 
 async function deleteDocument(documentId) {
   const result = await pool.query('SELECT full_path FROM document_search_index WHERE id = $1', [documentId]);
-  if (result.rows.length === 0) {
-    return false;
-  }
+  if (result.rows.length === 0) return false;
 
   const { full_path } = result.rows[0];
-  if (full_path && fs.existsSync(full_path)) {
-    fs.unlinkSync(full_path);
-  }
+  if (full_path && fs.existsSync(full_path)) fs.unlinkSync(full_path);
 
   await pool.query('DELETE FROM document_search_index WHERE id = $1', [documentId]);
   return true;
