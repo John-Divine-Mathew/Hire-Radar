@@ -1,10 +1,18 @@
 import os
+import logging
 from flask import Flask, request, jsonify
 from PIL import Image
 import pytesseract
 import spacy
 
+# Add this line if Tesseract is installed in the default Windows location:
+pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+
 app = Flask(__name__)
+
+
+log = logging.getLogger('werkzeug')
+log.setLevel(logging.ERROR)
 
 # Load small English model (ensure you run: python -m spacy download en_core_web_sm)
 nlp = spacy.load("en_core_web_sm")
@@ -52,5 +60,5 @@ def analyze_document():
         return jsonify({"success": False, "error": str(e)}), 500
 
 if __name__ == '__main__':
-    # Running on internal port 5001
-    app.run(port=5001, debug=True)
+    # Force Flask to bind to 0.0.0.0 so that internal connections work uniformly
+    app.run(host='0.0.0.0', port=5001, debug=True)

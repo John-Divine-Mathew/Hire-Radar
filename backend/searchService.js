@@ -5,19 +5,33 @@ const pdfParse = require('pdf-parse');
 const mammoth = require('mammoth');
 const XLSX = require('xlsx');
 const pool = require('./db');
+const fetchModule = require('node-fetch');
+const fetch = typeof fetchModule === 'function' ? fetchModule : fetchModule.default || fetchModule;
 
 const UPLOAD_DIR = path.join(__dirname, 'uploads');
+
+// Supported extensions (Removed '.zip')
 const SUPPORTED_EXTENSIONS = new Set([
   '.pdf', '.docx', '.xlsx', '.xls', '.txt', '.csv', '.json', '.pptx',
   '.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp',
 ]);
 const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp']);
+const PYTHON_MICROSERVICE_URL =
+  process.env.PYTHON_MICROSERVICE_URL || 'http://127.0.0.1:5001/analyze';
 
 let watcher = null;
 let isInitializing = false;
 
 function ensureUploadDirectory() {
   fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+}
+
+// Validator to verify file extension limits and eliminate MS temporary owner files
+function isValidFile(fileName) {
+  if (!fileName) return false;
+  const extension = path.extname(fileName).toLowerCase();
+  const isTemporary = fileName.startsWith('~$');
+  return SUPPORTED_EXTENSIONS.has(extension) && !isTemporary;
 }
 
 function escapeForTsQuery(value) {
@@ -40,19 +54,44 @@ function normalizeExtension(extension = '') {
 
 // Call Python service to handle Tesseract OCR & spaCy analysis
 async function enrichWithPythonBackend(filePath, textContent = '') {
+  const payload = {
+    file_path: filePath,
+    text_content: textContent,
+  };
+
+  const controller = new AbortController();
+  const timeoutMs = 20000; // 20 seconds
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
   try {
-    const response = await fetch('http://localhost:5001/analyze', {
+    const response = await fetch(PYTHON_MICROSERVICE_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ file_path: filePath, text_content: textContent })
+      body: JSON.stringify(payload),
+      signal: controller.signal,
     });
-    if (response.ok) {
-      return await response.json();
+
+    clearTimeout(timeout);
+
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(`Python service returned ${response.status}: ${body}`);
     }
+
+    const data = await response.json();
+    return {
+      success: data.success !== false,
+      entities: Array.isArray(data.entities) ? data.entities : [],
+      extracted_text: data.extracted_text || '',
+    };
   } catch (err) {
-    console.error(`Python microservice communication error: ${err.message}`);
+    console.error(
+      'Python microservice communication error:',
+      err.message || err,
+      'Falling back to default baseline processing.'
+    );
+    return { success: false, entities: [], extracted_text: '' };
   }
-  return { success: false, entities: [] };
 }
 
 async function extractText(filePath) {
@@ -110,9 +149,13 @@ async function ensureSchema() {
       uploaded_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       extracted_text TEXT DEFAULT '',
       full_path TEXT NOT NULL UNIQUE,
-      search_vector TSVECTOR,
-      nlp_entities JSONB DEFAULT '[]'::jsonb
+      search_vector TSVECTOR
     )
+  `);
+
+  await pool.query(`
+    ALTER TABLE document_search_index 
+    ADD COLUMN IF NOT EXISTS nlp_entities JSONB DEFAULT '[]'::jsonb
   `);
 
   await pool.query(`
@@ -122,22 +165,21 @@ async function ensureSchema() {
 }
 
 async function indexFile(filePath) {
-  const extension = getFileExtension(filePath);
-  if (!SUPPORTED_EXTENSIONS.has(extension)) return null;
+  const fileName = path.basename(filePath);
+  if (!isValidFile(fileName)) return null;
 
+  const extension = getFileExtension(filePath);
   const stat = fs.statSync(filePath);
   let extractedText = '';
   let entities = [];
 
   if (IMAGE_EXTENSIONS.has(extension)) {
-    // Let Tesseract fetch data in the Python Microservice
     const pyResult = await enrichWithPythonBackend(filePath, '');
     if (pyResult.success) {
       extractedText = pyResult.extracted_text || '';
       entities = pyResult.entities || [];
     }
   } else {
-    // Extract via node libraries, then send plain text to spaCy
     extractedText = await extractText(filePath);
     const pyResult = await enrichWithPythonBackend(filePath, extractedText);
     if (pyResult.success) {
@@ -145,7 +187,6 @@ async function indexFile(filePath) {
     }
   }
 
-  const fileName = path.basename(filePath);
   const searchText = `${fileName} ${extractedText}`.trim();
 
   const result = await pool.query(
@@ -192,7 +233,13 @@ async function scanUploadDirectory() {
 
   for (const filePath of files) {
     try {
-      await indexFile(filePath);
+      const fileName = path.basename(filePath);
+      if (isValidFile(fileName)) {
+        await indexFile(filePath);
+      } else {
+        // Safe housekeeping: remove illegal runtime files placed manually into server roots
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      }
     } catch (error) {
       console.error(`Failed to index ${filePath}:`, error.message);
     }
@@ -200,8 +247,11 @@ async function scanUploadDirectory() {
 }
 
 async function indexChangedFile(filePath) {
-  const extension = getFileExtension(filePath);
-  if (!SUPPORTED_EXTENSIONS.has(extension)) return;
+  const fileName = path.basename(filePath);
+  if (!isValidFile(fileName)) {
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    return;
+  }
   if (!fs.existsSync(filePath)) return removeIndexedFile(filePath);
 
   try {
@@ -319,12 +369,13 @@ async function searchDocuments(queryText, options = {}) {
 }
 
 async function saveUploadedFile(file, destinationDir = UPLOAD_DIR) {
-  const extension = path.extname(file.originalname).toLowerCase();
-  if (!SUPPORTED_EXTENSIONS.has(extension)) {
+  // Reject processing immediately if name matches target ignore conditions
+  if (!isValidFile(file.originalname)) {
     if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
-    throw new Error(`Unsupported file type: ${extension}`);
+    throw new Error(`Rejected file payload profile: File type unsupported or temporary restriction met.`);
   }
 
+  const extension = path.extname(file.originalname).toLowerCase();
   const safeName = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
   const destinationPath = path.join(destinationDir, `${Date.now()}-${safeName}`);
 
@@ -355,5 +406,6 @@ module.exports = {
   listDocuments,
   saveUploadedFile,
   deleteDocument,
+  isValidFile, // Exported to use as a primary guard inside express upload routes
   UPLOAD_DIR,
 };
