@@ -1,23 +1,26 @@
 const express = require('express');
-const path = require('path');
 const multer = require('multer');
 const cors = require('cors');
-const fs = require('fs');
 const pool = require('./db');
-const { initializeSearchService, searchDocuments, listDocuments, saveUploadedFile, deleteDocument, isValidFile, UPLOAD_DIR } = require('./searchService');
+const { 
+    initializeSearchService, 
+    searchDocuments, 
+    listDocuments, 
+    saveUploadedFile, 
+    deleteDocument 
+} = require('./searchService');
 
 const app = express();
 
 app.use(cors({ origin: 'http://localhost:5173' }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use('/uploads', express.static(UPLOAD_DIR));
 
-// Initialize schema updates and directories on boot
+// Initialize schema updates on boot (no directory creations)
 initializeSearchService().catch((error) => console.error('Search service startup failed:', error.message));
 
-// Configure temporary file uploads cache allocation
-const upload = multer({ dest: path.join(__dirname, 'uploads', 'tmp') });
+// Configure multer to store uploaded files directly in memory buffers
+const upload = multer({ storage: multer.memoryStorage() });
 
 function formatFileSize(bytes) {
     if (!bytes && bytes !== 0) return '0 Bytes';
@@ -34,8 +37,8 @@ function normalizeDocument(row) {
         file_size: row.file_size || row.fileSize,
         uploadedAt: row.uploaded_at || row.uploadedAt,
         extractedText: row.extracted_text || row.extractedText,
-        fullPath: row.full_path || row.fullPath,
         fileSizeLabel: formatFileSize(row.file_size || row.fileSize),
+        nlpEntities: row.nlp_entities || []
     };
 }
 
@@ -374,7 +377,7 @@ app.get("/hireRadar/adminlogin", async (req, res) => {
 });
 
 /* ==========================================================================
-   WORKSPACE DOCUMENT STORAGE & FULL-TEXT SEARCH CORES
+   WORKSPACE DOCUMENT STORAGE & FULL-TEXT SEARCH CORES (IN-MEMORY STREAMS ONLY)
    ========================================================================== */
 
 app.get('/api/search', async (req, res) => {
@@ -407,7 +410,7 @@ app.get('/api/documents', async (req, res) => {
     }
 });
 
-// Single unified entry route supporting single files or bulk multi-file arrays
+// Single unified route receiving standard browser memory payloads
 app.post('/api/upload', upload.any(), async (req, res) => {
     try {
         const filesCollection = req.files || (req.file ? [req.file] : []);
@@ -416,31 +419,10 @@ app.post('/api/upload', upload.any(), async (req, res) => {
             return res.status(400).json({ error: 'No files were detected inside payload arrays.' });
         }
 
-        // Pre-filter payloads: drop forbidden files from the cache processing block immediately
-        const filteredCollection = filesCollection.filter((file) => {
-            if (isValidFile(file.originalname)) {
-                return true;
-            } else {
-                if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
-                return false;
-            }
-        });
-
-        if (filteredCollection.length === 0) {
-            return res.status(400).json({ error: 'All uploaded files were filtered out due to name restrictions (.zip or temporary file prefix).' });
-        }
-
+        // Process directly out of incoming in-memory stream buffers
         const uploadedDocuments = await Promise.all(
-            filteredCollection.map(async (file) => {
-                // Defensive Safety Countermeasure against file stream lock conditions
-                let attempts = 0;
-                while (attempts < 5) {
-                    if (fs.existsSync(file.path) && fs.statSync(file.path).size > 0) {
-                        break;
-                    }
-                    await new Promise(resolve => setTimeout(resolve, 150));
-                    attempts++;
-                }
+            filesCollection.map(async (file) => {
+                // Pass Multer memory file directly ({ originalname, buffer, size })
                 return saveUploadedFile(file);
             })
         );
@@ -455,35 +437,49 @@ app.get('/api/status', (_req, res) => {
     res.json({ status: 'ok', service: 'document-search' });
 });
 
+// Serves structural text strings directly from DB index representations instead of file paths
 app.get('/api/documents/:id/preview', async (req, res) => {
     try {
-        const result = await pool.query('SELECT full_path, file_name FROM document_search_index WHERE id = $1', [req.params.id]);
+        const result = await pool.query('SELECT extracted_text, file_name FROM document_search_index WHERE id = $1', [req.params.id]);
         if (result.rows.length === 0) {
             return res.status(404).json({ error: 'Document not found.' });
         }
         const document = result.rows[0];
-        res.sendFile(document.full_path, {
-            headers: {
-                'Content-Disposition': `inline; filename="${document.file_name}"`,
-            },
-        });
+        
+        res.setHeader('Content-Type', 'text/plain');
+        res.setHeader('Content-Disposition', `inline; filename="${document.file_name}.txt"`);
+        res.send(document.extracted_text || 'No previewable text contents extracted.');
     } catch (error) {
         console.error('Preview API error:', error.message);
         res.status(500).json({ error: 'Unable to preview document.' });
     }
 });
 
+// Downloads the indexed content text metadata as a file attachment directly from DB columns
 app.get('/api/documents/:id/download', async (req, res) => {
     try {
-        const result = await pool.query('SELECT full_path, file_name FROM document_search_index WHERE id = $1', [req.params.id]);
+        const result = await pool.query('SELECT extracted_text, file_name FROM document_search_index WHERE id = $1', [req.params.id]);
         if (result.rows.length === 0) {
             return res.status(404).json({ error: 'Document not found.' });
         }
         const document = result.rows[0];
-        res.download(document.full_path, document.file_name);
+        
+        res.setHeader('Content-Disposition', `attachment; filename="INDEXED-${document.file_name}.txt"`);
+        res.setHeader('Content-Type', 'text/plain');
+        res.send(document.extracted_text || '');
     } catch (error) {
         console.error('Download API error:', error.message);
         res.status(500).json({ error: 'Unable to download document.' });
+    }
+});
+
+app.delete('/api/documents/:id', async (req, res) => {
+    try {
+        const success = await deleteDocument(req.params.id);
+        res.json({ success });
+    } catch (error) {
+        console.error('Delete API error:', error.message);
+        res.status(500).json({ error: 'Unable to delete document index.' });
     }
 });
 
