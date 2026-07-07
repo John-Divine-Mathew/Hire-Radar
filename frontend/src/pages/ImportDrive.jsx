@@ -280,7 +280,6 @@ function ImportDrive() {
     return newDocuments;
   };
 
-  // Sync Form Data files directly upstream to Server Storage Engines
   const handleFolderSelect = async (event) => {
     const items = event.dataTransfer?.items || event.target.files;
     if (!items || items.length === 0) return;
@@ -308,32 +307,35 @@ function ImportDrive() {
         }
       }
 
-      // 1. Process items locally for UI optimization layout rendering
+      // 1. Process files locally using client engines to quickly display items on the UI workspace list
       if (entries.length > 0) {
         const newDocs = await processFilesRecursively(entries);
         setDocuments((prev) => [...newDocs, ...prev]);
       }
 
-      // 2. Continuous stream background dispatch pipeline synchronization
+      // 2. Safely dispatch files directly upstream into Express server routing nodes as binary payloads
       const targetUploadList = event.target.files || filesToUpload;
       for (let i = 0; i < targetUploadList.length; i++) {
         const file = targetUploadList[i];
         
-        // Skip background uploads for files starting with ~$ or matching .zip
         if (!isValidFile(file.name)) continue;
 
         const formData = new FormData();
-        formData.append('file', file);
+        formData.append('file', file); // Placed directly into the multipart request body stream
 
         try {
           await fetch(`${API_BASE_URL}/api/upload`, {
             method: 'POST',
-            body: formData,
+            body: formData, // Flushed directly out of browser memory pipelines straight into Node endpoints
           });
         } catch (uploadErr) {
-          console.error(`Failed pushing ${file.name} to express backend architecture:`, uploadErr);
+          console.error(`Failed uploading ${file.name} directly into backend service layers:`, uploadErr);
         }
       }
+      
+      // 3. Keep the user interface state completely synced with database records
+      fetchBackendDocuments('', '', '', 'newest');
+      
     } catch (error) {
       console.error('Error processing uploaded items hierarchy:', error);
     } finally {
