@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import Sidebar from '../components/sideBar/sideBar.jsx';
 import Navbar from '../components/navBar/navBar.jsx';
-import Tesseract from 'tesseract.js';
+//import Tesseract from 'tesseract.js';
 import * as pdfjsLib from 'pdfjs-dist/build/pdf';
 import mammoth from 'mammoth';
 import * as XLSX from 'xlsx';
