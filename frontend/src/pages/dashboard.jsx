@@ -103,7 +103,7 @@ export default function Dashboard() {
           <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-lg border-l-4 border-purple-600 hover:shadow-xl duration-300">
             <p className="text-gray-500 text-xs sm:text-sm">AI Match Success</p>
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mt-2 text-purple-700">312</h2>
-            <p className="text-green-600 text-xs sm:text-sm mt-2 font-semibold">+15.3% this month</p>
+           <p className="text-green-600 mt-2 text-xs sm:text-sm"> +15.3% this month</p>
           </div>
         </div>
 
