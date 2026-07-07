@@ -1,58 +1,39 @@
-import os
-import logging
+import io
 from flask import Flask, request, jsonify
 from PIL import Image
 import pytesseract
 import spacy
 
-# Add this line if Tesseract is installed in the default Windows location:
-pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
-
 app = Flask(__name__)
 
-
-log = logging.getLogger('werkzeug')
-log.setLevel(logging.ERROR)
-
-# Load small English model (ensure you run: python -m spacy download en_core_web_sm)
+# Load standard English model
 nlp = spacy.load("en_core_web_sm")
 
-@app.route('/analyze', methods=['POST'])
-def analyze_document():
-    if 'file_path' not in request.json:
-        return jsonify({"error": "Missing file_path parameter"}), 400
-    
-    file_path = request.json['file_path']
-    if not os.path.exists(file_path):
-        return jsonify({"error": "File not found on disk"}), 404
-
-    ext = os.path.splitext(file_path)[1].lower()
-    extracted_text = ""
-    is_image = ext in ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp']
-
+@app.route('/analyze-stream', methods=['POST'])
+def analyze_document_stream():
     try:
-        # 1. OCR text extraction for images using Tesseract
-        if is_image:
-            image = Image.open(file_path)
-            extracted_text = pytesseract.image_to_string(image)
-        else:
-            # For non-images, the Node.js search service will pass text contents
-            extracted_text = request.json.get('text_content', '')
+        # 1. Grab metadata and text content if sent by node libraries
+        text_content = request.form.get('text_content', '')
+        file_bytes = request.files.get('file')
 
-        # 2. Advanced Text NLP Enrichment using spaCy
+        # 2. If it's an image file and no text was extracted yet, perform Tesseract OCR
+        if file_bytes and not text_content:
+            image_data = file_bytes.read()
+            image = Image.open(io.BytesIO(image_data))
+            text_content = pytesseract.image_to_string(image)
+
+        # 3. Perform spaCy Named Entity Recognition (NER) analysis
         entities = []
-        if extracted_text.strip():
-            doc = nlp(extracted_text)
-            # Pull locations, organizations, and custom entity criteria
+        if text_content.strip():
+            doc = nlp(text_content)
             entities = [
-                {"text": ent.text, "label": ent.label_}
+                {"text": ent.text, "label": ent.label_} 
                 for ent in doc.ents
-                if ent.label_ in ["ORG", "GPE", "LOC", "PERSON", "PRODUCT"]
             ]
 
         return jsonify({
             "success": True,
-            "extracted_text": extracted_text if is_image else None,
+            "extracted_text": text_content.strip(),
             "entities": entities
         })
 
@@ -60,5 +41,4 @@ def analyze_document():
         return jsonify({"success": False, "error": str(e)}), 500
 
 if __name__ == '__main__':
-    # Force Flask to bind to 0.0.0.0 so that internal connections work uniformly
-    app.run(host='0.0.0.0', port=5001, debug=True)
+    app.run(port=5001, debug=True)
