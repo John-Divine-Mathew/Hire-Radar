@@ -14,19 +14,29 @@ function AssessmentForm() {
     department: ""
   });
 
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState({ text: "", type: "" });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Submit Details (Made safely callable without an event object)
+  // Helper to trigger timed status notifications
+  const showNotification = (text, type = "success") => {
+    setMessage({ text, type });
+    setTimeout(() => {
+      setMessage({ text: "", type: "" });
+    }, 4000);
+  };
+
+  // Submit Details (Returns true on success, false on failure)
   const handleSubmit = async (e) => {
-    if (e) e.preventDefault(); // Only call preventDefault if the event exists
+    if (e) e.preventDefault();
+    setIsSubmitting(true);
 
     try {
       const body = {
-        'cndid': cndid,
-        'name': candidate.name,
-        'email': candidate.email,
-        'department': candidate.department,
-        'phone': candidate.phone
+        cndid: cndid,
+        name: candidate.name,
+        email: candidate.email,
+        department: candidate.department,
+        phone: candidate.phone
       };
       
       const response = await fetch("http://localhost:5000/hireRadar/updateTestDetails", {
@@ -34,45 +44,48 @@ function AssessmentForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body)
       });
-      console.log(response);
       
-      setMessage("Candidate Details Submitted Successfully!");
-      setTimeout(() => {
-        setMessage("");
-      }, 3000);
+      if (!response.ok) throw new Error("Server rejected the update");
+
+      showNotification("Candidate information saved successfully.", "success");
+      setIsSubmitting(false);
+      return true;
 
     } catch (err) {
-      console.log(err.message);
-      setMessage("An error occurred during submission.");
+      console.error(err.message);
+      showNotification("Unable to save details. Please check your connection.", "error");
+      setIsSubmitting(false);
+      return false;
     }
   };
 
   // Start Assessment
   const startAssessment = async (e) => {
-    e.preventDefault(); // Prevent standard form submissions if clicked
+    e.preventDefault();
 
     if (
-      !candidate.name ||
-      !candidate.email ||
-      !candidate.phone ||
+      !candidate.name.trim() ||
+      !candidate.email.trim() ||
+      !candidate.phone.trim() ||
       !candidate.department
     ) {
-      alert("Please fill all fields first");
+      showNotification("Please fill out all fields before continuing.", "error");
       return;
     }
 
     if (result) {
-      alert("Already taken the test !");
+      showNotification("This candidate has already taken the assessment.", "error");
       return;
     }
 
-    // Await or let the submission trigger cleanly
-    await handleSubmit(); 
+    // Save details first; move forward only if the API call succeeds
+    const saveSuccess = await handleSubmit(); 
+    if (!saveSuccess) return;
     
     navigate("/assessment-test", {
       state: { 
-        'cndid': cndid, 
-        'department': candidate.department
+        cndid: cndid, 
+        department: candidate.department
       }
     });
   };
@@ -85,115 +98,177 @@ function AssessmentForm() {
       phone: "",
       department: ""
     });
-
-    setMessage("Form Reset Successfully");
-
-    setTimeout(() => {
-      setMessage("");
-    }, 3000);
+    showNotification("Form fields cleared.", "info");
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <div className="flex min-h-screen">
-        <main className="flex-1 p-8 lg:p-12">
-          <div className="mx-auto w-full max-w-4xl bg-white shadow-xl rounded-3xl p-10">
-            <div className="mb-8">
-              <h1 className="text-4xl font-bold text-purple-700 mb-2">
-                Candidate Assessment Details
-              </h1>
-              <p className="text-slate-600">
-                Enter candidate information and proceed to the assessment in a clean, structured form.
-              </p>
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 sm:p-6 lg:p-8 font-sans antialiased text-slate-800">
+      <div className="w-full max-w-2xl bg-white border border-slate-100 shadow-2xl rounded-2xl overflow-hidden transition-all duration-300">
+        
+  
+
+        <div className="p-8 sm:p-10">
+          {/* Header Section */}
+          <div className="mb-8 text-center sm:text-left">
+           <h1 className="text-4xl font-bold text-purple-800">
+              Candidate Registration
+            </h1>
+          </div>
+
+          {/* Contextual Banner if Already Evaluated */}
+          {result && (
+            <div className="mb-6 flex items-start gap-3 bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-xl text-sm">
+              <svg className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <div>
+                <span className="font-semibold">Notice:</span> Record indicates this candidate token has finished a session. Repetition is disabled.
+              </div>
+            </div>
+          )}
+
+          {/* Toast-style Notification System */}
+          {message.text && (
+            <div className={`mb-6 flex items-center gap-3 border px-4 py-3.5 rounded-xl text-sm font-medium transition-all duration-300 transform translate-y-0
+              ${message.type === "success" ? "bg-emerald-50 border-emerald-200 text-emerald-800" : ""}
+              ${message.type === "error" ? "bg-rose-50 border-rose-200 text-rose-800" : ""}
+              ${message.type === "info" ? "bg-blue-50 border-purple-200 text-purple-800" : ""}
+            `}>
+              {message.type === "success" && (
+                <svg className="w-5 h-5 text-emerald-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              )}
+              {message.type === "error" && (
+                <svg className="w-5 h-5 text-rose-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              )}
+              {message.type === "info" && (
+                <svg className="w-5 h-5 text-blue-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              )}
+              <div>{message.text}</div>
+            </div>
+          )}
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              
+              {/* Full Name */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                  Full Name
+                </label>
+                <input
+                  type="text"
+                  disabled={isSubmitting}
+                  placeholder="Enter Full Name"
+                  className="w-full border border-slate-200 px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50/50 hover:bg-slate-50 transition text-sm disabled:opacity-60"
+                  value={candidate.name}
+                  onChange={(e) => setCandidate({ ...candidate, name: e.target.value })}
+                />
+              </div>
+
+              {/* Email */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  disabled={isSubmitting}
+                  placeholder="name@company.com"
+                  className="w-full border border-slate-200 px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50/50 hover:bg-slate-50 transition text-sm disabled:opacity-60"
+                  value={candidate.email}
+                  onChange={(e) => setCandidate({ ...candidate, email: e.target.value })}
+                />
+              </div>
+
+              {/* Phone */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                  Phone Number
+                </label>
+                <input
+                  type="tel"
+                  disabled={isSubmitting}
+                  placeholder="+91 9626749641"
+                  className="w-full border border-slate-200 px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50/50 hover:bg-slate-50 transition text-sm disabled:opacity-60"
+                  value={candidate.phone}
+                  onChange={(e) => setCandidate({ ...candidate, phone: e.target.value })}
+                />
+              </div>
+
+              {/* Department Selector */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                  Target Department
+                </label>
+                <div className="relative">
+                  <select
+                    disabled={isSubmitting}
+                    className="w-full border border-slate-200 px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50/50 hover:bg-slate-50 transition text-sm appearance-none cursor-pointer disabled:opacity-60"
+                    value={candidate.department}
+                    onChange={(e) => setCandidate({ ...candidate, department: e.target.value })}
+                  >
+                    <option value="">Select a domain...</option>
+                    <option value="Automation">Automation Engineering</option>
+                    <option value="Design Engineering">Design Engineering</option>
+                    <option value="Software Development">Software Development</option>
+                    <option value="HR">Human Resources</option>
+                    <option value="Mechanical">Mechanical Engineering</option>
+                    <option value="Production">Production & Logistics</option>
+                    <option value="Quality Assurance">Quality Assurance</option>
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-400">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            {/* Notification */}
-            {message && (
-              <div className="mb-5 bg-green-100 border border-green-500 text-green-700 px-4 py-3 rounded">
-                {message}
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <input
-                type="text"
-                placeholder="Full Name"
-                className="border p-3 w-full rounded"
-                value={candidate.name}
-                onChange={(e) => setCandidate({ ...candidate, name: e.target.value })}
-              />
-
-              <input
-                type="email"
-                placeholder="Email"
-                className="border p-3 w-full rounded"
-                value={candidate.email}
-                onChange={(e) => setCandidate({ ...candidate, email: e.target.value })}
-              />
-
-              <input
-                type="text"
-                placeholder="Phone Number"
-                className="border p-3 w-full rounded"
-                value={candidate.phone}
-                onChange={(e) => setCandidate({ ...candidate, phone: e.target.value })}
-              />
-
-              <div>
-                <label className="block text-sm font-medium text-purple-700 mb-3">
-                  Department
-                </label>
-
-                <select
-                  className="border p-3 w-full rounded focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white text-sm"
-                  value={candidate.department}
-                  onChange={(e) => setCandidate({ ...candidate, department: e.target.value })}
-                >
-                  <option value="">--- Choose Department ---</option>
-                  <option value="Automation">Automation</option>
-                  <option value="Design Engineering">Design Engineering</option>
-                  <option value="Software Development">Software Development</option>
-                  <option value="Human Resources">Human Resources</option>
-                  <option value="Mechanical">Mechanical</option>
-                  <option value="Production">Production</option>
-                  <option value="Quality Assurance">Quality Assurance</option>
-                </select>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-3 justify-center mt-8">
-                {/* Submit */}
-                <button
-                  type="submit"
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg"
-                >
-                  Submit
-                </button>
-
-                {/* Start Assessment (Changed type to button to prevent double submit triggers) */}
-                <button
-                  type="button" 
-                  onClick={startAssessment}
-                  className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg"
-                >
-                  Start Assessment
-                </button>
-
-                {/* Reset */}
+            {/* Structured Action Row */}
+            <div className="pt-6 border-t border-slate-100 flex flex-col-reverse sm:flex-row items-center justify-between gap-4">
+              
+              {/* Secondary Buttons Panel */}
+              <div className="flex w-full sm:w-auto items-center gap-3">
                 <button
                   type="button"
+                  disabled={isSubmitting}
                   onClick={handleReset}
-                  className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg"
+                  className="w-full sm:w-auto px-5 py-2.5 border border-slate-200 text-slate-600 font-medium rounded-xl hover:bg-slate-50 active:bg-slate-100 transition text-sm text-center disabled:opacity-50"
                 >
-                  Reset
+                  Clear Fields
                 </button>
+                
               </div>
-            </form>
 
-            <h2 className="text-center text-2xl font-bold text-purple-700 mt-8">
-              Best of Luck for Your Assessment
-            </h2>
-          </div>
-        </main>
+              {/* Core CTA: Start Assessment */}
+              <button
+                type="button"
+                disabled={isSubmitting || !!result}
+                onClick={startAssessment}
+                className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-semibold rounded-xl hover:from-violet-700 hover:to-indigo-700 active:transform active:scale-[0.99] transition shadow-md shadow-indigo-200 disabled:opacity-50 disabled:pointer-events-none text-sm"
+              >
+                <span>Start Assessment</span>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+          </form>
+
+          {/* Footer Encouragement */}
+          <p className="mt-8 text-center text-xs font-semibold text-slate-400 tracking-wider uppercase">
+             Best of luck for your Career🔥
+          </p>
+        </div>
+
       </div>
     </div>
   );
