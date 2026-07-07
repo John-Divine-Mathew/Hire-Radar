@@ -34,6 +34,7 @@ function ImportDrive() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const fileInputRef = useRef(null);
+  const [pdfViewMode, setPdfViewMode] = useState('native');
 
   // Supported file extensions (Removed 'zip')
   const supportedExtensions = useMemo(
@@ -81,7 +82,6 @@ function ImportDrive() {
         extension: (doc.extension || '').toLowerCase(),
         size: doc.fileSizeLabel || formatFileSize(doc.sizeBytes),
         sizeBytes: doc.sizeBytes || 0,
-        path: doc.path || 'Remote Storage Node',
         lastModified: doc.updatedAt ? new Date(doc.updatedAt).toLocaleDateString() : new Date().toLocaleDateString(),
         blobURL: doc.blobURL || `${API_BASE_URL}/api/documents/${doc.id}/download`,
         content: doc.extractedText || doc.content || '',
@@ -430,29 +430,190 @@ function ImportDrive() {
     return <FileArchive className="text-amber-500 w-5 h-5" />;
   };
 
-  const renderPreviewContent = () => {
+ const renderPreviewContent = () => {
     if (!selectedFile) return null;
     const ext = selectedFile.extension.toLowerCase();
+    const content = selectedFile.content || '';
 
+    // 1. High-Fidelity Image Viewport Layout
     if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext)) {
-      return <img src={selectedFile.blobURL} alt={selectedFile.fileName} className="max-w-full max-h-[60vh] object-contain rounded-lg" />;
-    }
-    if (ext === 'pdf') {
-      return <iframe src={selectedFile.blobURL} title={selectedFile.fileName} className="w-full h-[60vh] border-none rounded-lg" />;
-    }
-    if (['txt', 'csv', 'docx', 'json'].includes(ext) || selectedFile.content) {
       return (
-        <div className="w-full max-h-[60vh] overflow-auto bg-white p-4 rounded-lg border border-gray-200">
-          <pre className="text-xs text-slate-700 font-mono whitespace-pre-wrap break-all leading-relaxed">
-            {selectedFile.content || 'No context database content index extracted for this item.'}
-          </pre>
+        <div className="flex flex-col items-center justify-center p-4 bg-white rounded-xl shadow-sm border border-slate-200/60 max-w-full">
+          <img 
+            src={selectedFile.blobURL} 
+            alt={selectedFile.fileName} 
+            className="max-w-full max-h-[58vh] object-contain rounded-lg shadow-sm select-none" 
+          />
         </div>
       );
     }
+
+    // 2. High-Performance Hybrid Dual-State PDF Viewer
+    if (ext === 'pdf') {
+      return (
+        <div className="w-full flex flex-col h-[68vh] rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shadow-sm">
+          {/* Action Subbar Header for PDF Controls */}
+          <div className="bg-slate-50 border-b border-slate-200 px-4 py-2 flex items-center justify-between shrink-0">
+            <span className="text-xs font-medium text-slate-500">Document Engine Display Options:</span>
+            <div className="flex bg-slate-200/80 p-0.5 rounded-lg border border-slate-300/40">
+              <button
+                onClick={() => setPdfViewMode('native')}
+                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${pdfViewMode === 'native' ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+              >
+                Native Document View
+              </button>
+              <button
+                onClick={() => setPdfViewMode('extracted')}
+                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${pdfViewMode === 'extracted' ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+              >
+                Extracted OCR/Text Layer
+              </button>
+            </div>
+          </div>
+
+          <div className="flex-1 min-h-0 bg-slate-200/50">
+            {pdfViewMode === 'native' ? (
+              <iframe
+                src={`${selectedFile.blobURL}#toolbar=1&navpanes=0`}
+                title={selectedFile.fileName}
+                className="w-full h-full border-none bg-slate-500"
+              />
+            ) : (
+              <div className="w-full h-full overflow-auto bg-white p-8 md:p-12 font-serif text-slate-800 leading-relaxed text-sm max-w-2xl mx-auto shadow-md border-x border-slate-200/60 selection:bg-purple-100">
+                {content ? (
+                  content.split('\n').map((para, idx) => (
+                    para.trim() ? <p key={idx} className="mb-4 text-justify text-slate-700">{para.trim()}</p> : <div key={idx} className="h-2" />
+                  ))
+                ) : (
+                  <p className="text-center text-slate-400 font-sans italic py-12">No raw textual records extracted from this PDF node.</p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // 3. Tabular SaaS Grid Spreadsheet Engine (.xlsx, .xls, .csv)
+    if (['xlsx', 'xls', 'csv'].includes(ext)) {
+      const rows = content.split('\n').filter(row => row.trim());
+      
+      // Helper function to render excel character tracking labels (A, B, C...)
+      const getExcelColLabel = (index) => String.fromCharCode(65 + (index % 26));
+
+      return (
+        <div className="w-full max-h-[66vh] overflow-auto bg-slate-50 rounded-xl border border-slate-200 shadow-inner flex flex-col">
+          <div className="overflow-x-auto overflow-y-auto w-full">
+            <table className="w-full border-collapse text-xs text-left font-sans table-fixed min-w-[800px]">
+              <thead>
+                <tr className="bg-slate-100 border-b border-slate-300 sticky top-0 z-20 shadow-[0_1px_0_rgba(0,0,0,0.05)]">
+                  {/* Empty index column placeholder */}
+                  <th className="w-10 bg-slate-200 text-center border-r border-slate-300 p-1.5 text-[10px] font-bold text-slate-500 font-mono sticky left-0 z-30"></th>
+                  {rows[0] && rows[0].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map((_, idx) => (
+                    <th key={idx} className="w-[160px] p-2 bg-slate-100 text-slate-600 font-semibold font-mono border-r border-slate-300 text-center tracking-wider text-[11px]">
+                      {getExcelColLabel(idx)}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-slate-100">
+                {rows.map((row, rIdx) => {
+                  // Safe CSV/Excel column line regex splitter matching embedded strings
+                  const cells = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/); 
+                  return (
+                    <tr key={rIdx} className="hover:bg-purple-50/30 group transition-colors">
+                      {/* Row Counter Side Rail */}
+                      <td className="bg-slate-50 border-r border-slate-300 text-center p-1.5 font-mono text-[10px] text-slate-400 font-medium sticky left-0 z-10 shadow-[1px_0_0_rgba(226,232,240,1)] group-hover:bg-purple-100/50 group-hover:text-purple-700 transition-colors">
+                        {rIdx + 1}
+                      </td>
+                      {cells.map((cell, cIdx) => {
+                        const formattedValue = cell.replace(/^"|font="/g, '').replace(/"$/g, '').trim();
+                        return (
+                          <td 
+                            key={cIdx} 
+                            title={formattedValue}
+                            className={`p-2.5 border-r border-slate-200 truncate font-normal text-slate-700 tracking-wide leading-normal ${rIdx === 0 ? 'bg-slate-50/80 font-medium text-slate-900' : ''}`}
+                          >
+                            {formattedValue || <span className="text-slate-300 font-serif">-</span>}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
+    }
+
+    // 4. Code Block Editor Workspace Wrapper for Developers (.json)
+    if (ext === 'json') {
+      try {
+        const parsed = typeof content === 'object' ? content : JSON.parse(content);
+        const jsonStr = JSON.stringify(parsed, null, 2);
+        
+        return (
+          <div className="w-full max-h-[65vh] overflow-auto bg-slate-950 p-6 rounded-xl font-mono text-xs shadow-xl leading-relaxed border border-slate-800">
+            <pre className="text-slate-300 whitespace-pre-wrap break-all selection:bg-slate-800">
+              {jsonStr.split('\n').map((line, lIdx) => {
+                // Inline pseudo-syntax highlighting regex logic
+                let styledLine = line;
+                if (line.includes('":')) {
+                  const parts = line.split('":');
+                  styledLine = (
+                    <span>
+                      <span className="text-purple-400">{parts[0]}"</span>
+                      <span className="text-slate-400">:</span>
+                      <span className="text-emerald-400">{parts.slice(1).join('":')}</span>
+                    </span>
+                  );
+                }
+                return <div key={lIdx} className="hover:bg-slate-900/40 px-2 py-0.5 rounded transition-colors">{styledLine}</div>;
+              })}
+            </pre>
+          </div>
+        );
+      } catch (e) {
+        // Fallback to text handler if raw file contains invalid JSON blocks
+      }
+    }
+
+    // 5. Classic Desktop Book/Word Editor Simulation Layout (.docx, .doc, .txt)
+    if (['txt', 'docx', 'doc'].includes(ext) || content) {
+      const paragraphs = content.split('\n');
+      return (
+        <div className="w-full max-h-[66vh] overflow-auto bg-white px-10 py-12 md:px-16 md:py-14 rounded-xl border border-slate-200 shadow-md max-w-2xl font-serif text-slate-800 leading-loose text-[14px] text-justify select-text space-y-5 shadow-purple-950/5 selection:bg-purple-100">
+          {paragraphs.map((para, idx) => {
+            const trimmed = para.trim();
+            if (!trimmed) return <div key={idx} className="h-3" />;
+            
+            // Subheading Auto-Compiler Check
+            if (trimmed.length < 75 && (trimmed.toUpperCase() === trimmed || trimmed.endsWith(':') || trimmed.startsWith('##'))) {
+              return (
+                <h4 key={idx} className="font-sans font-bold text-base text-slate-900 pt-4 tracking-tight border-b border-slate-100 pb-1 font-semibold">
+                  {trimmed.replace(/^##\s*/, '')}
+                </h4>
+              );
+            }
+            return <p key={idx} className="text-slate-700 indent-2 tracking-wide font-normal">{trimmed}</p>;
+          })}
+        </div>
+      );
+    }
+
+    // 6. Fallback Workspace Handler
     return (
-      <div className="text-center p-8 text-slate-400">
-        <p className="font-semibold">Preview Not Available</p>
-        <p className="text-xs text-slate-400 mt-1">Please download file to view contents. File extension: {selectedFile.extension.toUpperCase()}</p>
+      <div className="text-center p-12 bg-white rounded-xl border border-slate-200 shadow-sm max-w-sm mx-auto">
+        <p className="font-bold text-slate-800 text-base">Preview Not Supported</p>
+        <p className="text-xs text-slate-400 mt-1 mb-6">This file content node cannot be displayed inline in your web app window workspace.</p>
+        <button 
+          onClick={() => downloadFile(selectedFile)}
+          className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2.5 rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 transition active:scale-95 shadow-sm shadow-purple-600/20"
+        >
+          <Download size={13} /> Download Document File
+        </button>
       </div>
     );
   };
@@ -621,9 +782,7 @@ function ImportDrive() {
                             <div className="mt-1">{getDocumentIcon(doc.extension)}</div>
                             <div className="min-w-0 flex-1">
                               <div className="truncate font-medium text-gray-900">{doc.fileName}</div>
-                              <div className="text-[10px] text-gray-400 truncate max-w-[200px]" title={doc.path}>
-                                {doc.path || 'Local upload path'}
-                              </div>
+                              
                               {doc.content && (
                                 <div className="text-xs text-purple-600 mt-1 bg-purple-50/50 rounded p-1 border border-purple-100/40 font-serif whitespace-normal break-all">
                                   {highlightSnippet(doc.content, searchTerm)}
