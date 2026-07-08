@@ -2,33 +2,33 @@ const express = require('express');
 const multer = require('multer');
 const cors = require('cors');
 const pool = require('./db');
-const { 
-    initializeSearchService, 
-    searchDocuments, 
-    listDocuments, 
-    saveUploadedFile, 
-    deleteDocument 
+const {
+    initializeSearchService,
+    searchDocuments,
+    listDocuments,
+    saveUploadedFile,
+    deleteDocument
 } = require('./searchService');
-
+ 
 const app = express();
-
+ 
 app.use(cors({ origin: 'http://localhost:5173' }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-// Initialize schema updates on boot gracefully
+ 
+// Initialize schema updates on boot (no directory creations)
 initializeSearchService().catch((error) => console.error('Search service startup failed:', error.message));
-
-// Configure multer memory stream standard engine configuration
+ 
+// Configure multer to store uploaded files directly in memory buffers
 const upload = multer({ storage: multer.memoryStorage() });
-
+ 
 function formatFileSize(bytes) {
     if (!bytes && bytes !== 0) return '0 Bytes';
     const units = ['Bytes', 'KB', 'MB', 'GB'];
     const size = bytes === 0 ? 0 : Math.floor(Math.log(bytes) / Math.log(1024));
     return `${(bytes / Math.pow(1024, size)).toFixed(size === 0 ? 0 : 1)} ${units[size]}`;
 }
-
+ 
 function normalizeDocument(row) {
     return {
         id: row.id,
@@ -41,11 +41,11 @@ function normalizeDocument(row) {
         nlpEntities: row.nlp_entities || []
     };
 }
-
+ 
 /* ==========================================================================
    CANDIDATES & RECRUITING ENDPOINTS
    ========================================================================== */
-
+ 
 app.get("/hireRadar/cndtempsave", async (req, res) => {
     try {
         const allData = await pool.query("select * from cndtempsave");
@@ -55,20 +55,20 @@ app.get("/hireRadar/cndtempsave", async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
-
+ 
 app.get("/hireRadar/cndtempsavesearch", async (req, res) => {
     try {
         const { search, experience, location, role, status, skills } = req.query;
         let queryText = "SELECT * FROM cndtempsave WHERE 1=1";
         let queryParams = [];
         let paramCounter = 1;
-
+ 
         if (search) {
             queryText += ` AND LOWER(cndname) LIKE $${paramCounter}`;
             queryParams.push(`%${search.toLowerCase().trim()}%`);
             paramCounter++;
         }
-
+ 
         if (experience) {
             const cleanExp = experience.replace(' years', '').trim();
             if (cleanExp.includes('-')) {
@@ -87,7 +87,7 @@ app.get("/hireRadar/cndtempsavesearch", async (req, res) => {
                 paramCounter++;
             }
         }
-
+ 
         if (role) {
             queryText += ` AND LOWER(cndrole) = $${paramCounter}`;
             queryParams.push(role.toLowerCase());
@@ -98,101 +98,7 @@ app.get("/hireRadar/cndtempsavesearch", async (req, res) => {
             queryParams.push(status.toLowerCase());
             paramCounter++;
         }
-
-        if (location) {
-            const locationsArray = location.split(',');
-            const locationConditions = [];
-            box = locationsArray.forEach(loc => {
-                locationConditions.push(`LOWER(cndlocation) = $${paramCounter}`);
-                queryParams.push(loc.toLowerCase().trim());
-                paramCounter++;
-            });
-            if (locationConditions.length > 0) {
-                queryText += ` AND (${locationConditions.join(' OR ')})`;
-            }
-        }
-
-        if (skills) {
-            const skillsArray = skills.split(',');
-            skillsArray.forEach(skill => {
-                queryText += ` AND LOWER(cndskills) LIKE $${paramCounter}`;
-                queryParams.push(`%${skill.toLowerCase().trim()}%`);
-                paramCounter++;
-            });
-        }
-
-        const filteredData = await pool.query(queryText, queryParams);
-        res.json(filteredData.rows);
-    } catch (err) {
-        console.error("Backend filter processing error:", err.message);
-        res.status(500).send("Server Error");
-    }
-});
-
-app.get("/hireRadar/cndtempsave/:cndid", async (req, res) => {
-    try {
-        const { cndid } = req.params;
-        const oneData = await pool.query("select * from cndtempsave where cndid = $1", [cndid]);
-        res.json(oneData.rows[0]);
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).json({ error: err.message });
-    }
-});
-
-app.get("/hireRadar/cndpermsave", async (req, res) => {
-    try {
-        const allData = await pool.query("select * from cndpermsave");
-        res.json(allData.rows);
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).json({ error: err.message });
-    }
-});
-
-app.get("/hireRadar/cndpermsavesearch", async (req, res) => {
-    try {
-        const { search, experience, location, role, status, skills } = req.query;
-        let queryText = "SELECT * FROM cndpermsave WHERE 1=1";
-        let queryParams = [];
-        let paramCounter = 1;
-
-        if (search) {
-            queryText += ` AND LOWER(cndname) LIKE $${paramCounter}`;
-            queryParams.push(`%${search.toLowerCase().trim()}%`);
-            paramCounter++;
-        }
-
-        if (experience) {
-            const cleanExp = experience.replace(' years', '').trim();
-            if (cleanExp.includes('-')) {
-                const [min, max] = cleanExp.split('-').map(Number);
-                queryText += ` AND cndexperience >= $${paramCounter} AND cndexperience <= $${paramCounter + 1}`;
-                queryParams.push(min, max);
-                paramCounter += 2;
-            } else if (cleanExp.includes('+')) {
-                const min = Number(cleanExp.replace('+', ''));
-                queryText += ` AND cndexperience >= $${paramCounter}`;
-                queryParams.push(min);
-                paramCounter++;
-            } else if (!isNaN(cleanExp) && cleanExp !== '') {
-                queryText += ` AND cndexperience = $${paramCounter}`;
-                queryParams.push(Number(cleanExp));
-                paramCounter++;
-            }
-        }
-
-        if (role) {
-            queryText += ` AND LOWER(cndrole) = $${paramCounter}`;
-            queryParams.push(role.toLowerCase());
-            paramCounter++;
-        }
-        if (status) {
-            queryText += ` AND LOWER(cndstatus) = $${paramCounter}`;
-            queryParams.push(status.toLowerCase());
-            paramCounter++;
-        }
-
+ 
         if (location) {
             const locationsArray = location.split(',');
             const locationConditions = [];
@@ -205,7 +111,7 @@ app.get("/hireRadar/cndpermsavesearch", async (req, res) => {
                 queryText += ` AND (${locationConditions.join(' OR ')})`;
             }
         }
-
+ 
         if (skills) {
             const skillsArray = skills.split(',');
             skillsArray.forEach(skill => {
@@ -214,7 +120,101 @@ app.get("/hireRadar/cndpermsavesearch", async (req, res) => {
                 paramCounter++;
             });
         }
-
+ 
+        const filteredData = await pool.query(queryText, queryParams);
+        res.json(filteredData.rows);
+    } catch (err) {
+        console.error("Backend filter processing error:", err.message);
+        res.status(500).send("Server Error");
+    }
+});
+ 
+app.get("/hireRadar/cndtempsave/:cndid", async (req, res) => {
+    try {
+        const { cndid } = req.params;
+        const oneData = await pool.query("select * from cndtempsave where cndid = $1", [cndid]);
+        res.json(oneData.rows[0]);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+ 
+app.get("/hireRadar/cndpermsave", async (req, res) => {
+    try {
+        const allData = await pool.query("select * from cndpermsave");
+        res.json(allData.rows);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+ 
+app.get("/hireRadar/cndpermsavesearch", async (req, res) => {
+    try {
+        const { search, experience, location, role, status, skills } = req.query;
+        let queryText = "SELECT * FROM cndpermsave WHERE 1=1";
+        let queryParams = [];
+        let paramCounter = 1;
+ 
+        if (search) {
+            queryText += ` AND LOWER(cndname) LIKE $${paramCounter}`;
+            queryParams.push(`%${search.toLowerCase().trim()}%`);
+            paramCounter++;
+        }
+ 
+        if (experience) {
+            const cleanExp = experience.replace(' years', '').trim();
+            if (cleanExp.includes('-')) {
+                const [min, max] = cleanExp.split('-').map(Number);
+                queryText += ` AND cndexperience >= $${paramCounter} AND cndexperience <= $${paramCounter + 1}`;
+                queryParams.push(min, max);
+                paramCounter += 2;
+            } else if (cleanExp.includes('+')) {
+                const min = Number(cleanExp.replace('+', ''));
+                queryText += ` AND cndexperience >= $${paramCounter}`;
+                queryParams.push(min);
+                paramCounter++;
+            } else if (!isNaN(cleanExp) && cleanExp !== '') {
+                queryText += ` AND cndexperience = $${paramCounter}`;
+                queryParams.push(Number(cleanExp));
+                paramCounter++;
+            }
+        }
+ 
+        if (role) {
+            queryText += ` AND LOWER(cndrole) = $${paramCounter}`;
+            queryParams.push(role.toLowerCase());
+            paramCounter++;
+        }
+        if (status) {
+            queryText += ` AND LOWER(cndstatus) = $${paramCounter}`;
+            queryParams.push(status.toLowerCase());
+            paramCounter++;
+        }
+ 
+        if (location) {
+            const locationsArray = location.split(',');
+            const locationConditions = [];
+            locationsArray.forEach(loc => {
+                locationConditions.push(`LOWER(cndlocation) = $${paramCounter}`);
+                queryParams.push(loc.toLowerCase().trim());
+                paramCounter++;
+            });
+            if (locationConditions.length > 0) {
+                queryText += ` AND (${locationConditions.join(' OR ')})`;
+            }
+        }
+ 
+        if (skills) {
+            const skillsArray = skills.split(',');
+            skillsArray.forEach(skill => {
+                queryText += ` AND LOWER(cndskills) LIKE $${paramCounter}`;
+                queryParams.push(`%${skill.toLowerCase().trim()}%`);
+                paramCounter++;
+            });
+        }
+ 
         queryText += " ORDER BY cndid ASC";
         const filteredData = await pool.query(queryText, queryParams);
         res.json(filteredData.rows);
@@ -223,7 +223,40 @@ app.get("/hireRadar/cndpermsavesearch", async (req, res) => {
         res.status(500).send("Server Error");
     }
 });
-
+ 
+app.get("/hireRadar/cndpermsave/:cndid", async (req, res) => {
+    try {
+        const { cndid } = req.params;
+        const oneData = await pool.query("select * from cndpermsave where cndid = $1", [cndid]);
+        res.json(oneData.rows[0]);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+ 
+app.get("/hireRadar/cndpersonaldetails/:cndid", async (req, res) => {
+    try {
+        const { cndid } = req.params;
+        const oneData = await pool.query("select * from cndpersonaldetails where cndid = $1", [cndid]);
+        res.json(oneData.rows[0]);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+ 
+app.get("/hireRadar/cndworkdetails/:cndid", async (req, res) => {
+    try {
+        const { cndid } = req.params;
+        const oneData = await pool.query("select * from cndworkdetails where cndid = $1", [cndid]);
+        res.json(oneData.rows[0]);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+ 
 app.post("/hireRadar/insertCandidate", async (req, res) => {
     try {
         const { date, name, email, phone, age, gender, role, skills, texp, experience, location, status } = req.body;
@@ -235,7 +268,7 @@ app.post("/hireRadar/insertCandidate", async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
-
+ 
 app.delete("/hireRadar/deleteCandidate/:cndid", async (req, res) => {
     try {
         const { cndid } = req.params;
@@ -246,7 +279,39 @@ app.delete("/hireRadar/deleteCandidate/:cndid", async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
-
+ 
+app.post("/hireRadar/insertTestDetails", async (req, res) => {
+    try {
+        const { cndid, username, password } = req.body;
+        const newCndData = await pool.query("insert into testdetails(cndid, username, password) values($1,$2,$3) returning username, password", [cndid, username, password]);
+        res.json(newCndData.rows[0]);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+ 
+app.get("/hireRadar/getTestDetails", async (req, res) => {
+    try {
+        const allData = await pool.query("select cndid,username,password,testresult from testdetails");
+        res.json(allData.rows);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+ 
+app.post("/hireRadar/updateTestDetails", async (req, res) => {
+    try {
+        const { cndid, name, email, department, phone } = req.body;
+        const newCndData = await pool.query("update testdetails set cndname=$1, phone=$2, personalemail=$3, department=$4, testdate=$6 where cndid=$5 returning *", [name, phone, email, department, cndid, new Date()]);
+        res.json(newCndData.rows[0]);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+ 
 app.get("/hireRadar/testquestions", async (req, res) => {
     try {
         const allData = await pool.query("select * from questions");
@@ -256,11 +321,65 @@ app.get("/hireRadar/testquestions", async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
-
+ 
+app.get("/hireRadar/testquestions/:dept", async (req, res) => {
+    try {
+        const { dept } = req.params;
+        const allData = await pool.query("select * from questions where lower(dept)=$1", [dept.toLowerCase().trim()]);
+        res.json(allData.rows);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+ 
+app.post("/hireRadar/insertQuestions", async (req, res) => {
+    try {
+        const { dept, category, question, option1, option2, option3, option4, answer } = req.body;
+        const allData = await pool.query("insert into questions(dept, category, question, option1, option2, option3, option4, answer) values($1, $2, $3, $4, $5, $6, $7, $8) returning *", [dept, category, question, option1, option2, option3, option4, answer]);
+        res.json(allData.rows);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+ 
+app.delete("/hireRadar/deleteQuestion/:qno", async (req, res) => {
+    try {
+        const { qno } = req.params;
+        const deleteData = await pool.query("delete from questions where qno = $1", [Number(qno)]);
+        return res.json({ success: true, deleted: deleteData.rowCount || 0 });
+    } catch (err) {
+        console.log(err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+ 
+app.post("/hireRadar/setTestResult", async (req, res) => {
+    try {
+        const { result, cndid } = req.body;
+        const newCndData = await pool.query("update testdetails set testresult=$1 where cndid=$2 returning *", [result, cndid]);
+        res.json(newCndData.rows[0]);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+ 
+app.get("/hireRadar/adminlogin", async (req, res) => {
+    try {
+        const allData = await pool.query(`select * from adminlogin`);
+        res.json(allData.rows);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+ 
 /* ==========================================================================
-   WORKSPACE DOCUMENT STORAGE & SEARCH ENDPOINTS
+   WORKSPACE DOCUMENT STORAGE & FULL-TEXT SEARCH CORES (IN-MEMORY STREAMS ONLY)
    ========================================================================== */
-
+ 
 app.get('/api/search', async (req, res) => {
     try {
         const q = String(req.query.q || '').trim();
@@ -276,7 +395,7 @@ app.get('/api/search', async (req, res) => {
         res.status(500).json({ error: 'Unable to search documents.' });
     }
 });
-
+ 
 app.get('/api/documents', async (req, res) => {
     try {
         const rows = await listDocuments({
@@ -290,16 +409,20 @@ app.get('/api/documents', async (req, res) => {
         res.status(500).json({ error: 'Unable to load documents.' });
     }
 });
-
+ 
+// Single unified route receiving standard browser memory payloads
 app.post('/api/upload', upload.any(), async (req, res) => {
     try {
         const filesCollection = req.files || (req.file ? [req.file] : []);
+        
         if (filesCollection.length === 0) {
             return res.status(400).json({ error: 'No files were detected inside payload arrays.' });
         }
-
+ 
+        // Process directly out of incoming in-memory stream buffers
         const uploadedDocuments = await Promise.all(
             filesCollection.map(async (file) => {
+                // Pass Multer memory file directly ({ originalname, buffer, size })
                 return saveUploadedFile(file);
             })
         );
@@ -309,11 +432,12 @@ app.post('/api/upload', upload.any(), async (req, res) => {
         res.status(500).json({ error: 'Unable to complete uploading files stream.' });
     }
 });
-
+ 
 app.get('/api/status', (_req, res) => {
     res.json({ status: 'ok', service: 'document-search' });
 });
-
+ 
+// Serves structural text strings directly from DB index representations instead of file paths
 app.get('/api/documents/:id/preview', async (req, res) => {
     try {
         const result = await pool.query('SELECT extracted_text, file_name FROM document_search_index WHERE id = $1', [req.params.id]);
@@ -330,7 +454,8 @@ app.get('/api/documents/:id/preview', async (req, res) => {
         res.status(500).json({ error: 'Unable to preview document.' });
     }
 });
-
+ 
+// Downloads the indexed content text metadata as a file attachment directly from DB columns
 app.get('/api/documents/:id/download', async (req, res) => {
     try {
         const result = await pool.query('SELECT extracted_text, file_name FROM document_search_index WHERE id = $1', [req.params.id]);
@@ -347,7 +472,7 @@ app.get('/api/documents/:id/download', async (req, res) => {
         res.status(500).json({ error: 'Unable to download document.' });
     }
 });
-
+ 
 app.delete('/api/documents/:id', async (req, res) => {
     try {
         const success = await deleteDocument(req.params.id);
@@ -357,7 +482,7 @@ app.delete('/api/documents/:id', async (req, res) => {
         res.status(500).json({ error: 'Unable to delete document index.' });
     }
 });
-
+ 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
     console.log(`Server has started on port ${PORT}`);
