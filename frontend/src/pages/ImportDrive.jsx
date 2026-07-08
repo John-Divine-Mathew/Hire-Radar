@@ -14,12 +14,17 @@ import {
 } from 'lucide-react';
 import Sidebar from '../components/sideBar/sideBar.jsx';
 import Navbar from '../components/navBar/navBar.jsx';
-import Tesseract from 'tesseract.js'; // Client OCR re-engaged
+import Tesseract from 'tesseract.js'; 
 import * as pdfjsLib from 'pdfjs-dist/build/pdf';
 import mammoth from 'mammoth';
 import * as XLSX from 'xlsx';
 
 const API_BASE_URL = 'http://localhost:5000';
+
+// Extensions that have a dedicated preview branch. Used to keep the generic
+// text/docx catch-all branch from ever swallowing a pdf/image/xlsx/json doc,
+// even if `ext` momentarily fails to match its own branch.
+const KNOWN_SPECIAL_EXTS = ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'xlsx', 'xls', 'csv', 'json'];
 
 function ImportDrive() {
   const [documents, setDocuments] = useState([]);
@@ -34,16 +39,34 @@ function ImportDrive() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const fileInputRef = useRef(null);
-  const [pdfViewMode, setPdfViewMode] = useState('native');
+  const [viewMode, setViewMode] = useState('native');
+  // The actual URL fed to the <iframe>/<img> in preview. For locally-uploaded
+  // files this is just the existing blob: URL. For backend-loaded files, we
+  // fetch the bytes ourselves and build a fresh blob: URL from them so the
+  // browser renders inline instead of following the download endpoint's
+  // Content-Disposition header and prompting a file save.
+  const [previewSrc, setPreviewSrc] = useState(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+
+  // Safely initialize PDFJS properties once mounted to bypass ES Module mutation locks
+  useEffect(() => {
+    if (pdfjsLib?.GlobalWorkerOptions) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version || '3.4.120'}/pdf.worker.min.js`;
+    }
+  }, []);
 
   const supportedExtensions = useMemo(
     () => ['pdf', 'doc', 'docx', 'txt', 'csv', 'png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp', 'ppt', 'pptx', 'xls', 'xlsx'],
     []
   );
 
+  // Normalizes any extension-ish value: trims whitespace, lowercases, and
+  // strips a leading dot if present (defensive against inconsistent inputs).
+  const normalizeExt = (value) => (value || '').toString().trim().toLowerCase().replace(/^\./, '');
+
   const isValidFile = (fileName) => {
     if (!fileName) return false;
-    const ext = fileName.split('.').pop().toLowerCase();
+    const ext = normalizeExt(fileName.split('.').pop());
     const isTemporary = fileName.startsWith('~$');
     const isZip = ext === 'zip';
     return !isTemporary && !isZip && supportedExtensions.includes(ext);
@@ -74,7 +97,11 @@ function ImportDrive() {
       const normalizedData = data.map(doc => ({
         id: doc.id,
         fileName: doc.fileName,
-        extension: (doc.extension || '').toLowerCase(),
+        // Fall back to deriving the extension from the filename itself if the
+        // backend's `extension` field is missing/blank/mis-cased — this is
+        // what previously let docs silently fall through to the wrong
+        // preview branch (e.g. a pdf rendering as plain extracted text).
+        extension: normalizeExt(doc.extension) || normalizeExt(doc.fileName?.split('.').pop()),
         size: doc.fileSizeLabel || formatFileSize(doc.file_size),
         sizeBytes: doc.file_size || 0,
         lastModified: doc.uploadedAt ? new Date(doc.uploadedAt).toLocaleDateString() : new Date().toLocaleDateString(),
@@ -167,15 +194,11 @@ function ImportDrive() {
     try { return await file.text(); } catch (e) { return ''; }
   };
   
-  pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
-
   const extractImageText = async (file) => {
     try {
-      // Instantiate an explicit worker configuration to cleanly suppress WASM core warnings
       const worker = await Tesseract.createWorker('eng', 1, {
-        logger: () => {} // Bypasses internal TrueType/Emscripten console logging loops
+        logger: () => {} 
       });
-      
       const { data: { text } } = await worker.recognize(file);
       await worker.terminate();
       return text?.trim() || '';
@@ -188,15 +211,45 @@ function ImportDrive() {
   const extractPdfText = async (file) => {
     try {
       const arrayBuffer = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      
+      const pdf = await pdfjsLib.getDocument({ 
+        data: arrayBuffer,
+        disableFontFace: true, 
+        ignoreErrors: true      
+      }).promise;
+      
       let text = '';
+      
       for (let pageNum = 1; pageNum <= pdf.numPages; pageNum += 1) {
         const page = await pdf.getPage(pageNum);
         const content = await page.getTextContent();
         text += content.items.map((item) => item.str).join(' ') + '\n';
       }
+
+      if (!text.trim()) {
+        let ocrText = '';
+        const worker = await Tesseract.createWorker('eng', 1, { logger: () => {} });
+        
+        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum += 1) {
+          const page = await pdf.getPage(pageNum);
+          const viewport = page.getViewport({ scale: 1.5 });
+          
+          const canvas = document.createElement('canvas');
+          const context = canvas.getContext('2d');
+          canvas.height = viewport.height;
+          canvas.width = viewport.width;
+
+          await page.render({ canvasContext: context, viewport: viewport }).promise;
+          const { data: { text: pageText } } = await worker.recognize(canvas);
+          ocrText += pageText + '\n';
+        }
+        await worker.terminate();
+        return ocrText.trim();
+      }
+
       return text.trim();
     } catch (e) {
+      console.error('Failed reading PDF content matrix layers:', e);
       return '';
     }
   };
@@ -227,7 +280,7 @@ function ImportDrive() {
   };
 
   const extractFileContent = async (file) => {
-    const ext = file.name.split('.').pop().toLowerCase();
+    const ext = normalizeExt(file.name.split('.').pop());
     if (['txt', 'csv'].includes(ext)) return extractTextContent(file);
     if (['docx'].includes(ext)) return extractDocxContent(file);
     if (['pdf'].includes(ext)) return extractPdfText(file);
@@ -242,7 +295,7 @@ function ImportDrive() {
       if (item.kind === 'file') {
         const file = typeof item.getFile === 'function' ? await item.getFile() : item;
         if (isValidFile(file.name)) {
-          const ext = file.name.split('.').pop().toLowerCase();
+          const ext = normalizeExt(file.name.split('.').pop());
           const content = await extractFileContent(file);
           const blobURL = URL.createObjectURL(file);
 
@@ -298,6 +351,11 @@ function ImportDrive() {
       if (entries.length > 0) {
         const newDocs = await processFilesRecursively(entries);
         setDocuments((prev) => [...newDocs, ...prev]);
+        
+        if (selectedFile) {
+          const matched = newDocs.find(d => d.fileName === selectedFile.fileName);
+          if (matched) setSelectedFile(matched);
+        }
       }
 
       const targetUploadList = event.target.files || filesToUpload;
@@ -346,14 +404,51 @@ function ImportDrive() {
     await handleFolderSelect(e);
   };
 
-  const openPreview = (file) => {
+  const openPreview = async (file) => {
+    // Clean up any previously created preview blob URL before switching files.
+    if (previewSrc && previewSrc.startsWith('blob:')) {
+      URL.revokeObjectURL(previewSrc);
+    }
+    setPreviewSrc(null);
     setSelectedFile(file);
     setPreviewOpen(true);
+    setViewMode('native');
+
+    // Locally-uploaded files already have a blob: URL from processFilesRecursively — use it as-is.
+    if (file.blobURL && file.blobURL.startsWith('blob:')) {
+      setPreviewSrc(file.blobURL);
+      return;
+    }
+
+    // Backend-loaded files: fetch the bytes ourselves rather than pointing
+    // the iframe/img straight at the download endpoint. Loading that URL
+    // directly makes the browser honor the response's Content-Disposition
+    // header and prompt a save-file dialog instead of rendering it.
+    setPreviewSrc(null);
+    setPreviewLoading(true);
+    try {
+      const response = await fetch(file.blobURL);
+      if (!response.ok) throw new Error('Failed to fetch file for preview');
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      setPreviewSrc(objectUrl);
+    } catch (err) {
+      console.error('Unable to load inline preview, falling back to none:', err);
+      setPreviewSrc(null);
+    } finally {
+      setPreviewLoading(false);
+    }
   };
 
   const closePreview = () => {
     setPreviewOpen(false);
     setSelectedFile(null);
+    setViewMode('native');
+    if (previewSrc && previewSrc.startsWith('blob:')) {
+      URL.revokeObjectURL(previewSrc);
+    }
+    setPreviewSrc(null);
+    setPreviewLoading(false);
   };
 
   const downloadFile = (file) => {
@@ -374,7 +469,7 @@ function ImportDrive() {
     try {
       await fetch(`${API_BASE_URL}/api/documents/${id}`, { method: 'DELETE' });
     } catch (err) {
-      console.error('Server cleanup omitted, discarding संदर्भ records locally:', err);
+      console.error('Server cleanup omitted, discarding records locally:', err);
     }
 
     const fileToDelete = documents.find((doc) => doc.id === id);
@@ -404,7 +499,7 @@ function ImportDrive() {
   };
 
   const getDocumentIcon = (extension) => {
-    const ext = (extension || '').toLowerCase();
+    const ext = normalizeExt(extension);
     if (ext === 'pdf') return <FileText className="text-red-500 w-5 h-5" />;
     if (['docx', 'doc'].includes(ext)) return <FileText className="text-blue-500 w-5 h-5" />;
     if (['xlsx', 'xls', 'csv'].includes(ext)) return <FileSpreadsheet className="text-green-500 w-5 h-5" />;
@@ -414,57 +509,64 @@ function ImportDrive() {
 
   const renderPreviewContent = () => {
     if (!selectedFile) return null;
-    const ext = selectedFile.extension.toLowerCase();
+    // Normalized once here so every branch below is checked against the same
+    // trimmed/lowercased value — this is what previously let a pdf (or any
+    // doc whose extension field was blank/mis-cased coming from the backend)
+    // silently fall through to the generic text-preview branch instead of
+    // its dedicated one.
+    const ext = normalizeExt(selectedFile.extension);
     const content = selectedFile.content || '';
 
+    // 1. SPECIFIC IMAGE PREVIEW WORKSPACE (Retained with toggle)
     if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext)) {
-      return (
-        <div className="flex flex-col items-center justify-center p-4 bg-white rounded-xl shadow-sm border border-slate-200/60 max-w-full">
-          <img 
-            src={selectedFile.blobURL} 
-            alt={selectedFile.fileName} 
-            className="max-w-full max-h-[58vh] object-contain rounded-lg shadow-sm select-none" 
-          />
-        </div>
-      );
-    }
-
-    if (ext === 'pdf') {
       return (
         <div className="w-full flex flex-col h-[68vh] rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shadow-sm">
           <div className="bg-slate-50 border-b border-slate-200 px-4 py-2 flex items-center justify-between shrink-0">
-            <span className="text-xs font-medium text-slate-500">Document Engine Display Options:</span>
+            <span className="text-xs font-medium text-slate-500">Image Display Options:</span>
             <div className="flex bg-slate-200/80 p-0.5 rounded-lg border border-slate-300/40">
               <button
-                onClick={() => setPdfViewMode('native')}
-                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${pdfViewMode === 'native' ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                onClick={() => setViewMode('native')}
+                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${viewMode === 'native' ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
               >
-                Native Document View
+                Native Image View
               </button>
               <button
-                onClick={() => setPdfViewMode('extracted')}
-                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${pdfViewMode === 'extracted' ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                onClick={() => setViewMode('extracted')}
+                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${viewMode === 'extracted' ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
               >
-                Extracted Text Layer
+                Extracted OCR Text
               </button>
             </div>
           </div>
 
-          <div className="flex-1 min-h-0 bg-slate-200/50">
-            {pdfViewMode === 'native' ? (
-              <iframe
-                src={`${selectedFile.blobURL}#toolbar=1&navpanes=0`}
-                title={selectedFile.fileName}
-                className="w-full h-full border-none bg-slate-500"
-              />
+          <div className="flex-1 min-h-0 bg-slate-200/50 overflow-y-auto p-4 flex items-center justify-center">
+            {viewMode === 'native' ? (
+              previewLoading ? (
+                <div className="flex items-center gap-2 text-slate-400">
+                  <LoaderCircle size={18} className="animate-spin" /> Loading preview…
+                </div>
+              ) : previewSrc ? (
+                <img 
+                  src={previewSrc} 
+                  alt={selectedFile.fileName} 
+                  className="max-w-full max-h-[58vh] object-contain rounded-lg shadow-sm select-none" 
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center py-24 text-slate-400">
+                  <p className="italic font-sans">Unable to load an inline preview for this image.</p>
+                </div>
+              )
             ) : (
-              <div className="w-full h-full overflow-auto bg-white p-8 md:p-12 font-serif text-slate-800 leading-relaxed text-sm max-w-2xl mx-auto shadow-md border-x border-slate-200/60">
+              <div className="w-full h-fit min-h-full bg-white p-8 md:p-12 font-sans text-slate-800 text-sm max-w-2xl shadow-md border border-slate-200/80 rounded-lg">
                 {content ? (
-                  content.split('\n').map((para, idx) => (
-                    para.trim() ? <p key={idx} className="mb-4 text-justify text-slate-700">{para.trim()}</p> : <div key={idx} className="h-2" />
-                  ))
+                  <div className="whitespace-pre-wrap break-words leading-relaxed text-left font-mono text-[13px] text-slate-700">
+                    {content}
+                  </div>
                 ) : (
-                  <p className="text-center text-slate-400 font-sans italic py-12">No text found inside this PDF layer.</p>
+                  <div className="flex flex-col items-center justify-center py-24 text-slate-400">
+                    <p className="italic font-sans">No text found inside this image layer.</p>
+                    <p className="text-[11px] text-slate-400 mt-1 not-italic">Ensure Tesseract processing is fully complete.</p>
+                  </div>
                 )}
               </div>
             )}
@@ -473,6 +575,65 @@ function ImportDrive() {
       );
     }
 
+    // 2. SPECIFIC PDF DOCUMENT WORKSPACE
+    if (ext === 'pdf') {
+      return (
+        <div className="w-full flex flex-col h-[68vh] rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shadow-sm">
+          <div className="bg-slate-50 border-b border-slate-200 px-4 py-2 flex items-center justify-between shrink-0">
+            <span className="text-xs font-medium text-slate-500">Document Engine Display Options:</span>
+            <div className="flex bg-slate-200/80 p-0.5 rounded-lg border border-slate-300/40">
+              <button
+                onClick={() => setViewMode('native')}
+                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${viewMode === 'native' ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+              >
+                Native Document View
+              </button>
+              <button
+                onClick={() => setViewMode('extracted')}
+                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${viewMode === 'extracted' ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+              >
+                Extracted Text Layer
+              </button>
+            </div>
+          </div>
+
+          <div className="flex-1 min-h-0 bg-slate-200/50 overflow-y-auto p-4 flex justify-center">
+            {viewMode === 'native' ? (
+              previewLoading ? (
+                <div className="flex items-center gap-2 text-slate-400 self-center">
+                  <LoaderCircle size={18} className="animate-spin" /> Loading document…
+                </div>
+              ) : previewSrc ? (
+                <iframe
+                  src={`${previewSrc}#toolbar=1&navpanes=0`}
+                  title={selectedFile.fileName}
+                  className="w-full h-full border-none bg-slate-500 rounded-lg shadow-sm"
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center py-24 text-slate-400 self-center">
+                  <p className="italic font-sans">Unable to load an inline preview for this document.</p>
+                </div>
+              )
+            ) : (
+              <div className="w-full h-fit min-h-full bg-white p-8 md:p-12 font-sans text-slate-800 text-sm max-w-2xl shadow-md border border-slate-200/80 rounded-lg">
+                {content ? (
+                  <div className="whitespace-pre-wrap break-words leading-relaxed text-left font-mono text-[13px] text-slate-700">
+                    {content}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-24 text-slate-400">
+                    <p className="italic font-sans">No text found inside this PDF layer.</p>
+                    <p className="text-[11px] text-slate-400 mt-1 not-italic">Ensure document parsing is complete or use native view layers instead.</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // 3. SPREADSHEETS
     if (['xlsx', 'xls', 'csv'].includes(ext)) {
       const rows = content.split('\n').filter(row => row.trim());
       const getExcelColLabel = (index) => String.fromCharCode(65 + (index % 26));
@@ -521,6 +682,7 @@ function ImportDrive() {
       );
     }
 
+    // 4. JSON METADATA
     if (ext === 'json') {
       try {
         const parsed = typeof content === 'object' ? content : JSON.parse(content);
@@ -546,10 +708,17 @@ function ImportDrive() {
             </pre>
           </div>
         );
-      } catch (e) { /* Fallback */ }
+      } catch (e) { /* Fallback to standard text layout below */ }
     }
 
-    if (['txt', 'docx', 'doc'].includes(ext) || content) {
+    // 5. NATIVE TEXT-BASED PREVIEWS (.txt, .docx, .doc, etc.)
+    // NOTE: previously this was `if ([...].includes(ext) || content)`, which
+    // meant ANY doc with non-empty extracted text — including a pdf whose
+    // `ext` failed to match branch 2 for whatever reason — would render here
+    // instead. Restricting the `|| content` fallback to extensions NOT
+    // already handled by an earlier branch keeps pdf/image/xlsx/json docs
+    // locked to their dedicated (correctly toolbar'd) preview branches.
+    if (['txt', 'docx', 'doc'].includes(ext) || (content && !KNOWN_SPECIAL_EXTS.includes(ext))) {
       const paragraphs = content.split('\n');
       return (
         <div className="w-full max-h-[66vh] overflow-auto bg-white px-10 py-12 md:px-16 md:py-14 rounded-xl border border-slate-200 shadow-md max-w-2xl font-serif text-slate-800 leading-loose text-[14px] text-justify space-y-5">
@@ -570,6 +739,7 @@ function ImportDrive() {
       );
     }
 
+    // UNKNOWN FORMATS
     return (
       <div className="text-center p-12 bg-white rounded-xl border border-slate-200 shadow-sm max-w-sm mx-auto">
         <p className="font-bold text-slate-800 text-base">Preview Not Supported</p>
@@ -745,15 +915,6 @@ function ImportDrive() {
                               {doc.content && (
                                 <div className="text-xs text-purple-600 mt-1 bg-purple-50/50 rounded p-1 border border-purple-100/40 font-serif whitespace-normal break-all">
                                   {highlightSnippet(doc.content, searchTerm)}
-                                </div>
-                              )}
-                              {doc.nlpEntities && doc.nlpEntities.length > 0 && (
-                                <div className="flex flex-wrap gap-1 mt-1.5">
-                                  {doc.nlpEntities.slice(0, 3).map((ent, idx) => (
-                                    <span key={idx} className="bg-slate-100 border border-slate-200 text-slate-600 px-1 py-0.5 rounded text-[10px] font-sans font-medium">
-                                      {ent.text} <b className="text-[8px] text-purple-500 uppercase">{ent.label}</b>
-                                    </span>
-                                  ))}
                                 </div>
                               )}
                             </div>
