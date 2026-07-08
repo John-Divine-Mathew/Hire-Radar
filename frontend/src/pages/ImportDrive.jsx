@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import Sidebar from '../components/sideBar/sideBar.jsx';
 import Navbar from '../components/navBar/navBar.jsx';
-//import Tesseract from 'tesseract.js';
+import Tesseract from 'tesseract.js'; // Client OCR re-engaged
 import * as pdfjsLib from 'pdfjs-dist/build/pdf';
 import mammoth from 'mammoth';
 import * as XLSX from 'xlsx';
@@ -36,13 +36,11 @@ function ImportDrive() {
   const fileInputRef = useRef(null);
   const [pdfViewMode, setPdfViewMode] = useState('native');
 
-  // Supported file extensions (Removed 'zip')
   const supportedExtensions = useMemo(
     () => ['pdf', 'doc', 'docx', 'txt', 'csv', 'png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp', 'ppt', 'pptx', 'xls', 'xlsx'],
     []
   );
 
-  // Central validation gate for file filtering rule requirements
   const isValidFile = (fileName) => {
     if (!fileName) return false;
     const ext = fileName.split('.').pop().toLowerCase();
@@ -51,7 +49,6 @@ function ImportDrive() {
     return !isTemporary && !isZip && supportedExtensions.includes(ext);
   };
 
-  // Format file size helper
   const formatFileSize = (bytes) => {
     if (bytes === 0 || !bytes) return '0 B';
     const k = 1024;
@@ -60,7 +57,6 @@ function ImportDrive() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(i === 0 ? 0 : 1)) + ' ' + sizes[i];
   };
 
-  // Fetch baseline dataset records directly from Backend Database pipelines on startup
   const fetchBackendDocuments = async (searchQuery = '', ext = '', size = '', sortOrder = 'relevance') => {
     setIsLoading(true);
     try {
@@ -75,16 +71,16 @@ function ImportDrive() {
       if (!response.ok) throw new Error('Network failed to fetch documents');
       
       const data = await response.json();
-      // Normalize backend items structural format to align seamlessly with local schemas
       const normalizedData = data.map(doc => ({
-        id: doc.id || crypto.randomUUID(),
+        id: doc.id,
         fileName: doc.fileName,
         extension: (doc.extension || '').toLowerCase(),
-        size: doc.fileSizeLabel || formatFileSize(doc.sizeBytes),
-        sizeBytes: doc.sizeBytes || 0,
-        lastModified: doc.updatedAt ? new Date(doc.updatedAt).toLocaleDateString() : new Date().toLocaleDateString(),
-        blobURL: doc.blobURL || `${API_BASE_URL}/api/documents/${doc.id}/download`,
-        content: doc.extractedText || doc.content || '',
+        size: doc.fileSizeLabel || formatFileSize(doc.file_size),
+        sizeBytes: doc.file_size || 0,
+        lastModified: doc.uploadedAt ? new Date(doc.uploadedAt).toLocaleDateString() : new Date().toLocaleDateString(),
+        blobURL: `${API_BASE_URL}/api/documents/${doc.id}/download`,
+        content: doc.extractedText || '',
+        nlpEntities: doc.nlpEntities || []
       }));
       setDocuments(normalizedData);
     } catch (err) {
@@ -94,11 +90,8 @@ function ImportDrive() {
     }
   };
 
-  // Initial runtime fetch on component mount only (No local storage restore hooks)
   useEffect(() => {
     fetchBackendDocuments('', '', '', 'newest');
-
-    // Garbage collector routine: Revoke temporary object memory references when component shifts out
     return () => {
       documents.forEach(doc => {
         if (doc.blobURL && doc.blobURL.startsWith('blob:')) {
@@ -108,12 +101,10 @@ function ImportDrive() {
     };
   }, []);
 
-  // Hybrid Real-time Client-Side Search and Filter Logic Processor
   useEffect(() => {
     setIsLoading(true);
     let result = [...documents];
 
-    // 1. Text Search Filter (scans dynamic string contents + names)
     if (searchTerm.trim() !== '') {
       const lowerSearch = searchTerm.toLowerCase();
       result = result.filter(
@@ -123,12 +114,10 @@ function ImportDrive() {
       );
     }
 
-    // 2. Extension Filter
     if (selectedExtension) {
       result = result.filter((doc) => doc.extension.toLowerCase() === selectedExtension.toLowerCase());
     }
 
-    // 3. Size Filter bounds
     if (selectedSize) {
       result = result.filter((doc) => {
         const sizeInMb = doc.sizeBytes / (1024 * 1024);
@@ -139,7 +128,6 @@ function ImportDrive() {
       });
     }
 
-    // 4. Sorting rules matrices
     if (selectedSort === 'newest') {
       result.sort((a, b) => String(b.id).localeCompare(String(a.id)));
     } else if (selectedSort === 'oldest') {
@@ -157,7 +145,6 @@ function ImportDrive() {
     setIsLoading(false);
   }, [documents, searchTerm, selectedExtension, selectedSize, selectedSort]);
 
-  // Track search query parameters temporarily within raw component execution runtime state context only
   const updateTemporaryHistory = (value) => {
     const trimmed = value.trim();
     if (!trimmed) return;
@@ -176,7 +163,6 @@ function ImportDrive() {
     }
   };
 
-  // Local clientside offline stream reader tools implementation
   const extractTextContent = async (file) => {
     try { return await file.text(); } catch (e) { return ''; }
   };
@@ -185,8 +171,14 @@ function ImportDrive() {
 
   const extractImageText = async (file) => {
     try {
-      const result = await Tesseract.recognize(file, 'eng');
-      return result?.data?.text?.trim() || '';
+      // Instantiate an explicit worker configuration to cleanly suppress WASM core warnings
+      const worker = await Tesseract.createWorker('eng', 1, {
+        logger: () => {} // Bypasses internal TrueType/Emscripten console logging loops
+      });
+      
+      const { data: { text } } = await worker.recognize(file);
+      await worker.terminate();
+      return text?.trim() || '';
     } catch (error) {
       console.error('OCR failed:', error);
       return '';
@@ -249,8 +241,6 @@ function ImportDrive() {
     for (const item of items) {
       if (item.kind === 'file') {
         const file = typeof item.getFile === 'function' ? await item.getFile() : item;
-        
-        // Block processing if the structural filename fails verification checks
         if (isValidFile(file.name)) {
           const ext = file.name.split('.').pop().toLowerCase();
           const content = await extractFileContent(file);
@@ -266,6 +256,7 @@ function ImportDrive() {
             lastModified: new Date(file.lastModified).toLocaleDateString(),
             blobURL: blobURL,
             content: content,
+            nlpEntities: []
           });
         }
       } else if (item.kind === 'directory' || item.isDirectory) {
@@ -299,45 +290,37 @@ function ImportDrive() {
           const file = items[i];
           if (isValidFile(file.name)) {
             filesToUpload.push(file);
-            entries.push({
-              kind: 'file',
-              getFile: async () => file
-            });
+            entries.push({ kind: 'file', getFile: async () => file });
           }
         }
       }
 
-      // 1. Process files locally using client engines to quickly display items on the UI workspace list
       if (entries.length > 0) {
         const newDocs = await processFilesRecursively(entries);
         setDocuments((prev) => [...newDocs, ...prev]);
       }
 
-      // 2. Safely dispatch files directly upstream into Express server routing nodes as binary payloads
       const targetUploadList = event.target.files || filesToUpload;
       for (let i = 0; i < targetUploadList.length; i++) {
         const file = targetUploadList[i];
-        
         if (!isValidFile(file.name)) continue;
 
         const formData = new FormData();
-        formData.append('file', file); // Placed directly into the multipart request body stream
+        formData.append('file', file);
 
         try {
           await fetch(`${API_BASE_URL}/api/upload`, {
             method: 'POST',
-            body: formData, // Flushed directly out of browser memory pipelines straight into Node endpoints
+            body: formData,
           });
         } catch (uploadErr) {
-          console.error(`Failed uploading ${file.name} directly into backend service layers:`, uploadErr);
+          console.error(`Failed uploading ${file.name} to server backend:`, uploadErr);
         }
       }
       
-      // 3. Keep the user interface state completely synced with database records
       fetchBackendDocuments('', '', '', 'newest');
-      
     } catch (error) {
-      console.error('Error processing uploaded items hierarchy:', error);
+      console.error('Error processing uploaded items:', error);
     } finally {
       setIsUploading(false);
       if (event.target) event.target.value = '';
@@ -391,7 +374,7 @@ function ImportDrive() {
     try {
       await fetch(`${API_BASE_URL}/api/documents/${id}`, { method: 'DELETE' });
     } catch (err) {
-      console.error('Server cleanup omitted or unreachable, discarding context references locally:', err);
+      console.error('Server cleanup omitted, discarding संदर्भ records locally:', err);
     }
 
     const fileToDelete = documents.find((doc) => doc.id === id);
@@ -403,7 +386,6 @@ function ImportDrive() {
     if (selectedFile?.id === id) closePreview();
   };
 
-  // Keyword highlighter tool implementation matching initial styles
   const highlightSnippet = (text = '', searchKeyword = '') => {
     if (!searchKeyword.trim() || !text) return text.slice(0, 140) + '...';
     
@@ -430,12 +412,11 @@ function ImportDrive() {
     return <FileArchive className="text-amber-500 w-5 h-5" />;
   };
 
- const renderPreviewContent = () => {
+  const renderPreviewContent = () => {
     if (!selectedFile) return null;
     const ext = selectedFile.extension.toLowerCase();
     const content = selectedFile.content || '';
 
-    // 1. High-Fidelity Image Viewport Layout
     if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext)) {
       return (
         <div className="flex flex-col items-center justify-center p-4 bg-white rounded-xl shadow-sm border border-slate-200/60 max-w-full">
@@ -448,11 +429,9 @@ function ImportDrive() {
       );
     }
 
-    // 2. High-Performance Hybrid Dual-State PDF Viewer
     if (ext === 'pdf') {
       return (
         <div className="w-full flex flex-col h-[68vh] rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shadow-sm">
-          {/* Action Subbar Header for PDF Controls */}
           <div className="bg-slate-50 border-b border-slate-200 px-4 py-2 flex items-center justify-between shrink-0">
             <span className="text-xs font-medium text-slate-500">Document Engine Display Options:</span>
             <div className="flex bg-slate-200/80 p-0.5 rounded-lg border border-slate-300/40">
@@ -466,7 +445,7 @@ function ImportDrive() {
                 onClick={() => setPdfViewMode('extracted')}
                 className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${pdfViewMode === 'extracted' ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
               >
-                Extracted OCR/Text Layer
+                Extracted Text Layer
               </button>
             </div>
           </div>
@@ -479,13 +458,13 @@ function ImportDrive() {
                 className="w-full h-full border-none bg-slate-500"
               />
             ) : (
-              <div className="w-full h-full overflow-auto bg-white p-8 md:p-12 font-serif text-slate-800 leading-relaxed text-sm max-w-2xl mx-auto shadow-md border-x border-slate-200/60 selection:bg-purple-100">
+              <div className="w-full h-full overflow-auto bg-white p-8 md:p-12 font-serif text-slate-800 leading-relaxed text-sm max-w-2xl mx-auto shadow-md border-x border-slate-200/60">
                 {content ? (
                   content.split('\n').map((para, idx) => (
                     para.trim() ? <p key={idx} className="mb-4 text-justify text-slate-700">{para.trim()}</p> : <div key={idx} className="h-2" />
                   ))
                 ) : (
-                  <p className="text-center text-slate-400 font-sans italic py-12">No raw textual records extracted from this PDF node.</p>
+                  <p className="text-center text-slate-400 font-sans italic py-12">No text found inside this PDF layer.</p>
                 )}
               </div>
             )}
@@ -494,11 +473,8 @@ function ImportDrive() {
       );
     }
 
-    // 3. Tabular SaaS Grid Spreadsheet Engine (.xlsx, .xls, .csv)
     if (['xlsx', 'xls', 'csv'].includes(ext)) {
       const rows = content.split('\n').filter(row => row.trim());
-      
-      // Helper function to render excel character tracking labels (A, B, C...)
       const getExcelColLabel = (index) => String.fromCharCode(65 + (index % 26));
 
       return (
@@ -507,7 +483,6 @@ function ImportDrive() {
             <table className="w-full border-collapse text-xs text-left font-sans table-fixed min-w-[800px]">
               <thead>
                 <tr className="bg-slate-100 border-b border-slate-300 sticky top-0 z-20 shadow-[0_1px_0_rgba(0,0,0,0.05)]">
-                  {/* Empty index column placeholder */}
                   <th className="w-10 bg-slate-200 text-center border-r border-slate-300 p-1.5 text-[10px] font-bold text-slate-500 font-mono sticky left-0 z-30"></th>
                   {rows[0] && rows[0].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map((_, idx) => (
                     <th key={idx} className="w-[160px] p-2 bg-slate-100 text-slate-600 font-semibold font-mono border-r border-slate-300 text-center tracking-wider text-[11px]">
@@ -518,12 +493,10 @@ function ImportDrive() {
               </thead>
               <tbody className="bg-white divide-y divide-slate-100">
                 {rows.map((row, rIdx) => {
-                  // Safe CSV/Excel column line regex splitter matching embedded strings
                   const cells = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/); 
                   return (
                     <tr key={rIdx} className="hover:bg-purple-50/30 group transition-colors">
-                      {/* Row Counter Side Rail */}
-                      <td className="bg-slate-50 border-r border-slate-300 text-center p-1.5 font-mono text-[10px] text-slate-400 font-medium sticky left-0 z-10 shadow-[1px_0_0_rgba(226,232,240,1)] group-hover:bg-purple-100/50 group-hover:text-purple-700 transition-colors">
+                      <td className="bg-slate-50 border-r border-slate-300 text-center p-1.5 font-mono text-[10px] text-slate-400 font-medium sticky left-0 z-10 group-hover:bg-purple-100/50 group-hover:text-purple-700 transition-colors">
                         {rIdx + 1}
                       </td>
                       {cells.map((cell, cIdx) => {
@@ -532,7 +505,7 @@ function ImportDrive() {
                           <td 
                             key={cIdx} 
                             title={formattedValue}
-                            className={`p-2.5 border-r border-slate-200 truncate font-normal text-slate-700 tracking-wide leading-normal ${rIdx === 0 ? 'bg-slate-50/80 font-medium text-slate-900' : ''}`}
+                            className={`p-2.5 border-r border-slate-200 truncate font-normal text-slate-700 tracking-wide ${rIdx === 0 ? 'bg-slate-50/80 font-medium text-slate-900' : ''}`}
                           >
                             {formattedValue || <span className="text-slate-300 font-serif">-</span>}
                           </td>
@@ -548,7 +521,6 @@ function ImportDrive() {
       );
     }
 
-    // 4. Code Block Editor Workspace Wrapper for Developers (.json)
     if (ext === 'json') {
       try {
         const parsed = typeof content === 'object' ? content : JSON.parse(content);
@@ -556,9 +528,8 @@ function ImportDrive() {
         
         return (
           <div className="w-full max-h-[65vh] overflow-auto bg-slate-950 p-6 rounded-xl font-mono text-xs shadow-xl leading-relaxed border border-slate-800">
-            <pre className="text-slate-300 whitespace-pre-wrap break-all selection:bg-slate-800">
+            <pre className="text-slate-300 whitespace-pre-wrap break-all">
               {jsonStr.split('\n').map((line, lIdx) => {
-                // Inline pseudo-syntax highlighting regex logic
                 let styledLine = line;
                 if (line.includes('":')) {
                   const parts = line.split('":');
@@ -575,24 +546,20 @@ function ImportDrive() {
             </pre>
           </div>
         );
-      } catch (e) {
-        // Fallback to text handler if raw file contains invalid JSON blocks
-      }
+      } catch (e) { /* Fallback */ }
     }
 
-    // 5. Classic Desktop Book/Word Editor Simulation Layout (.docx, .doc, .txt)
     if (['txt', 'docx', 'doc'].includes(ext) || content) {
       const paragraphs = content.split('\n');
       return (
-        <div className="w-full max-h-[66vh] overflow-auto bg-white px-10 py-12 md:px-16 md:py-14 rounded-xl border border-slate-200 shadow-md max-w-2xl font-serif text-slate-800 leading-loose text-[14px] text-justify select-text space-y-5 shadow-purple-950/5 selection:bg-purple-100">
+        <div className="w-full max-h-[66vh] overflow-auto bg-white px-10 py-12 md:px-16 md:py-14 rounded-xl border border-slate-200 shadow-md max-w-2xl font-serif text-slate-800 leading-loose text-[14px] text-justify space-y-5">
           {paragraphs.map((para, idx) => {
             const trimmed = para.trim();
             if (!trimmed) return <div key={idx} className="h-3" />;
             
-            // Subheading Auto-Compiler Check
             if (trimmed.length < 75 && (trimmed.toUpperCase() === trimmed || trimmed.endsWith(':') || trimmed.startsWith('##'))) {
               return (
-                <h4 key={idx} className="font-sans font-bold text-base text-slate-900 pt-4 tracking-tight border-b border-slate-100 pb-1 font-semibold">
+                <h4 key={idx} className="font-sans font-bold text-base text-slate-900 pt-4 tracking-tight border-b border-slate-100 pb-1">
                   {trimmed.replace(/^##\s*/, '')}
                 </h4>
               );
@@ -603,14 +570,13 @@ function ImportDrive() {
       );
     }
 
-    // 6. Fallback Workspace Handler
     return (
       <div className="text-center p-12 bg-white rounded-xl border border-slate-200 shadow-sm max-w-sm mx-auto">
         <p className="font-bold text-slate-800 text-base">Preview Not Supported</p>
-        <p className="text-xs text-slate-400 mt-1 mb-6">This file content node cannot be displayed inline in your web app window workspace.</p>
+        <p className="text-xs text-slate-400 mt-1 mb-6">This file node cannot be displayed inline inside your web app workspace window view.</p>
         <button 
           onClick={() => downloadFile(selectedFile)}
-          className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2.5 rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 transition active:scale-95 shadow-sm shadow-purple-600/20"
+          className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2.5 rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 transition active:scale-95 shadow-sm"
         >
           <Download size={13} /> Download Document File
         </button>
@@ -626,15 +592,13 @@ function ImportDrive() {
         <Sidebar />
 
         <div className="flex-1 p-6 md:p-10 space-y-6 min-w-0 overflow-y-auto h-full">
-          {/* Header */}
           <div className="flex justify-between items-center mb-2 shrink-0">
             <div>
               <h1 className="text-2xl font-bold">Import Workspace</h1>
-              <p className="text-sm text-gray-500">Upload documents to scan and search strings inside file contents instantly.</p>
+              <p className="text-sm text-gray-500">Upload directory document roots to index and search file content keywords instantly.</p>
             </div>
           </div>
 
-          {/* Metrics summary cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Total documents</p>
@@ -655,7 +619,6 @@ function ImportDrive() {
             </div>
           </div>
 
-          {/* Upload Dropzone Area */}
           <div
             className="bg-white border-gray-200 border-dashed border-2 rounded-xl p-8 md:p-12 text-center transition-all duration-300 relative shadow-sm hover:border-purple-500 hover:shadow-md cursor-pointer"
             onDragOver={handleDragOver}
@@ -686,7 +649,6 @@ function ImportDrive() {
             />
           </div>
 
-          {/* Interactive Toolbar Filter options */}
           <div className="flex flex-wrap items-center gap-3 bg-white border border-gray-200 p-4 rounded-xl shadow-sm">
             <div className="relative flex-1 min-w-[240px]">
               <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -743,7 +705,6 @@ function ImportDrive() {
             </div>
           </div>
 
-          {/* Search history chips */}
           {history.length > 0 && (
             <div className="flex items-center gap-2 text-xs overflow-x-auto py-1">
               <span className="text-gray-400 shrink-0">Recent Queries:</span>
@@ -759,7 +720,6 @@ function ImportDrive() {
             </div>
           )}
 
-          {/* Document Table Workspace Area */}
           {filteredDocuments.length > 0 ? (
             <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm overflow-hidden flex flex-col">
               <h3 className="text-lg font-bold mb-4">Imported Directory Documents ({filteredDocuments.length})</h3>
@@ -782,10 +742,18 @@ function ImportDrive() {
                             <div className="mt-1">{getDocumentIcon(doc.extension)}</div>
                             <div className="min-w-0 flex-1">
                               <div className="truncate font-medium text-gray-900">{doc.fileName}</div>
-                              
                               {doc.content && (
                                 <div className="text-xs text-purple-600 mt-1 bg-purple-50/50 rounded p-1 border border-purple-100/40 font-serif whitespace-normal break-all">
                                   {highlightSnippet(doc.content, searchTerm)}
+                                </div>
+                              )}
+                              {doc.nlpEntities && doc.nlpEntities.length > 0 && (
+                                <div className="flex flex-wrap gap-1 mt-1.5">
+                                  {doc.nlpEntities.slice(0, 3).map((ent, idx) => (
+                                    <span key={idx} className="bg-slate-100 border border-slate-200 text-slate-600 px-1 py-0.5 rounded text-[10px] font-sans font-medium">
+                                      {ent.text} <b className="text-[8px] text-purple-500 uppercase">{ent.label}</b>
+                                    </span>
+                                  ))}
                                 </div>
                               )}
                             </div>
@@ -804,8 +772,7 @@ function ImportDrive() {
                               onClick={() => openPreview(doc)}
                               title="Preview File"
                             >
-                              <Eye size={13} />
-                              Preview
+                              <Eye size={13} /> Preview
                             </button>
                             <button
                               className="inline-flex items-center gap-1 bg-slate-100 hover:bg-slate-200 text-gray-800 px-2.5 py-1.5 rounded-lg text-xs font-medium transition"
@@ -842,25 +809,19 @@ function ImportDrive() {
         </div>
       </div>
 
-      {/* Preview Modal Panel Layout Container */}
       {previewOpen && selectedFile && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[1000] backdrop-blur-sm animate-[fadeIn_0.2s_ease-in-out]" onClick={closePreview}>
-          <div className="bg-white text-slate-900 rounded-xl max-w-3xl w-[92%] max-h-[85vh] overflow-hidden flex flex-col shadow-xl animate-[slideUp_0.2s_ease-out]" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[1000] backdrop-blur-sm" onClick={closePreview}>
+          <div className="bg-white text-slate-900 rounded-xl max-w-3xl w-[92%] max-h-[85vh] overflow-hidden flex flex-col shadow-xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex justify-between items-center p-4 border-b border-gray-100 bg-slate-50">
               <h2 className="text-base font-bold truncate max-w-md">{selectedFile.fileName}</h2>
               <div className="flex gap-2 items-center">
                 <button
                   className="bg-purple-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-sm hover:bg-purple-700 transition"
                   onClick={() => downloadFile(selectedFile)}
-                  title="Download File"
                 >
-                  <Download size={14} />
-                  Download
+                  <Download size={14} /> Download
                 </button>
-                <button
-                  className="bg-gray-100 text-gray-700 p-1.5 rounded-lg hover:bg-gray-200 transition"
-                  onClick={closePreview}
-                >
+                <button className="bg-gray-100 text-gray-700 p-1.5 rounded-lg hover:bg-gray-200" onClick={closePreview}>
                   <X size={16} />
                 </button>
               </div>

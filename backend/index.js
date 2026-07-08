@@ -16,10 +16,10 @@ app.use(cors({ origin: 'http://localhost:5173' }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Initialize schema updates on boot (no directory creations)
+// Initialize schema updates on boot gracefully
 initializeSearchService().catch((error) => console.error('Search service startup failed:', error.message));
 
-// Configure multer to store uploaded files directly in memory buffers
+// Configure multer memory stream standard engine configuration
 const upload = multer({ storage: multer.memoryStorage() });
 
 function formatFileSize(bytes) {
@@ -102,7 +102,7 @@ app.get("/hireRadar/cndtempsavesearch", async (req, res) => {
         if (location) {
             const locationsArray = location.split(',');
             const locationConditions = [];
-            locationsArray.forEach(loc => {
+            box = locationsArray.forEach(loc => {
                 locationConditions.push(`LOWER(cndlocation) = $${paramCounter}`);
                 queryParams.push(loc.toLowerCase().trim());
                 paramCounter++;
@@ -224,39 +224,6 @@ app.get("/hireRadar/cndpermsavesearch", async (req, res) => {
     }
 });
 
-app.get("/hireRadar/cndpermsave/:cndid", async (req, res) => {
-    try {
-        const { cndid } = req.params;
-        const oneData = await pool.query("select * from cndpermsave where cndid = $1", [cndid]);
-        res.json(oneData.rows[0]);
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).json({ error: err.message });
-    }
-});
-
-app.get("/hireRadar/cndpersonaldetails/:cndid", async (req, res) => {
-    try {
-        const { cndid } = req.params;
-        const oneData = await pool.query("select * from cndpersonaldetails where cndid = $1", [cndid]);
-        res.json(oneData.rows[0]);
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).json({ error: err.message });
-    }
-});
-
-app.get("/hireRadar/cndworkdetails/:cndid", async (req, res) => {
-    try {
-        const { cndid } = req.params;
-        const oneData = await pool.query("select * from cndworkdetails where cndid = $1", [cndid]);
-        res.json(oneData.rows[0]);
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).json({ error: err.message });
-    }
-});
-
 app.post("/hireRadar/insertCandidate", async (req, res) => {
     try {
         const { date, name, email, phone, age, gender, role, skills, texp, experience, location, status } = req.body;
@@ -280,38 +247,6 @@ app.delete("/hireRadar/deleteCandidate/:cndid", async (req, res) => {
     }
 });
 
-app.post("/hireRadar/insertTestDetails", async (req, res) => {
-    try {
-        const { cndid, username, password } = req.body;
-        const newCndData = await pool.query("insert into testdetails(cndid, username, password) values($1,$2,$3) returning username, password", [cndid, username, password]);
-        res.json(newCndData.rows[0]);
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).json({ error: err.message });
-    }
-});
-
-app.get("/hireRadar/getTestDetails", async (req, res) => {
-    try {
-        const allData = await pool.query("select cndid,username,password,testresult from testdetails");
-        res.json(allData.rows);
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).json({ error: err.message });
-    }
-});
-
-app.post("/hireRadar/updateTestDetails", async (req, res) => {
-    try {
-        const { cndid, name, email, department, phone } = req.body;
-        const newCndData = await pool.query("update testdetails set cndname=$1, phone=$2, personalemail=$3, department=$4, testdate=$6 where cndid=$5 returning *", [name, phone, email, department, cndid, new Date()]);
-        res.json(newCndData.rows[0]);
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).json({ error: err.message });
-    }
-});
-
 app.get("/hireRadar/testquestions", async (req, res) => {
     try {
         const allData = await pool.query("select * from questions");
@@ -322,62 +257,8 @@ app.get("/hireRadar/testquestions", async (req, res) => {
     }
 });
 
-app.get("/hireRadar/testquestions/:dept", async (req, res) => {
-    try {
-        const { dept } = req.params;
-        const allData = await pool.query("select * from questions where lower(dept)=$1", [dept.toLowerCase().trim()]);
-        res.json(allData.rows);
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).json({ error: err.message });
-    }
-});
-
-app.post("/hireRadar/insertQuestions", async (req, res) => {
-    try {
-        const { dept, category, question, option1, option2, option3, option4, answer } = req.body;
-        const allData = await pool.query("insert into questions(dept, category, question, option1, option2, option3, option4, answer) values($1, $2, $3, $4, $5, $6, $7, $8) returning *", [dept, category, question, option1, option2, option3, option4, answer]);
-        res.json(allData.rows);
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).json({ error: err.message });
-    }
-});
-
-app.delete("/hireRadar/deleteQuestion/:qno", async (req, res) => {
-    try {
-        const { qno } = req.params;
-        const deleteData = await pool.query("delete from questions where qno = $1", [Number(qno)]);
-        return res.json({ success: true, deleted: deleteData.rowCount || 0 });
-    } catch (err) {
-        console.log(err.message);
-        res.status(500).json({ error: err.message });
-    }
-});
-
-app.post("/hireRadar/setTestResult", async (req, res) => {
-    try {
-        const { result, cndid } = req.body;
-        const newCndData = await pool.query("update testdetails set testresult=$1 where cndid=$2 returning *", [result, cndid]);
-        res.json(newCndData.rows[0]);
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).json({ error: err.message });
-    }
-});
-
-app.get("/hireRadar/adminlogin", async (req, res) => {
-    try {
-        const allData = await pool.query(`select * from adminlogin`);
-        res.json(allData.rows);
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).json({ error: err.message });
-    }
-});
-
 /* ==========================================================================
-   WORKSPACE DOCUMENT STORAGE & FULL-TEXT SEARCH CORES (IN-MEMORY STREAMS ONLY)
+   WORKSPACE DOCUMENT STORAGE & SEARCH ENDPOINTS
    ========================================================================== */
 
 app.get('/api/search', async (req, res) => {
@@ -410,19 +291,15 @@ app.get('/api/documents', async (req, res) => {
     }
 });
 
-// Single unified route receiving standard browser memory payloads
 app.post('/api/upload', upload.any(), async (req, res) => {
     try {
         const filesCollection = req.files || (req.file ? [req.file] : []);
-        
         if (filesCollection.length === 0) {
             return res.status(400).json({ error: 'No files were detected inside payload arrays.' });
         }
 
-        // Process directly out of incoming in-memory stream buffers
         const uploadedDocuments = await Promise.all(
             filesCollection.map(async (file) => {
-                // Pass Multer memory file directly ({ originalname, buffer, size })
                 return saveUploadedFile(file);
             })
         );
@@ -437,7 +314,6 @@ app.get('/api/status', (_req, res) => {
     res.json({ status: 'ok', service: 'document-search' });
 });
 
-// Serves structural text strings directly from DB index representations instead of file paths
 app.get('/api/documents/:id/preview', async (req, res) => {
     try {
         const result = await pool.query('SELECT extracted_text, file_name FROM document_search_index WHERE id = $1', [req.params.id]);
@@ -455,7 +331,6 @@ app.get('/api/documents/:id/preview', async (req, res) => {
     }
 });
 
-// Downloads the indexed content text metadata as a file attachment directly from DB columns
 app.get('/api/documents/:id/download', async (req, res) => {
     try {
         const result = await pool.query('SELECT extracted_text, file_name FROM document_search_index WHERE id = $1', [req.params.id]);

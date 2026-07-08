@@ -3,8 +3,7 @@ const pdfParse = require('pdf-parse');
 const mammoth = require('mammoth');
 const XLSX = require('xlsx');
 const pool = require('./db');
-const fetch = require('node-fetch'); // Resolves the 'fetch is not a function' runtime crash
-const FormData = require('form-data');
+const Tesseract = require('tesseract.js'); // Replaces Python Tesseract engine natively
 
 const SUPPORTED_EXTENSIONS = new Set([
   '.pdf', '.docx', '.xlsx', '.xls', '.txt', '.csv', '.json', '.pptx',
@@ -26,7 +25,6 @@ function getFileExtension(fileName) {
 }
 
 async function ensureSchema() {
-  // Alter schema to create columns or alter existing tables gracefully if present
   await pool.query(`
     CREATE TABLE IF NOT EXISTS document_search_index (
       id SERIAL PRIMARY KEY,
@@ -41,10 +39,9 @@ async function ensureSchema() {
     )
   `);
 
-  // Explicit dynamic structural patch safeguarding old versions from throwing null constraints
   await pool.query(`
     ALTER TABLE document_search_index ALTER COLUMN full_path DROP NOT NULL
-  `).catch(() => { /* Column was dropped or altered previously */ });
+  `).catch(() => { /* Handled seamlessly if column was altered previously */ });
 
   await pool.query(`
     CREATE INDEX IF NOT EXISTS document_search_index_vector_idx 
@@ -52,28 +49,47 @@ async function ensureSchema() {
   `);
 }
 
-// Pipe pure memory structures seamlessly down to Python Flask microservice hooks
-async function enrichWithPythonBackend(fileName, buffer, textContent = '') {
-  try {
-    const form = new FormData();
-    form.append('text_content', textContent);
-    if (buffer) {
-      form.append('file', buffer, { filename: fileName });
-    }
+/**
+ * Native Node.js Natural Language Processing & Rule Entity Extractor
+ * Replaces spaCy Python microservice with fast structural regex entity mapping
+ */
+function extractNlpEntities(text) {
+  const entities = [];
+  if (!text || !text.trim()) return entities;
 
-    const response = await fetch('http://localhost:5001/analyze-stream', {
-      method: 'POST',
-      body: form,
-      headers: form.getHeaders()
-    });
+  const seen = new Set();
+  let match;
 
-    if (response.ok) {
-      return await response.json();
+  // 1. Email Recognition
+  const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g;
+  while ((match = emailRegex.exec(text)) !== null) {
+    if (!seen.has(match[0])) {
+      seen.add(match[0]);
+      entities.push({ text: match[0], label: "EMAIL" });
     }
-  } catch (err) {
-    console.error(`Python microservice communication error: ${err.message}`);
   }
-  return { success: false, entities: [], extracted_text: textContent };
+
+  // 2. Phone Numbers Recognition
+  const phoneRegex = /(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/g;
+  while ((match = phoneRegex.exec(text)) !== null) {
+    if (!seen.has(match[0])) {
+      seen.add(match[0]);
+      entities.push({ text: match[0], label: "PHONE" });
+    }
+  }
+
+  // 3. Proper Nouns / Names / Places Identification (Capitalized word sequences)
+  const nounRegex = /\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b/g;
+  const stopWords = new Set(["The", "This", "That", "With", "From", "Then", "And", "For", "Your", "Have"]);
+  while ((match = nounRegex.exec(text)) !== null) {
+    const val = match[0].trim();
+    if (val.length > 2 && !stopWords.has(val) && !seen.has(val)) {
+      seen.add(val);
+      entities.push({ text: val, label: "ORG/PERSON" });
+    }
+  }
+
+  return entities.slice(0, 40); // Cap output collection size safely
 }
 
 async function extractTextFromBuffer(extension, buffer) {
@@ -98,8 +114,13 @@ async function extractTextFromBuffer(extension, buffer) {
     if (['.txt', '.csv', '.json'].includes(extension)) {
       return buffer.toString('utf8');
     }
+    if (IMAGE_EXTENSIONS.has(extension)) {
+      // Execute Node native server OCR pipelines
+      const { data: { text } } = await Tesseract.recognize(buffer, 'eng');
+      return text || '';
+    }
   } catch (err) {
-    console.error(`Error parsing document formats from buffer: ${err.message}`);
+    console.error(`Error parsing document formats natively: ${err.message}`);
   }
   return '';
 }
@@ -110,27 +131,13 @@ async function saveUploadedFile(fileMetadata) {
     throw new Error(`Unsupported file type: ${extension}`);
   }
 
-  let extractedText = '';
-  let entities = [];
-
-  if (IMAGE_EXTENSIONS.has(extension)) {
-    const pyResult = await enrichWithPythonBackend(fileMetadata.originalname, fileMetadata.buffer, '');
-    if (pyResult.success) {
-      extractedText = pyResult.extracted_text || '';
-      entities = pyResult.entities || [];
-    }
-  } else {
-    extractedText = await extractTextFromBuffer(extension, fileMetadata.buffer);
-    const pyResult = await enrichWithPythonBackend(fileMetadata.originalname, fileMetadata.buffer, extractedText);
-    if (pyResult.success) {
-      entities = pyResult.entities || [];
-    }
-  }
+  // Process data streams entirely inside browser/Node computing architectures
+  const extractedText = await extractTextFromBuffer(extension, fileMetadata.buffer);
+  const entities = extractNlpEntities(extractedText);
 
   const safeName = fileMetadata.originalname.replace(/[^a-zA-Z0-9. -]/g, ' ');
   const searchText = `${safeName} ${extractedText}`.trim();
 
-  // full_path column explicitly provided as null to preserve structural schema compatibility
   const result = await pool.query(
     `INSERT INTO document_search_index (file_name, extension, file_size, uploaded_at, extracted_text, search_vector, nlp_entities, full_path)
      VALUES ($1, $2, $3, NOW(), $4, to_tsvector('simple', $5), $6, NULL)
@@ -195,7 +202,7 @@ async function deleteDocument(documentId) {
 }
 
 module.exports = {
-  initializeSearchService: ensureSchema, // Clean initialization handle exported smoothly
+  initializeSearchService: ensureSchema,
   searchDocuments,
   listDocuments,
   saveUploadedFile,
