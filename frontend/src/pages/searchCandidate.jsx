@@ -10,6 +10,7 @@ function SearchCandidatePage() {
     const [locationInput, setLocationInput] = useState(''); 
     const [errorMessage, setErrorMessage] = useState('');
     
+    // Tracks the actual active filters currently driving RenderList API fetches
     const [activeSourcingFilters, setActiveSourcingFilters] = useState({
         JobTitle: '', 
         MinExp: '',
@@ -24,7 +25,13 @@ function SearchCandidatePage() {
         SidebarSkills: ''
     });
 
+    // Staging state container used to hold pending inputs for workspace parameters
     const [filterValues, setFilterValues] = useState({ ...activeSourcingFilters });
+
+    const handleSidebarChange = (field, value) => {
+        setFilterValues((prev) => ({ ...prev, [field]: value }));
+        setActiveSourcingFilters((prev) => ({ ...prev, [field]: value }));
+    };
 
     const handleSkillKeyDown = (e) => {
         if (e.key === 'Enter') {
@@ -89,52 +96,26 @@ function SearchCandidatePage() {
         });
     };
 
+    // Submits and updates everything from the workspace panel explicitly
     const handleSearchSubmit = () => {
-        // Check if ANY other filter fields have data configured
-        const hasOtherFilters = !!(
-            filterValues.MinExp || 
-            filterValues.MaxExp || 
-            filterValues.Skills.length > 0 || 
-            filterValues.Keywords.length > 0 || 
-            filterValues.LocationSearch.length > 0 ||
-            filterValues.SidebarLocation.trim() ||
-            filterValues.SidebarExperience.trim() ||
-            filterValues.SidebarJobStatus.trim() ||
-            filterValues.SidebarOpenToWork.trim() ||
-            filterValues.SidebarSkills.trim()
-        );
-
-        // Validation check: If other filters are active, Job Title is strictly required
-        if (hasOtherFilters && (!filterValues.JobTitle || filterValues.JobTitle.trim() === '')) {
-            setErrorMessage('Job Title is required when applying search filters.');
-            return;
-        }
-
         setErrorMessage('');
         setActiveSourcingFilters({ ...filterValues });
     };
 
     const handleClearFilters = () => {
-        setSearchVar("");
-        setSkillInput("");
-        setKeywordInput("");
-        setLocationInput("");
         setErrorMessage("");
-        const cleared = {
-            JobTitle: '',
-            MinExp: '',
-            MaxExp: '',
-            Skills: [],
-            Keywords: [],
-            LocationSearch: [], 
+        
+        // Clear ONLY the sidebar fields in state, leave workspace selections untouched
+        const clearedSidebar = {
             SidebarLocation: '',
             SidebarExperience: '',
             SidebarJobStatus: '',
             SidebarOpenToWork: '',
             SidebarSkills: ''
         };
-        setFilterValues(cleared);
-        setActiveSourcingFilters(cleared);
+        
+        setFilterValues((prev) => ({ ...prev, ...clearedSidebar }));
+        setActiveSourcingFilters((prev) => ({ ...prev, ...clearedSidebar }));
     };
 
     return (
@@ -164,7 +145,7 @@ function SearchCandidatePage() {
                                     type="text" 
                                     placeholder="Select location" 
                                     value={filterValues.SidebarLocation}
-                                    onChange={(e) => setFilterValues({...filterValues, SidebarLocation: e.target.value})}
+                                    onChange={(e) => handleSidebarChange('SidebarLocation', e.target.value)}
                                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-purple-500"
                                 />
                             </div>
@@ -175,7 +156,7 @@ function SearchCandidatePage() {
                                     type="text" 
                                     placeholder="Select experience range" 
                                     value={filterValues.SidebarExperience}
-                                    onChange={(e) => setFilterValues({...filterValues, SidebarExperience: e.target.value})}
+                                    onChange={(e) => handleSidebarChange('SidebarExperience', e.target.value)}
                                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-purple-500"
                                 />
                             </div>
@@ -186,7 +167,7 @@ function SearchCandidatePage() {
                                     type="text" 
                                     placeholder="Select job status" 
                                     value={filterValues.SidebarJobStatus}
-                                    onChange={(e) => setFilterValues({...filterValues, SidebarJobStatus: e.target.value})}
+                                    onChange={(e) => handleSidebarChange('SidebarJobStatus', e.target.value)}
                                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-purple-500"
                                 />
                             </div>
@@ -197,7 +178,7 @@ function SearchCandidatePage() {
                                     type="text" 
                                     placeholder="Select option" 
                                     value={filterValues.SidebarOpenToWork}
-                                    onChange={(e) => setFilterValues({...filterValues, SidebarOpenToWork: e.target.value})}
+                                    onChange={(e) => handleSidebarChange('SidebarOpenToWork', e.target.value)}
                                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-purple-500"
                                 />
                             </div>
@@ -208,7 +189,7 @@ function SearchCandidatePage() {
                                     type="text" 
                                     placeholder="Search by skills..." 
                                     value={filterValues.SidebarSkills}
-                                    onChange={(e) => setFilterValues({...filterValues, SidebarSkills: e.target.value})}
+                                    onChange={(e) => handleSidebarChange('SidebarSkills', e.target.value)}
                                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-purple-500"
                                 />
                             </div>
