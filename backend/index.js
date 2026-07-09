@@ -42,10 +42,6 @@ function normalizeDocument(row) {
     };
 }
  
-/* ==========================================================================
-   CANDIDATES & RECRUITING ENDPOINTS
-   ========================================================================== */
- 
 app.get("/hireRadar/cndtempsave", async (req, res) => {
     try {
         const allData = await pool.query("select * from cndtempsave");
@@ -62,13 +58,13 @@ app.get("/hireRadar/cndtempsavesearch", async (req, res) => {
         let queryText = "SELECT * FROM cndtempsave WHERE 1=1";
         let queryParams = [];
         let paramCounter = 1;
- 
+
         if (search) {
             queryText += ` AND LOWER(cndname) LIKE $${paramCounter}`;
             queryParams.push(`%${search.toLowerCase().trim()}%`);
             paramCounter++;
         }
- 
+
         if (experience) {
             const cleanExp = experience.replace(' years', '').trim();
             if (cleanExp.includes('-')) {
@@ -87,31 +83,33 @@ app.get("/hireRadar/cndtempsavesearch", async (req, res) => {
                 paramCounter++;
             }
         }
- 
+
+        // FIXED: Changed '=' to 'LIKE' with wildcard wrappers to allow partial match lookups
         if (role) {
-            queryText += ` AND LOWER(cndrole) = $${paramCounter}`;
-            queryParams.push(role.toLowerCase());
+            queryText += ` AND LOWER(cndrole) LIKE $${paramCounter}`;
+            queryParams.push(`%${role.toLowerCase().trim()}%`);
             paramCounter++;
         }
+        
         if (status) {
             queryText += ` AND LOWER(cndstatus) = $${paramCounter}`;
-            queryParams.push(status.toLowerCase());
+            queryParams.push(status.toLowerCase().trim());
             paramCounter++;
         }
- 
+
         if (location) {
             const locationsArray = location.split(',');
             const locationConditions = [];
             locationsArray.forEach(loc => {
-                locationConditions.push(`LOWER(cndlocation) = $${paramCounter}`);
-                queryParams.push(loc.toLowerCase().trim());
+                locationConditions.push(`LOWER(cndlocation) LIKE $${paramCounter}`);
+                queryParams.push(`%${loc.toLowerCase().trim()}%`);
                 paramCounter++;
             });
             if (locationConditions.length > 0) {
                 queryText += ` AND (${locationConditions.join(' OR ')})`;
             }
         }
- 
+
         if (skills) {
             const skillsArray = skills.split(',');
             skillsArray.forEach(skill => {
@@ -120,7 +118,7 @@ app.get("/hireRadar/cndtempsavesearch", async (req, res) => {
                 paramCounter++;
             });
         }
- 
+
         const filteredData = await pool.query(queryText, queryParams);
         res.json(filteredData.rows);
     } catch (err) {
@@ -376,10 +374,7 @@ app.get("/hireRadar/adminlogin", async (req, res) => {
     }
 });
  
-/* ==========================================================================
-   WORKSPACE DOCUMENT STORAGE & FULL-TEXT SEARCH CORES (IN-MEMORY STREAMS ONLY)
-   ========================================================================== */
- 
+
 app.get('/api/search', async (req, res) => {
     try {
         const q = String(req.query.q || '').trim();
