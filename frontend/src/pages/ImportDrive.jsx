@@ -214,8 +214,8 @@ function ImportDrive() {
       
       const pdf = await pdfjsLib.getDocument({ 
         data: arrayBuffer,
-        disableFontFace: true, 
-        ignoreErrors: true      
+        ignoreErrors: true,
+        verbosity: 0 
       }).promise;
       
       let text = '';

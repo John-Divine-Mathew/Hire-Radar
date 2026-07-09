@@ -415,7 +415,7 @@ app.post('/api/upload', upload.any(), async (req, res) => {
         }
  
         // Process directly out of incoming in-memory stream buffers
-        const uploadedDocuments = await Promise.all(
+        const uploadedDocuments =    await Promise.all(
             filesCollection.map(async (file) => {
                 // Pass Multer memory file directly ({ originalname, buffer, size })
                 return saveUploadedFile(file);
@@ -431,41 +431,65 @@ app.post('/api/upload', upload.any(), async (req, res) => {
 app.get('/api/status', (_req, res) => {
     res.json({ status: 'ok', service: 'document-search' });
 });
- 
-// Serves structural text strings directly from DB index representations instead of file paths
+
+const MIME_BY_EXT = {
+  '.pdf': 'application/pdf',
+  '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  '.doc': 'application/msword',
+  '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  '.xls': 'application/vnd.ms-excel',
+  '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  '.csv': 'text/csv',
+  '.txt': 'text/plain',
+  '.json': 'application/json',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.bmp': 'image/bmp',
+  '.webp': 'image/webp',
+};
+
+// Serves the actual stored file bytes inline (used by the "Native View" preview pane).
 app.get('/api/documents/:id/preview', async (req, res) => {
-    try {
-        const result = await pool.query('SELECT extracted_text, file_name FROM document_search_index WHERE id = $1', [req.params.id]);
-        if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'Document not found.' });
-        }
-        const document = result.rows[0];
-        
-        res.setHeader('Content-Type', 'text/plain');
-        res.setHeader('Content-Disposition', `inline; filename="${document.file_name}.txt"`);
-        res.send(document.extracted_text || 'No previewable text contents extracted.');
-    } catch (error) {
-        console.error('Preview API error:', error.message);
-        res.status(500).json({ error: 'Unable to preview document.' });
-    }
+  try {
+    const result = await pool.query(
+      'SELECT file_data, mime_type, extension, file_name FROM document_search_index WHERE id = $1',
+      [req.params.id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Document not found.' });
+    const doc = result.rows[0];
+    if (!doc.file_data) return res.status(404).json({ error: 'No stored file bytes for this document.' });
+
+    const contentType = doc.mime_type || MIME_BY_EXT[doc.extension] || 'application/octet-stream';
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Disposition', `inline; filename="${doc.file_name}"`);
+    res.send(doc.file_data);
+  } catch (error) {
+    console.error('Preview API error:', error.message);
+    res.status(500).json({ error: 'Unable to preview document.' });
+  }
 });
- 
-// Downloads the indexed content text metadata as a file attachment directly from DB columns
+
+// Downloads the actual stored file (not the extracted text).
 app.get('/api/documents/:id/download', async (req, res) => {
-    try {
-        const result = await pool.query('SELECT extracted_text, file_name FROM document_search_index WHERE id = $1', [req.params.id]);
-        if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'Document not found.' });
-        }
-        const document = result.rows[0];
-        
-        res.setHeader('Content-Disposition', `attachment; filename="INDEXED-${document.file_name}.txt"`);
-        res.setHeader('Content-Type', 'text/plain');
-        res.send(document.extracted_text || '');
-    } catch (error) {
-        console.error('Download API error:', error.message);
-        res.status(500).json({ error: 'Unable to download document.' });
-    }
+  try {
+    const result = await pool.query(
+      'SELECT file_data, mime_type, extension, file_name FROM document_search_index WHERE id = $1',
+      [req.params.id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Document not found.' });
+    const doc = result.rows[0];
+    if (!doc.file_data) return res.status(404).json({ error: 'No stored file bytes for this document.' });
+
+    const contentType = doc.mime_type || MIME_BY_EXT[doc.extension] || 'application/octet-stream';
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Disposition', `attachment; filename="${doc.file_name}"`);
+    res.send(doc.file_data);
+  } catch (error) {
+    console.error('Download API error:', error.message);
+    res.status(500).json({ error: 'Unable to download document.' });
+  }
 });
  
 app.delete('/api/documents/:id', async (req, res) => {

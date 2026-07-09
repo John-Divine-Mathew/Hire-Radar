@@ -4,6 +4,7 @@ const mammoth = require('mammoth');
 const XLSX = require('xlsx');
 const pool = require('./db');
 const Tesseract = require('tesseract.js'); // Replaces Python Tesseract engine natively
+const crypto = require('crypto');
 
 const SUPPORTED_EXTENSIONS = new Set([
   '.pdf', '.docx', '.xlsx', '.xls', '.txt', '.csv', '.json', '.pptx',
@@ -35,24 +36,29 @@ async function ensureSchema() {
       extracted_text TEXT DEFAULT '',
       search_vector TSVECTOR,
       nlp_entities JSONB DEFAULT '[]'::jsonb,
-      full_path TEXT NULL
+      full_path TEXT NULL,
+      file_hash TEXT NULL
     )
   `);
 
-  await pool.query(`
-    ALTER TABLE document_search_index ALTER COLUMN full_path DROP NOT NULL
-  `).catch(() => { /* Handled seamlessly if column was altered previously */ });
+  await pool.query(`ALTER TABLE document_search_index ALTER COLUMN full_path DROP NOT NULL`).catch(() => {});
+  await pool.query(`ALTER TABLE document_search_index ADD COLUMN IF NOT EXISTS file_hash TEXT`).catch(() => {});
 
+  // NEW: raw bytes + mime type, so previews/downloads can serve the actual
+  // uploaded file instead of only ever having extracted_text to fall back on.
+  await pool.query(`ALTER TABLE document_search_index ADD COLUMN IF NOT EXISTS file_data BYTEA`).catch(() => {});
+  await pool.query(`ALTER TABLE document_search_index ADD COLUMN IF NOT EXISTS mime_type TEXT`).catch(() => {});
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS document_search_index_hash_idx 
+    ON document_search_index (file_hash)
+  `);
   await pool.query(`
     CREATE INDEX IF NOT EXISTS document_search_index_vector_idx 
     ON document_search_index USING GIN (search_vector)
   `);
 }
 
-/**
- * Native Node.js Natural Language Processing & Rule Entity Extractor
- * Replaces spaCy Python microservice with fast structural regex entity mapping
- */
 function extractNlpEntities(text) {
   const entities = [];
   if (!text || !text.trim()) return entities;
@@ -131,7 +137,16 @@ async function saveUploadedFile(fileMetadata) {
     throw new Error(`Unsupported file type: ${extension}`);
   }
 
-  // Process data streams entirely inside browser/Node computing architectures
+  const fileHash = crypto.createHash('sha256').update(fileMetadata.buffer).digest('hex');
+
+  const existingDoc = await pool.query(
+    'SELECT id, file_name, extension, file_size, uploaded_at, extracted_text, nlp_entities FROM document_search_index WHERE file_hash = $1',
+    [fileHash]
+  );
+  if (existingDoc.rows.length > 0) {
+    return { ...existingDoc.rows[0], isDuplicate: true };
+  }
+
   const extractedText = await extractTextFromBuffer(extension, fileMetadata.buffer);
   const entities = extractNlpEntities(extractedText);
 
@@ -139,10 +154,16 @@ async function saveUploadedFile(fileMetadata) {
   const searchText = `${safeName} ${extractedText}`.trim();
 
   const result = await pool.query(
-    `INSERT INTO document_search_index (file_name, extension, file_size, uploaded_at, extracted_text, search_vector, nlp_entities, full_path)
-     VALUES ($1, $2, $3, NOW(), $4, to_tsvector('simple', $5), $6, NULL)
+    `INSERT INTO document_search_index
+       (file_name, extension, file_size, uploaded_at, extracted_text, search_vector, nlp_entities, full_path, file_hash, file_data, mime_type)
+     VALUES ($1, $2, $3, NOW(), $4, to_tsvector('simple', $5), $6, NULL, $7, $8, $9)
      RETURNING id, file_name, extension, file_size, uploaded_at, extracted_text, nlp_entities`,
-    [safeName, extension, fileMetadata.size, extractedText, searchText, JSON.stringify(entities)]
+    [
+      safeName, extension, fileMetadata.size, extractedText, searchText,
+      JSON.stringify(entities), fileHash,
+      fileMetadata.buffer,            // NEW: raw bytes
+      fileMetadata.mimetype || null,  // NEW: multer gives us this for free
+    ]
   );
 
   return result.rows[0];
