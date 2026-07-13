@@ -1,10 +1,338 @@
 import Sidebar from "../components/sideBar/sideBar";
 import Navbar from "../components/navBar/navBar.jsx";
-import { Funnel, Eye, MoreVertical, UserKey, ChevronDown } from "lucide-react";
+import { Funnel, Eye, MoreVertical, UserKey, ChevronDown, ChevronLeft, ChevronRight, X, CheckCircle2, Mail } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { format } from 'date-fns';
 import { useNavigate } from "react-router-dom";
 import { nanoid } from 'nanoid';
+
+
+function InlineCalendarBooking({ onClose, onBookSlot, onSendEmail }) {
+  const [currentYear, setCurrentYear] = useState(2026);
+  const [currentMonth, setCurrentMonth] = useState(6); // 0-indexed, 6 = July
+  const [selectedDate, setSelectedDate] = useState(9); // Default to July 9
+  const [selectedDuration, setSelectedDuration] = useState("60 minutes");
+  const [selectedSlots, setSelectedSlots] = useState(["05:00 PM", "05:30 PM"]);
+
+  const [isBooked, setIsBooked] = useState(false);
+  const [showEmailPrompt, setShowEmailPrompt] = useState(false);
+  const [emailStatus, setEmailStatus] = useState(null); // null | 'sent' | 'skipped'
+
+  const monthNames = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ];
+
+  const daysOfWeek = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+
+  // Hardcoded layout for July 2026 (starts on Wednesday)
+  const prefixDays = [28, 29, 30];
+  const totalDays = 31;
+  const suffixDays = [1, 2, 3, 4, 5, 6, 7, 8];
+
+  const timeSlots = [
+    "01:00 PM", "01:30 PM", "02:00 PM", "02:30 PM", "03:00 PM", "03:30 PM",
+    "04:00 PM", "04:30 PM", "05:00 PM", "05:30 PM", "06:00 PM", "06:30 PM",
+    "07:00 PM", "07:30 PM", "08:00 PM", "08:30 PM", "09:00 PM", "09:30 PM"
+  ];
+
+  const toggleSlot = (time) => {
+    if (selectedSlots.includes(time)) {
+      setSelectedSlots(selectedSlots.filter((s) => s !== time));
+    } else {
+      setSelectedSlots([...selectedSlots, time]);
+    }
+  };
+
+  const goToPrevMonth = () => {
+    setCurrentMonth((prev) => {
+      if (prev === 0) {
+        setCurrentYear((y) => y - 1);
+        return 11;
+      }
+      return prev - 1;
+    });
+  };
+
+  const goToNextMonth = () => {
+    setCurrentMonth((prev) => {
+      if (prev === 11) {
+        setCurrentYear((y) => y + 1);
+        return 0;
+      }
+      return prev + 1;
+    });
+  };
+
+  const bookingDetails = {
+    date: `${monthNames[currentMonth]} ${selectedDate}, ${currentYear}`,
+    duration: selectedDuration,
+    slots: selectedSlots,
+  };
+
+  const handleBookSlot = () => {
+    if (selectedSlots.length === 0) return;
+    onBookSlot?.(bookingDetails);
+    setIsBooked(true);
+    setEmailStatus(null);
+    setShowEmailPrompt(true);
+  };
+
+  const handleConfirmSendEmail = () => {
+    onSendEmail?.(bookingDetails);
+    setEmailStatus('sent');
+  };
+
+  const handleSkipSendEmail = () => {
+    setEmailStatus('skipped');
+  };
+
+  const closeEmailPrompt = () => {
+    setShowEmailPrompt(false);
+    setEmailStatus(null);
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto my-8 p-6 bg-white border border-gray-100 rounded-2xl shadow-xl font-sans text-gray-800 relative">
+      {onClose && (
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+          title="Close"
+        >
+          <X size={20} />
+        </button>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
+
+        {/* Left Side: Calendar */}
+        <div className="md:col-span-5 border-r border-gray-100 pr-0 md:pr-6">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-bold text-gray-900">
+              {monthNames[currentMonth]}, {currentYear}
+            </h2>
+            <div className="flex space-x-2">
+              <button
+                onClick={goToPrevMonth}
+                className="p-2 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors"
+              >
+                <ChevronLeft size={18} />
+              </button>
+              <button
+                onClick={goToNextMonth}
+                className="p-2 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors"
+              >
+                <ChevronRight size={18} />
+              </button>
+            </div>
+          </div>
+
+          {/* Days Header */}
+          <div className="grid grid-cols-7 gap-1 text-center mb-2">
+            {daysOfWeek.map((day) => (
+              <span key={day} className="text-sm font-semibold text-gray-400 py-1">
+                {day}
+              </span>
+            ))}
+          </div>
+
+          {/* Calendar Grid */}
+          <div className="grid grid-cols-7 gap-1 text-center">
+            {prefixDays.map((day, idx) => (
+              <span key={`prev-${idx}`} className="text-sm text-gray-300 py-2.5">
+                {day}
+              </span>
+            ))}
+
+            {Array.from({ length: totalDays }, (_, i) => i + 1).map((day) => {
+              const isSelected = day === selectedDate;
+              return (
+                <button
+                  key={`day-${day}`}
+                  onClick={() => setSelectedDate(day)}
+                  className={`text-sm font-medium py-2.5 rounded-full transition-all relative flex items-center justify-center m-auto h-9 w-9
+                    ${isSelected
+                      ? 'bg-[#E07A5F] text-white font-bold shadow-md shadow-orange-200'
+                      : 'text-gray-700 hover:bg-gray-100'
+                    }`}
+                >
+                  {day}
+                </button>
+              );
+            })}
+
+            {suffixDays.map((day, idx) => (
+              <span key={`next-${idx}`} className="text-sm text-gray-300 py-2.5">
+                {day}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <div className="md:col-span-7 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between border-b border-gray-100 pb-4 mb-4">
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">
+                  Slots for {monthNames[currentMonth]} {selectedDate}, {currentYear}
+                </h3>
+              </div>
+              <span className="text-xs font-semibold px-2.5 py-1 bg-teal-50 text-[#49A088] rounded-full">
+                {selectedSlots.length} Selected
+              </span>
+            </div>
+
+            {isBooked && (
+              <div className="flex items-center gap-2 bg-purple-50 border border-purple-200 text-purple-700 text-xs font-medium px-3 py-2 rounded-lg mb-4">
+                <CheckCircle2 size={16} />
+                Slot booked for {monthNames[currentMonth]} {selectedDate}, {currentYear}
+              </div>
+            )}
+
+            <div className="mb-5">
+              <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                Select Duration
+              </label>
+              <div className="relative w-48">
+                <select
+                  value={selectedDuration}
+                  onChange={(e) => setSelectedDuration(e.target.value)}
+                  className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 appearance-none focus:outline-none focus:border-[#49A088] cursor-pointer"
+                >
+                  <option>30 minutes</option>
+                  <option>60 minutes</option>
+                  <option>90 minutes</option>
+                </select>
+                <ChevronDown size={16} className="absolute right-3 top-3 text-gray-400 pointer-events-none" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2.5 max-h-64 overflow-y-auto pr-1">
+              {timeSlots.map((time) => {
+                const isSelected = selectedSlots.includes(time);
+                return (
+                  <button
+                    key={time}
+                    onClick={() => toggleSlot(time)}
+                    className={`py-2 px-3 text-xs font-medium rounded-lg border transition-all text-center
+                      ${isSelected
+                        ? 'bg-teal-50 border-[#49A088] text-[#49A088] font-semibold'
+                        : 'bg-white border-gray-200 text-gray-600 hover:border-gray-400'
+                      }`}
+                  >
+                    {time}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="mt-6 pt-4 border-t border-gray-100 flex items-center justify-between">
+            <label className="flex items-center space-x-2 text-xs text-gray-500 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                className="rounded border-gray-300 text-[#49A088] focus:ring-[#49A088] h-4 w-4"
+              />
+            </label>
+
+            <div className="flex space-x-2">
+              <button
+                onClick={() => setSelectedSlots([])}
+                className="px-4 py-2 text-xs font-semibold text-gray-500 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Clear
+              </button>
+              <button
+                onClick={handleBookSlot}
+                disabled={selectedSlots.length === 0}
+                className={`px-4 py-2 text-xs font-semibold rounded-lg shadow-sm transition-colors ${
+                  selectedSlots.length === 0
+                    ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                    : 'bg-[#49A0881] hover:bg-[#3b826e] text-white'
+                }`}
+              >
+                Book Slot
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {showEmailPrompt && (
+        <div className="absolute inset-0 bg-black/30 rounded-2xl flex items-center justify-center z-10">
+          <div className="bg-white rounded-xl shadow-2xl border border-gray-100 w-full max-w-sm mx-4 p-6">
+            {emailStatus === null && (
+              <>
+                <div className="flex items-center gap-2 mb-2 text-[#49A088]">
+                  <Mail size={20} />
+                  <h4 className="text-base font-bold text-gray-900">Send confirmation email?</h4>
+                </div>
+                <p className="text-sm text-gray-500 mb-5">
+                  The slot for {monthNames[currentMonth]} {selectedDate}, {currentYear} ({selectedSlots.length}{' '}
+                  {selectedSlots.length === 1 ? 'slot' : 'slots'}) has been booked. Would you like to email the
+                  candidate a confirmation now?
+                </p>
+                <div className="flex justify-end gap-2">
+                  <button
+                    onClick={handleSkipSendEmail}
+                    className="px-4 py-2 text-xs font-semibold text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    No thanks
+                  </button>
+                  <button
+                    onClick={handleConfirmSendEmail}
+                    className="px-4 py-2 text-xs font-semibold text-white bg-[#49A088] hover:bg-[#3b826e] rounded-lg shadow-sm transition-colors"
+                  >
+                    Send Email
+                  </button>
+                </div>
+              </>
+            )}
+
+            {emailStatus === 'sent' && (
+              <>
+                <div className="flex items-center gap-2 mb-2 text-emerald-600">
+                  <CheckCircle2 size={20} />
+                  <h4 className="text-base font-bold text-gray-900">Email sent</h4>
+                </div>
+                <p className="text-sm text-gray-500 mb-5">
+                  A confirmation email for the booked slot has been sent to the candidate.
+                </p>
+                <div className="flex justify-end">
+                  <button
+                    onClick={closeEmailPrompt}
+                    className="px-4 py-2 text-xs font-semibold text-white bg-[#49A088] hover:bg-[#3b826e] rounded-lg shadow-sm transition-colors"
+                  >
+                    Done
+                  </button>
+                </div>
+              </>
+            )}
+
+            {emailStatus === 'skipped' && (
+              <>
+                <h4 className="text-base font-bold text-gray-900 mb-2">No email sent</h4>
+                <p className="text-sm text-gray-500 mb-5">
+                  The slot is booked. You can always send a confirmation email later.
+                </p>
+                <div className="flex justify-end">
+                  <button
+                    onClick={closeEmailPrompt}
+                    className="px-4 py-2 text-xs font-semibold text-white bg-[#49A088] hover:bg-[#3b826e] rounded-lg shadow-sm transition-colors"
+                  >
+                    Done
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 function SavedCandidates() {
     const [candidates, setCandidates] = useState([]);
@@ -23,6 +351,8 @@ function SavedCandidates() {
     const [showLocationDropdown, setShowLocationDropdown] = useState(false);
     const skillsRef = useRef(null);
     const locationRef = useRef(null);
+
+    const [calendarCandidateId, setCalendarCandidateId] = useState(null);
 
     const filterOptions = ['Experience', 'Skills', 'Location', 'Role', 'Status'].sort();
 
@@ -99,7 +429,7 @@ function SavedCandidates() {
 
             if (matches && matches.length === 1) {
                 if (value.includes('+')) {
-                    return `${matches[0]}-50`; 
+                    return `${matches[0]}-50`;
                 }
                 return matches[0];
             }
@@ -312,6 +642,16 @@ function SavedCandidates() {
             }
         }
     };
+
+   
+    function openCalendar(id) {
+        setCalendarCandidateId(id);
+        setOpenMenuId(null);
+    }
+
+    function closeCalendar() {
+        setCalendarCandidateId(null);
+    }
 
     return (
         <div className="flex h-screen flex-col overflow-hidden">
@@ -590,10 +930,13 @@ function SavedCandidates() {
                                                     >
                                                         <MoreVertical size={20} />
                                                     </button>
-                                                    <div className={`absolute right-full top-1/2 -translate-y-1/2 -mr-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg p-3 z-50 transition-opacity duration-200 ${openMenuId === candidate.cndid ? 'block opacity-100' : 'hidden opacity-0'}`} id={`popupBox-${candidate.cndid}`}>
+                                                    <div
+                                                        className={`absolute right-full top-1/2 -translate-y-1/2 -mr-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg p-3 z-50 transition-opacity duration-200 ${openMenuId === candidate.cndid ? 'block opacity-100' : 'hidden opacity-0'}`}
+                                                        id={`popupBox-${candidate.cndid}`}
+                                                    >
                                                         <a onClick={() => alert('Edit: ' + candidate.cndname)} className="block px-3 py-2 text-gray-700 text-sm rounded hover:bg-gray-100 cursor-pointer transition duration-150">Edit</a>
                                                         <a onClick={() => deleteRecord(candidate.cndid)} className="block px-3 py-2 text-gray-700 text-sm rounded hover:bg-gray-100 cursor-pointer transition duration-150">Delete</a>
-                                                        <a onClick={() => generateCredentials(candidate.cndid)} className="block px-3 py-2 text-gray-700 text-sm rounded hover:bg-gray-100 cursor-pointer transition duration-150">Generate Credentials</a>
+                                                        <a onClick={() => openCalendar(candidate.cndid)} className="block px-3 py-2 text-gray-700 text-sm rounded hover:bg-gray-100 cursor-pointer transition duration-150">Calendar</a>
                                                     </div>
                                                 </div>
                                             </div>
@@ -610,8 +953,16 @@ function SavedCandidates() {
                 </div>
             </div>
             </div>
+
+
+            {calendarCandidateId !== null && (
+                <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100] p-4">
+                    <InlineCalendarBooking onClose={closeCalendar} />
+                </div>
+            )}
         </div>
     );
 }
 
 export default SavedCandidates;
+
