@@ -6,13 +6,55 @@ import { format } from 'date-fns';
 import { useNavigate } from "react-router-dom";
 import { nanoid } from 'nanoid';
 
+// Minutes-per-duration lookup, used to work out how many consecutive
+// 30-minute blocks a booking should span.
+const DURATION_MINUTES = {
+  "30 minutes": 30,
+  "60 minutes": 60,
+  "90 minutes": 90,
+};
+
+// Booking window: 9:00 AM to 6:00 PM
+const GRID_START_MINUTES = 9 * 60;   // 9:00 AM
+const GRID_END_MINUTES = 18 * 60;    // 6:00 PM
+
+// "01:00 PM" -> 780 (minutes since midnight)
+function parseTimeToMinutes(label) {
+  const [time, modifier] = label.split(' ');
+  let [hours, minutes] = time.split(':').map(Number);
+  if (modifier === 'PM' && hours !== 12) hours += 12;
+  if (modifier === 'AM' && hours === 12) hours = 0;
+  return hours * 60 + minutes;
+}
+
+// 780 -> "01:00 PM"
+function formatMinutesToTime(totalMinutes) {
+  const hours24 = Math.floor(totalMinutes / 60) % 24;
+  const minutes = totalMinutes % 60;
+  const modifier = hours24 >= 12 ? 'PM' : 'AM';
+  let displayHours = hours24 % 12;
+  if (displayHours === 0) displayHours = 12;
+  return `${String(displayHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')} ${modifier}`;
+}
+
+// Builds every 30-minute mark from 9:00 AM through 6:00 PM inclusive
+// (9:00, 9:30, 10:00 ... 5:30 PM, 6:00 PM).
+function generateTimeSlots(startMinutes, endMinutes) {
+  const slots = [];
+  for (let m = startMinutes; m <= endMinutes; m += 30) {
+    slots.push(formatMinutesToTime(m));
+  }
+  return slots;
+}
 
 function InlineCalendarBooking({ onClose, onBookSlot, onSendEmail }) {
   const [currentYear, setCurrentYear] = useState(2026);
   const [currentMonth, setCurrentMonth] = useState(6); // 0-indexed, 6 = July
   const [selectedDate, setSelectedDate] = useState(9); // Default to July 9
   const [selectedDuration, setSelectedDuration] = useState("60 minutes");
-  const [selectedSlots, setSelectedSlots] = useState(["05:00 PM", "05:30 PM"]);
+  // selectedSlot holds the START time of the booking (e.g. "01:00 PM").
+  // The actual span shown/booked is derived from selectedDuration.
+  const [selectedSlot, setSelectedSlot] = useState(null);
 
   const [isBooked, setIsBooked] = useState(false);
   const [showEmailPrompt, setShowEmailPrompt] = useState(false);
@@ -30,19 +72,59 @@ function InlineCalendarBooking({ onClose, onBookSlot, onSendEmail }) {
   const totalDays = 31;
   const suffixDays = [1, 2, 3, 4, 5, 6, 7, 8];
 
-  const timeSlots = [
-    "01:00 PM", "01:30 PM", "02:00 PM", "02:30 PM", "03:00 PM", "03:30 PM",
-    "04:00 PM", "04:30 PM", "05:00 PM", "05:30 PM", "06:00 PM", "06:30 PM",
-    "07:00 PM", "07:30 PM", "08:00 PM", "08:30 PM", "09:00 PM", "09:30 PM"
-  ];
+  // Every 30-minute mark from 9:00 AM to 6:00 PM (inclusive boundary marks,
+  // so the grid ends with a "06:00 PM" entry too).
+  const timeSlots = generateTimeSlots(GRID_START_MINUTES, GRID_END_MINUTES);
 
-  const toggleSlot = (time) => {
-    if (selectedSlots.includes(time)) {
-      setSelectedSlots(selectedSlots.filter((s) => s !== time));
-    } else {
-      setSelectedSlots([...selectedSlots, time]);
+  // Last bookable moment on the grid: 6:00 PM itself.
+  const gridEndMinutes = GRID_END_MINUTES;
+
+  // Given a start time and the current duration, returns { startMinutes, endMinutes, endLabel, blockLabels }
+  // blockLabels is every 30-min mark from the start through the end of the booking (inclusive on both ends),
+  // used for highlighting. A 30-minute booking highlights 2 marks (start + end), 60 minutes highlights 3,
+  // 90 minutes highlights 4, and so on.
+  function getRangeForStart(startTime, duration) {
+    const startMinutes = parseTimeToMinutes(startTime);
+    const durationMins = DURATION_MINUTES[duration] ?? 30;
+    const endMinutes = startMinutes + durationMins;
+    const blockLabels = timeSlots.filter((t) => {
+      const m = parseTimeToMinutes(t);
+      return m >= startMinutes && m <= endMinutes;
+    });
+    return {
+      startMinutes,
+      endMinutes,
+      endLabel: formatMinutesToTime(endMinutes),
+      blockLabels,
+    };
+  }
+
+  // Only one range can ever be selected. Clicking the current start time
+  // deselects it. Clicking a different time selects it as the new start,
+  // as long as the chosen duration fits on the grid from that point on.
+  const selectSlot = (time) => {
+    if (selectedSlot === time) {
+      setSelectedSlot(null);
+      return;
     }
+    const { endMinutes } = getRangeForStart(time, selectedDuration);
+    if (endMinutes > gridEndMinutes) {
+      // Not enough room left before closing time for this duration starting here.
+      return;
+    }
+    setSelectedSlot(time);
   };
+
+  // If the duration changes and the current selection no longer fits
+  // (e.g. moving from 30 to 90 minutes near closing time), clear it.
+  useEffect(() => {
+    if (!selectedSlot) return;
+    const { endMinutes } = getRangeForStart(selectedSlot, selectedDuration);
+    if (endMinutes > gridEndMinutes) {
+      setSelectedSlot(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDuration]);
 
   const goToPrevMonth = () => {
     setCurrentMonth((prev) => {
@@ -64,14 +146,17 @@ function InlineCalendarBooking({ onClose, onBookSlot, onSendEmail }) {
     });
   };
 
+  const activeRange = selectedSlot ? getRangeForStart(selectedSlot, selectedDuration) : null;
+
   const bookingDetails = {
     date: `${monthNames[currentMonth]} ${selectedDate}, ${currentYear}`,
     duration: selectedDuration,
-    slots: selectedSlots,
+    startTime: selectedSlot,
+    endTime: activeRange?.endLabel ?? null,
   };
 
   const handleBookSlot = () => {
-    if (selectedSlots.length === 0) return;
+    if (!selectedSlot) return;
     onBookSlot?.(bookingDetails);
     setIsBooked(true);
     setEmailStatus(null);
@@ -153,7 +238,7 @@ function InlineCalendarBooking({ onClose, onBookSlot, onSendEmail }) {
                   onClick={() => setSelectedDate(day)}
                   className={`text-sm font-medium py-2.5 rounded-full transition-all relative flex items-center justify-center m-auto h-9 w-9
                     ${isSelected
-                      ? 'bg-[#E07A5F] text-white font-bold shadow-md shadow-orange-200'
+                      ? 'bg-purple-700 text-white font-bold shadow-md shadow-purple-200'
                       : 'text-gray-700 hover:bg-gray-100'
                     }`}
                 >
@@ -177,9 +262,10 @@ function InlineCalendarBooking({ onClose, onBookSlot, onSendEmail }) {
                 <h3 className="text-lg font-bold text-gray-900">
                   Slots for {monthNames[currentMonth]} {selectedDate}, {currentYear}
                 </h3>
+                <p className="text-xs text-gray-400 mt-0.5">9:00 AM - 6:00 PM</p>
               </div>
-              <span className="text-xs font-semibold px-2.5 py-1 bg-teal-50 text-[#49A088] rounded-full">
-                {selectedSlots.length} Selected
+              <span className="text-xs font-semibold px-2.5 py-1 bg-purple-50 text-purple-700 rounded-full">
+                {selectedSlot ? `${selectedSlot} - ${activeRange.endLabel}` : '0 Selected'}
               </span>
             </div>
 
@@ -198,7 +284,7 @@ function InlineCalendarBooking({ onClose, onBookSlot, onSendEmail }) {
                 <select
                   value={selectedDuration}
                   onChange={(e) => setSelectedDuration(e.target.value)}
-                  className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 appearance-none focus:outline-none focus:border-[#49A088] cursor-pointer"
+                  className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 appearance-none focus:outline-none focus:border-purple-700 cursor-pointer"
                 >
                   <option>30 minutes</option>
                   <option>60 minutes</option>
@@ -210,15 +296,27 @@ function InlineCalendarBooking({ onClose, onBookSlot, onSendEmail }) {
 
             <div className="grid grid-cols-3 gap-2.5 max-h-64 overflow-y-auto pr-1">
               {timeSlots.map((time) => {
-                const isSelected = selectedSlots.includes(time);
+                const isInRange = !!activeRange && activeRange.blockLabels.includes(time);
+                const isStart = time === selectedSlot;
+
+                // Would starting the currently-selected duration here run past closing time?
+                const { endMinutes } = getRangeForStart(time, selectedDuration);
+                const wouldOverflow = endMinutes > gridEndMinutes;
+
                 return (
                   <button
                     key={time}
-                    onClick={() => toggleSlot(time)}
+                    onClick={() => selectSlot(time)}
+                    disabled={!isInRange && wouldOverflow}
+                    title={!isInRange && wouldOverflow ? `Not enough room for a ${selectedDuration} booking starting here` : undefined}
                     className={`py-2 px-3 text-xs font-medium rounded-lg border transition-all text-center
-                      ${isSelected
-                        ? 'bg-teal-50 border-[#49A088] text-[#49A088] font-semibold'
-                        : 'bg-white border-gray-200 text-gray-600 hover:border-gray-400'
+                      ${isInRange
+                        ? isStart
+                          ? 'bg-purple-700 border-purple-700 text-white font-semibold'
+                          : 'bg-purple-50 border-purple-700 text-purple-700 font-semibold'
+                        : wouldOverflow
+                          ? 'bg-white border-gray-100 text-gray-300 cursor-not-allowed'
+                          : 'bg-white border-gray-200 text-gray-600 hover:border-gray-400'
                       }`}
                   >
                     {time}
@@ -228,28 +326,21 @@ function InlineCalendarBooking({ onClose, onBookSlot, onSendEmail }) {
             </div>
           </div>
 
-          <div className="mt-6 pt-4 border-t border-gray-100 flex items-center justify-between">
-            <label className="flex items-center space-x-2 text-xs text-gray-500 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                className="rounded border-gray-300 text-[#49A088] focus:ring-[#49A088] h-4 w-4"
-              />
-            </label>
-
+          <div className="mt-6 pt-4 border-t border-gray-100 flex items-center justify-end">
             <div className="flex space-x-2">
               <button
-                onClick={() => setSelectedSlots([])}
+                onClick={() => setSelectedSlot(null)}
                 className="px-4 py-2 text-xs font-semibold text-gray-500 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 Clear
               </button>
               <button
                 onClick={handleBookSlot}
-                disabled={selectedSlots.length === 0}
+                disabled={!selectedSlot}
                 className={`px-4 py-2 text-xs font-semibold rounded-lg shadow-sm transition-colors ${
-                  selectedSlots.length === 0
+                  !selectedSlot
                     ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                    : 'bg-[#49A0881] hover:bg-[#3b826e] text-white'
+                    : 'bg-purple-700 text-white hover:bg-purple-800'
                 }`}
               >
                 Book Slot
@@ -264,25 +355,25 @@ function InlineCalendarBooking({ onClose, onBookSlot, onSendEmail }) {
           <div className="bg-white rounded-xl shadow-2xl border border-gray-100 w-full max-w-sm mx-4 p-6">
             {emailStatus === null && (
               <>
-                <div className="flex items-center gap-2 mb-2 text-[#49A088]">
+                <div className="flex items-center gap-2 mb-2 text-purple-700">
                   <Mail size={20} />
                   <h4 className="text-base font-bold text-gray-900">Send confirmation email?</h4>
                 </div>
                 <p className="text-sm text-gray-500 mb-5">
-                  The slot for {monthNames[currentMonth]} {selectedDate}, {currentYear} ({selectedSlots.length}{' '}
-                  {selectedSlots.length === 1 ? 'slot' : 'slots'}) has been booked. Would you like to email the
-                  candidate a confirmation now?
+                  The {selectedDuration} slot for {monthNames[currentMonth]} {selectedDate}, {currentYear} from{' '}
+                  {selectedSlot} to {activeRange?.endLabel} has been booked. Would you like to email the candidate a
+                  confirmation now?
                 </p>
                 <div className="flex justify-end gap-2">
                   <button
                     onClick={handleSkipSendEmail}
-                    className="px-4 py-2 text-xs font-semibold text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                    className="px-4 py-2 text-xs font-semibold text-gray-600 border border-gray-200 rounded-lg transition-colors"
                   >
                     No thanks
                   </button>
                   <button
                     onClick={handleConfirmSendEmail}
-                    className="px-4 py-2 text-xs font-semibold text-white bg-[#49A088] hover:bg-[#3b826e] rounded-lg shadow-sm transition-colors"
+                    className="px-4 py-2 text-xs font-semibold text-white bg-purple-700 hover:bg-purple-800 rounded-lg shadow-sm transition-colors"
                   >
                     Send Email
                   </button>
@@ -292,7 +383,7 @@ function InlineCalendarBooking({ onClose, onBookSlot, onSendEmail }) {
 
             {emailStatus === 'sent' && (
               <>
-                <div className="flex items-center gap-2 mb-2 text-emerald-600">
+                <div className="flex items-center gap-2 mb-2 text-purple-700">
                   <CheckCircle2 size={20} />
                   <h4 className="text-base font-bold text-gray-900">Email sent</h4>
                 </div>
@@ -302,7 +393,7 @@ function InlineCalendarBooking({ onClose, onBookSlot, onSendEmail }) {
                 <div className="flex justify-end">
                   <button
                     onClick={closeEmailPrompt}
-                    className="px-4 py-2 text-xs font-semibold text-white bg-[#49A088] hover:bg-[#3b826e] rounded-lg shadow-sm transition-colors"
+                    className="px-4 py-2 text-xs font-semibold text-white bg-purple-700 hover:bg-purple-800 rounded-lg shadow-sm transition-colors"
                   >
                     Done
                   </button>
@@ -319,7 +410,7 @@ function InlineCalendarBooking({ onClose, onBookSlot, onSendEmail }) {
                 <div className="flex justify-end">
                   <button
                     onClick={closeEmailPrompt}
-                    className="px-4 py-2 text-xs font-semibold text-white bg-[#49A088] hover:bg-[#3b826e] rounded-lg shadow-sm transition-colors"
+                    className="px-4 py-2 text-xs font-semibold text-white bg-purple-700 hover:bg-purple-800 rounded-lg shadow-sm transition-colors"
                   >
                     Done
                   </button>
@@ -450,7 +541,7 @@ function SavedCandidates() {
 
             Object.keys(filterValues).forEach((key) => {
                 const val = filterValues[key];
-                // Pass lowercase key to match normalization checks reliably
+
                 const normalizedValue = normalizeFilterValue(key.toLowerCase(), val);
 
                 if (Array.isArray(normalizedValue)) {
@@ -643,7 +734,7 @@ function SavedCandidates() {
         }
     };
 
-   
+
     function openCalendar(id) {
         setCalendarCandidateId(id);
         setOpenMenuId(null);
@@ -965,4 +1056,3 @@ function SavedCandidates() {
 }
 
 export default SavedCandidates;
-
