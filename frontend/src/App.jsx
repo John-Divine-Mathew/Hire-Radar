@@ -9,6 +9,7 @@ import SavedCadidates from './pages/savedCandidates.jsx';
 import AssessmentForm from './pages/Assessment/AssessmentForm.jsx';
 import AssessmentTest from "./pages/Assessment/AssessmentTest";
 import AdminAssessment from './pages/Assessment/AdminAssessment.jsx';
+import QuestionBank from "./pages/QuestionBank.jsx";
 import AdminLogin from "./pages/AdminLogin";
 import AdminUser from './pages/AdminUser.jsx';
 import ImportDrive from './pages/ImportDrive.jsx';
@@ -28,9 +29,11 @@ function App() {
         <Route path='/assessmentform' element={<AssessmentForm />} />
         <Route path="/assessment-test" element={<AssessmentTest />} />
         <Route path="/admin-assessment" element={<AdminAssessment />} />
+        <Route path="/question-bank" element={<QuestionBank />} />
         <Route path="/admin-login" element={<AdminLogin />} />
         <Route path="/admin-user" element={<AdminUser />} />
         <Route path="/import-drive" element={<ImportDrive />} />
+        
         
       </Routes>
     </BrowserRouter>
