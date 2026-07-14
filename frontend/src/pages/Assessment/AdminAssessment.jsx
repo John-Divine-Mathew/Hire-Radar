@@ -1,12 +1,15 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react"; 
 import Sidebar from "../../components/sideBar/sideBar";
 import Navbar from "../../components/navBar/navBar.jsx";
-import { ChevronDown } from "lucide-react";
-
+import {ChevronDown,Upload,FileSpreadsheet} from "lucide-react";
+import * as XLSX from "xlsx";
 function AdminAssessment() {
+
   const [questions, setQuestions] = useState([]);
+
   const [selectedDeptFilter, setSelectedDeptFilter] = useState("");
-  // State tracking for the question list text search bar
+
+  const [uploading, setUploading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
   const getQuestions = async () => {
@@ -22,28 +25,76 @@ function AdminAssessment() {
   useEffect(() => {
     getQuestions();
   }, []);
-
   async function insertQuestions(form) {
     try {
       const body = {
-        'dept': form.department,
-        'category': form.category,
-        'question': form.question,
-        'option1': form.option1,
-        'option2': form.option2,
-        'option3': form.option3,
-        'option4': form.option4,
-        'answer': form.answer
-      };
-      await fetch('http://localhost:5000/hireRadar/insertQuestions', {
+
+    dept: String(
+        form.department ||
+        form.dept ||
+        form.Department ||
+        ""
+    ).trim(),
+
+    category: String(
+        form.category ||
+        form.Category ||
+        ""
+    ).trim(),
+
+    question: String(
+        form.question ||
+        form.Question ||
+        form["Question "] ||
+        ""
+    ).trim(),
+
+    option1: String(
+        form.option1 ||
+        form.OptionA ||
+        ""
+    ).trim(),
+
+    option2: String(
+        form.option2 ||
+        form.OptionB ||
+        ""
+    ).trim(),
+
+    option3: String(
+        form.option3 ||
+        form.OptionC ||
+        form["OptionC "] ||
+        ""
+    ).trim(),
+
+    option4: String(
+        form.option4 ||
+        form.OptionD ||
+        form["OptionD "] ||
+        ""
+    ).trim(),
+
+    answer: String(
+        form.answer ||
+        form.Answer ||
+        ""
+    ).trim()
+
+};
+
+      await fetch("http://localhost:5000/hireRadar/insertQuestions", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body)
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
       });
     } catch (err) {
-      console.error(err.message);
+      console.log(err.message);
     }
   }
+    
 
   const [form, setForm] = useState({
     department: "",
@@ -90,7 +141,6 @@ function AdminAssessment() {
 
     await insertQuestions(form);
     await getQuestions();
-
     setForm({
       department: "",
       category: "",
@@ -108,7 +158,6 @@ function AdminAssessment() {
       const response = await fetch(`http://localhost:5000/hireRadar/deleteQuestion/${String(qno)}`, {
         method: 'DELETE'
       });
-
       if (!response.ok) {
         const text = await response.text();
         throw new Error(text || 'Delete request failed');
@@ -118,6 +167,48 @@ function AdminAssessment() {
     } catch (err) {
       console.error(err.message);
     }
+  };
+
+  // Excel Upload Handler Function
+  const handleExcelUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setUploading(true);
+    const reader = new FileReader();
+
+    reader.onload = async (evt) => {
+      try {
+        const bstr = evt.target.result;
+        const wb = XLSX.read(bstr, { type: "binary" });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        // Parse rows as JSON matching DB column names
+        const data = XLSX.utils.sheet_to_json(ws);
+
+        if (data.length === 0) {
+          alert("The uploaded excel sheet is empty!");
+          setUploading(false);
+          return;
+        }
+
+        // Loop and upload each row asynchronously
+        for (const row of data) {
+          await insertQuestions(row);
+        }
+
+        alert("All questions uploaded successfully!");
+        await getQuestions(); // Refresh live view
+      } catch (error) {
+        console.error("Error reading or processing excel template: ", error);
+        alert("Failed to process file. Make sure columns match data attributes perfectly.");
+      } finally {
+        setUploading(false);
+        e.target.value = ""; // Clear file selector target memory
+      }
+    };
+
+    reader.readAsBinaryString(file);
   };
 
   // Combined real-time filter logic for both Department Dropdown and Text Search input
@@ -136,20 +227,87 @@ function AdminAssessment() {
   return (
     <div className="flex bg-gray-100 h-screen w-screen flex-col overflow-hidden">
       <Navbar />
-
       <div className="flex flex-1 min-h-0">
         <Sidebar />
         <div className="flex-1 flex flex-col h-full min-w-0">
 
           {/* STATIC HEADER AREA */}
-          <div className="p-8 pb-4 bg-gray-100 border-b border-gray-200/50 shrink-0">
-            <h1 className="text-4xl font-bold text-gray-900">
-              Assessment Management
-            </h1>
-            <p className="mt-2 text-gray-600">
-              Create and manage technical assessment questions.
-            </p>
-          </div>
+         <div className="p-8 pb-4 bg-gray-100 border-b border-gray-200/50 shrink-0">
+
+<div className="flex justify-between items-center">
+
+<div>
+
+
+<h1 className="text-4xl font-bold text-gray-900">
+
+Assessment Management
+
+</h1>
+
+<p className="mt-2 text-gray-600">
+
+Create and manage technical assessment questions.
+
+</p>
+
+</div>
+
+<div className="flex gap-4">
+
+<button
+
+className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl shadow-lg flex items-center gap-2 transition"
+
+>
+
++
+
+Add Question
+
+</button>
+
+<label
+
+className="cursor-pointer bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-xl shadow-lg flex items-center gap-2 transition"
+
+>
+
+<FileSpreadsheet size={20}/>
+
+{
+
+uploading
+
+?
+
+"Uploading..."
+
+:
+
+"Import Excel"
+
+}
+
+<input
+
+type="file"
+
+accept=".xlsx,.xls"
+
+hidden
+
+onChange={handleExcelUpload}
+
+/>
+
+</label>
+
+</div>
+
+</div>
+
+</div>
 
           {/* SCROLLABLE CONTENT AREA */}
           <div className="flex-1 overflow-y-auto p-8 pt-4 custom-scrollbar">
