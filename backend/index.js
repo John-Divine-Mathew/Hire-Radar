@@ -2,10 +2,10 @@ const express = require('express');
 const multer = require('multer');
 const cors = require('cors');
 const pool = require('./db');
-const { Resend } = require("resend");
-const { render } = require("@react-email/components");
-const React = require("react");
-const { TestScheduledEmail } =  require('./emails/template.tsx');
+//const { Resend } = require("resend");
+//const { render } = require("@react-email/components");
+//const React = require("react");
+//const { TestScheduledEmail } =  require('./emails/template.tsx');
 
 const {
     initializeSearchService,
@@ -16,7 +16,7 @@ const {
 } = require('./searchService');
  
 const app = express();
-const resend = new Resend(process.env.resendApiKey);
+//const resend = new Resend(process.env.resendApiKey);
  
 app.use(cors({ origin: 'http://localhost:5173' }));
 app.use(express.json());
@@ -507,7 +507,7 @@ app.delete('/api/documents/:id', async (req, res) => {
         res.status(500).json({ error: 'Unable to delete document index.' });
     }
 });
-
+/*
 //emails
 app.post("/hireRadar/sendemail", async (req, res) => {
   try {
@@ -533,7 +533,7 @@ app.post("/hireRadar/sendemail", async (req, res) => {
     console.error(err);
     res.status(500).json({ error: "Internal server error rendering email" });
   }
-});
+});*/
 
 
  
