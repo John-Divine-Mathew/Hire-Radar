@@ -18,6 +18,8 @@ export const TestScheduledEmail = ({
   candidateName = 'Candidate',
   dateString = '[date]',
   timeString = '[starttime] – [endtime]',
+  username = '[username]',
+  password = '[password]',
   calendarUrl = '#',
 }) => {
   return (
@@ -81,7 +83,7 @@ export const TestScheduledEmail = ({
                 Please make sure you are available and prepared during the window below.
               </Text>
 
-              {/* Schedule Details Box */}
+              {/* Schedule & Credentials Details Box */}
               <Section className="rounded-xl bg-bgBox p-6 border border-solid border-borderBox">
                 
                 {/* Date Row */}
@@ -114,6 +116,26 @@ export const TestScheduledEmail = ({
                     </Text>
                     <Text className="m-0 text-base font-semibold text-brandDark">
                       {timeString}
+                    </Text>
+                  </Column>
+                </Row>
+
+                {/* Credentials Row */}
+                <Row className="mb-4 pb-4 border-b border-solid border-[#e5e7eb]">
+                  <Column className="w-[36px] align-top pt-1">
+                    <Container className="flex h-9 w-9 items-center justify-center rounded-lg bg-white border border-solid border-[#d1d5db] text-center">
+                      🔑
+                    </Container>
+                  </Column>
+                  <Column className="pl-4 align-middle">
+                    <Text className="m-0 text-[11px] font-bold tracking-wider text-textLight uppercase">
+                      LOGIN CREDENTIALS
+                    </Text>
+                    <Text className="m-0 mt-1 text-sm text-textMuted">
+                      <strong className="text-brandDark">Username:</strong> {username}
+                    </Text>
+                    <Text className="m-0 mt-0.5 text-sm text-textMuted">
+                      <strong className="text-brandDark">Password:</strong> {password}
                     </Text>
                   </Column>
                 </Row>
@@ -154,9 +176,11 @@ export const TestScheduledEmail = ({
 };
 
 TestScheduledEmail.PreviewProps = {
-  candidateName: 'xxx',
-  dateString: '[date]',
-  timeString: '[starttime] – [endtime]',
+  candidateName: 'John Doe',
+  dateString: 'October 24, 2026',
+  timeString: '10:00 AM – 11:30 AM (IST)',
+  username: 'john.doe@example.com',
+  password: 'SecurePassword123!',
   calendarUrl: 'https://example.com/calendar-invite',
 };
 
