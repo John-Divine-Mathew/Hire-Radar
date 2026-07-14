@@ -2,10 +2,10 @@ const express = require('express');
 const multer = require('multer');
 const cors = require('cors');
 const pool = require('./db');
-//const { Resend } = require("resend");
-//const { render } = require("@react-email/components");
-//const React = require("react");
-//const { TestScheduledEmail } =  require('./emails/template.tsx');
+const { Resend } = require("resend");
+const { render } = require("@react-email/components");
+const React = require("react");
+const { TestScheduledEmail } =  require('./emails/template.tsx');
 
 const {
     initializeSearchService,
@@ -16,7 +16,7 @@ const {
 } = require('./searchService');
  
 const app = express();
-//const resend = new Resend(process.env.resendApiKey);
+const resend = new Resend(process.env.resendApiKey);
  
 app.use(cors({ origin: 'http://localhost:5173' }));
 app.use(express.json());
@@ -286,8 +286,8 @@ app.delete("/hireRadar/deleteCandidate/:cndid", async (req, res) => {
  
 app.post("/hireRadar/insertTestDetails", async (req, res) => {
     try {
-        const { cndid, username, password } = req.body;
-        const newCndData = await pool.query("insert into testdetails(cndid, username, password) values($1,$2,$3) returning username, password", [cndid, username, password]);
+        const { cndid, username, password, starttime, endtime, email, name } = req.body;
+        const newCndData = await pool.query("insert into testdetails(cndid, username, password, teststart, testend, personalemail, testdate, cndname) values($1, $2, $3, $4, $5, $6, $7, $8)", [ cndid, username, password, starttime, endtime, email, new Date(), name]);
         res.json(newCndData.rows[0]);
     } catch (err) {
         console.error(err.message);
@@ -308,7 +308,7 @@ app.get("/hireRadar/getTestDetails", async (req, res) => {
 app.post("/hireRadar/updateTestDetails", async (req, res) => {
     try {
         const { cndid, name, email, department, phone } = req.body;
-        const newCndData = await pool.query("update testdetails set cndname=$1, phone=$2, personalemail=$3, department=$4, testdate=$6 where cndid=$5 returning *", [name, phone, email, department, cndid, new Date()]);
+        const newCndData = await pool.query("update testdetails set cndname=$1, phone=$2 where cndid=$3 returning *", [name, phone, cndid]);
         res.json(newCndData.rows[0]);
     } catch (err) {
         console.error(err.message);
@@ -507,14 +507,22 @@ app.delete('/api/documents/:id', async (req, res) => {
         res.status(500).json({ error: 'Unable to delete document index.' });
     }
 });
-/*
+
 //emails
 app.post("/hireRadar/sendemail", async (req, res) => {
   try {
+
+    const { candidateName, startTime, endTime, username, password, email } = req.body;
     // 1. Render the JavaScript React component into an HTML string
     const emailHtml = await render(
-      React.createElement(TestScheduledEmail)
-    );
+      React.createElement(TestScheduledEmail),{ 
+        candidateName:candidateName, 
+        dateString: new Date(startTime).toLocaleDateString(), 
+        timeString: `${startTime} – ${endTime}`, 
+        username:username, 
+        password:password, 
+        email:email
+    });
 
     // 2. Send via Resend
     const { data, error } = await resend.emails.send({
@@ -533,7 +541,7 @@ app.post("/hireRadar/sendemail", async (req, res) => {
     console.error(err);
     res.status(500).json({ error: "Internal server error rendering email" });
   }
-});*/
+});
 
 
  

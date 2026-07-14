@@ -146,7 +146,24 @@ function InlineCalendarBooking({ candidateName, onClose, onBookSlot, onSendEmail
   };
 
   const handleConfirmSendEmail = () => {
-    onSendEmail?.(bookingDetails);
+    // Construct local JavaScript dates matching selected calendar variables
+    const startDateInstance = new Date(currentYear, currentMonth, selectedDate);
+    const endDateInstance = new Date(currentYear, currentMonth, selectedDate);
+
+    const startMinutes = parseTimeToMinutes(selectedSlot);
+    const endMinutes = activeRange ? activeRange.endMinutes : startMinutes + 30;
+
+    startDateInstance.setMinutes(startDateInstance.getMinutes() + startMinutes);
+    endDateInstance.setMinutes(endDateInstance.getMinutes() + endMinutes);
+
+    // Append full ISO Strings for the backend's timestamptz data field
+    const completeBookingDetails = {
+      ...bookingDetails,
+      startIsoString: startDateInstance.toISOString(),
+      endIsoString: endDateInstance.toISOString()
+    };
+
+    onSendEmail?.(completeBookingDetails);
     setEmailStatus('sent');
     setIsBooked(true);
   };
@@ -454,7 +471,6 @@ function SavedCandidates() {
   const skillsRef = useRef(null);
   const locationRef = useRef(null);
 
-  // CHANGED: Holds the selected candidate object rather than just an ID
   const [bookingCandidate, setBookingCandidate] = useState(null);
 
   const filterOptions = ['Experience', 'Skills', 'Location', 'Role', 'Status'].sort();
@@ -663,40 +679,10 @@ function SavedCandidates() {
     setOpenMenuId(openMenuId === id ? null : id);
   };
 
-  const toggleCredentialMenu = (id) => {
-    setOpenCredentialMenuId(openCredentialMenuId === id ? null : id);
-  };
-
   const nav = useNavigate();
 
   function navigateSavedCandidateProfile(id) {
     nav('/candidateProfile', { state: { tempCndId: null, permCndId: id } });
-  }
-
-  async function generateCredentials(ID) {
-    try {
-      const username = nanoid(5);
-      const password = nanoid(10);
-      const response = await fetch("http://localhost:5000/hireRadar/insertTestDetails", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cndid: ID, username, password })
-      });
-
-      if (!response.ok) {
-        const text = await response.text();
-        throw new Error(text || 'Credential generation failed');
-      }
-
-      await response.json();
-      setCredentials(prev => ({
-        ...prev,
-        [ID]: { username, password }
-      }));
-      setOpenMenuId(null);
-    } catch (err) {
-      console.error('generateCredentials error:', err.message || err);
-    }
   }
 
   const copyToClipboard = async (text, n) => {
@@ -727,23 +713,88 @@ function SavedCandidates() {
     setBookingCandidate(null);
   }
 
-  // Triggered when send email button inside Modal view popup interface component is clicked
-  function handleSendEmailAction(bookingDetails) {
-    const candidateId = bookingCandidate?.cndid;
-    const creds = credentials[candidateId] || { username: 'N/A', password: 'N/A' };
+    async function handleSendEmailAction(bookingDetails) {
+        const candidateId = bookingCandidate?.cndid;
+        if (!candidateId) return;
 
-    // NEW VARIABLE: Storing all requested target details inside this object structure block
-    const emailPayload = {
-      candidateName: bookingCandidate?.cndname || 'Unknown Candidate',
-      startTime: bookingDetails.startTime,
-      endTime: bookingDetails.endTime,
-      username: creds.username,
-      password: creds.password
-    };
+        let creds = credentials[candidateId];
 
-    console.log("Email structured payload generated successfully:", emailPayload);
-    // You can now execute your dispatch trigger endpoint fetch calls with this payload block
-  }
+        if (!creds) {
+            const generatedUsername = nanoid(5);
+            const generatedPassword = nanoid(10);
+
+            try {
+            const response = await fetch("http://localhost:5000/hireRadar/insertTestDetails", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                cndid: candidateId,
+                username: generatedUsername,
+                password: generatedPassword,
+                starttime: bookingDetails.startIsoString,
+                endtime: bookingDetails.endIsoString,
+                email: bookingCandidate?.cndemail,
+                name: bookingCandidate?.cndname
+                })
+            });
+
+            if (!response.ok) {
+                const text = await response.text();
+                throw new Error(text || "Credential generation failed");
+            }
+
+            const responseText = await response.text();
+            let parsedResponse = null;
+
+            if (responseText) {
+                try {
+                parsedResponse = JSON.parse(responseText);
+                } catch (parseError) {
+                console.warn("insertTestDetails returned non-JSON response:", responseText);
+                }
+            }
+
+            creds = {
+                username: parsedResponse?.username || generatedUsername,
+                password: parsedResponse?.password || generatedPassword
+            };
+
+            setCredentials(prev => ({
+                ...prev,
+                [candidateId]: creds
+            }));
+            } catch (err) {
+            console.error("Error generating credentials during email dispatch context:", err.message || err);
+            creds = { username: generatedUsername, password: generatedPassword };
+            }
+        }
+
+        const emailPayload = {
+            candidateName: bookingCandidate?.cndname || "Unknown Candidate",
+            startTime: bookingDetails.startIsoString,
+            endTime: bookingDetails.endIsoString,
+            username: creds.username,
+            password: creds.password,
+            email: bookingCandidate?.cndemail || "nomailfound@gmail.com"
+        };
+
+        try {
+            const emailResponse = await fetch("http://localhost:5000/hireRadar/sendemail", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(emailPayload)
+            });
+
+            if (!emailResponse.ok) {
+            const text = await emailResponse.text();
+            throw new Error(text || "Email sending failed");
+            }
+        } catch (err) {
+            console.error("Error sending confirmation email:", err.message || err);
+        }
+
+        console.log("Email payload generated with correct timestamp formatting parameters:", emailPayload);
+    }
 
   return (
     <div className="flex h-screen flex-col overflow-hidden">
