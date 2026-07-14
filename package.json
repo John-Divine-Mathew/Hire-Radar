@@ -30,8 +30,15 @@
     "nanoid": "^5.1.14",
     "node-fetch": "^3.3.2",
     "pdf-parse": "^2.4.5",
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
+    "react-email": "6.7.0",
+    "resend": "^6.17.2",
     "tesseract.js": "^7.0.0",
     "wait-on": "^9.0.10",
     "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@react-email/ui": "6.7.0"
   }
 }

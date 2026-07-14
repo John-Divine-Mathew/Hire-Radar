@@ -2,6 +2,11 @@ const express = require('express');
 const multer = require('multer');
 const cors = require('cors');
 const pool = require('./db');
+const { Resend } = require("resend");
+const { render } = require("@react-email/components");
+const React = require("react");
+const { TestScheduledEmail } =  require('./emails/template.tsx');
+
 const {
     initializeSearchService,
     searchDocuments,
@@ -11,6 +16,7 @@ const {
 } = require('./searchService');
  
 const app = express();
+const resend = new Resend(process.env.resendApiKey);
  
 app.use(cors({ origin: 'http://localhost:5173' }));
 app.use(express.json());
@@ -501,6 +507,35 @@ app.delete('/api/documents/:id', async (req, res) => {
         res.status(500).json({ error: 'Unable to delete document index.' });
     }
 });
+
+//emails
+app.post("/hireRadar/sendemail", async (req, res) => {
+  try {
+    // 1. Render the JavaScript React component into an HTML string
+    const emailHtml = await render(
+      React.createElement(TestScheduledEmail)
+    );
+
+    // 2. Send via Resend
+    const { data, error } = await resend.emails.send({
+      from: "Hirotec India <onboarding@resend.dev>",
+      to: "vijayanandhaj@gmail.com",
+      subject: "react email try",
+      html: emailHtml, 
+    });
+    if(error){
+        console.log(error.message);
+    }
+
+    res.status(200).json({ data });
+    console.log('email Sent');
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Internal server error rendering email" });
+  }
+});
+
+
  
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
