@@ -255,17 +255,6 @@ Create and manage technical assessment questions.
 
 <div className="flex gap-4">
 
-<button
-
-className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl shadow-lg flex items-center gap-2 transition"
-
->
-
-+
-
-Add Question
-
-</button>
 
 <label
 
