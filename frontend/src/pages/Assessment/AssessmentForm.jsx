@@ -5,7 +5,7 @@ function AssessmentForm() {
   const navigate = useNavigate();
   const location = useLocation();
   // Using optional chaining syntax to avoid crashing if state is null
-  const { cndid, result } = location.state || {};
+  const { cndid, result, email } = location.state || {};
 
   const [candidate, setCandidate] = useState({
     name: "",
@@ -34,7 +34,7 @@ function AssessmentForm() {
       const body = {
         cndid: cndid,
         name: candidate.name,
-        email: candidate.email,
+        email: email,
         department: candidate.department,
         phone: candidate.phone
       };
@@ -179,11 +179,9 @@ function AssessmentForm() {
                 </label>
                 <input
                   type="email"
-                  disabled={isSubmitting}
-                  placeholder="name@company.com"
                   className="w-full border border-slate-200 px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50/50 hover:bg-slate-50 transition text-sm disabled:opacity-60"
-                  value={candidate.email}
-                  onChange={(e) => setCandidate({ ...candidate, email: e.target.value })}
+                  value={email}
+                  readOnly
                 />
               </div>
 
@@ -265,7 +263,7 @@ function AssessmentForm() {
 
           {/* Footer Encouragement */}
           <p className="mt-8 text-center text-xs font-semibold text-slate-400 tracking-wider uppercase">
-             Best of luck for your Career🔥
+             Best of luck for your Career !
           </p>
         </div>
 
