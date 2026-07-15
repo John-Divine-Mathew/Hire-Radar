@@ -66,7 +66,7 @@ export const TestScheduledEmail = ({
                 {/* Right Side: Text with explicit gap padding (pl-10) */}
                 <Column className="vertical-align-middle pl-10">
                   <Text className="m-0 font-serif text-2xl font-semibold tracking-wide text-white text-left leading-tight">
-                    Your Test is<br />Scheduled
+                    Your Test is Scheduled !!
                   </Text>
                 </Column>
               </Row>
@@ -131,11 +131,9 @@ export const TestScheduledEmail = ({
                     <Text className="m-0 text-[11px] font-bold tracking-wider text-textLight uppercase">
                       LOGIN CREDENTIALS
                     </Text>
-                    <Text className="m-0 mt-1 text-sm text-textMuted">
-                      <strong className="text-brandDark">Username:</strong> {username}
+                    <Text className="m-0 text-base font-semibold text-brandDark">Username: {username}
                     </Text>
-                    <Text className="m-0 mt-0.5 text-sm text-textMuted">
-                      <strong className="text-brandDark">Password:</strong> {password}
+                    <Text className="m-0 text-base font-semibold text-brandDark">Password: {password}
                     </Text>
                   </Column>
                 </Row>
