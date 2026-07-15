@@ -13,6 +13,7 @@ import QuestionBank from "./pages/QuestionBank.jsx";
 import AdminLogin from "./pages/AdminLogin";
 import AdminUser from './pages/AdminUser.jsx';
 import ImportDrive from './pages/ImportDrive.jsx';
+import Dashboard_v2 from './pages/dashboard_v2.jsx';
 
 function App() {
   return (
@@ -33,6 +34,7 @@ function App() {
         <Route path="/admin-login" element={<AdminLogin />} />
         <Route path="/admin-user" element={<AdminUser />} />
         <Route path="/import-drive" element={<ImportDrive />} />
+        <Route path="/dashboard_v2" element={<Dashboard_v2 />} />
         
         
       </Routes>
