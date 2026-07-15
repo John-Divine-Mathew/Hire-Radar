@@ -5,7 +5,7 @@ const pool = require('./db');
 const { Resend } = require("resend");
 const { render } = require("@react-email/components");
 const React = require("react");
-const { TestScheduledEmail } =  require('./emails/template.tsx');
+const  {TestScheduledEmail}  =  require('./emails/template.tsx');
 
 const {
     initializeSearchService,
@@ -515,20 +515,19 @@ app.post("/hireRadar/sendemail", async (req, res) => {
     const { candidateName, startTime, endTime, username, password, email } = req.body;
     // 1. Render the JavaScript React component into an HTML string
     const emailHtml = await render(
-      React.createElement(TestScheduledEmail),{ 
+      React.createElement(TestScheduledEmail,{ 
         candidateName:candidateName, 
         dateString: new Date(startTime).toLocaleDateString(), 
-        timeString: `${startTime} – ${endTime}`, 
+        timeString: `${new Date(startTime).toLocaleTimeString()} – ${new Date(endTime).toLocaleTimeString()}`, 
         username:username, 
-        password:password, 
-        email:email
-    });
+        password:password
+    }));
 
     // 2. Send via Resend
     const { data, error } = await resend.emails.send({
       from: "Hirotec India <onboarding@resend.dev>",
       to: "vijayanandhaj@gmail.com",
-      subject: "react email try",
+      subject: `${candidateName}, your Test is Scheduled`,
       html: emailHtml, 
     });
     if(error){
