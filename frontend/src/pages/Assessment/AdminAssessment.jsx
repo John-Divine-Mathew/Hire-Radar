@@ -523,13 +523,10 @@ onChange={handleExcelUpload}
                           Q{index + 1}. {q.question}
                         </h3>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => deleteQuestion(q.qno)}
-                        className="bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-xl shadow-lg shrink-0 text-sm font-medium"
-                      >
-                        Delete
-                      </button>
+                     
+
+
+                     
                     </div>
 
                     <div className="grid md:grid-cols-2 gap-3 mt-5">
