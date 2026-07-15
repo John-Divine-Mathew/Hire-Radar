@@ -45,6 +45,7 @@ function Sidebar(){
                     <li><button className='listitem' onClick={navigateAdminAssessment} title="Assessment" aria-label="Assessment"><ClipboardPen size={iconSize} /><p className='buttonP'>Assessment</p></button></li>
                     <li><button className='listitem' onClick={navigateQuestionBank} title="Question Bank" aria-label="Question Bank"><ClipboardPen size={iconSize} /><p className='buttonP'>Question Bank</p></button></li>
                     <li><button className='listitem' onClick={navigateImportDrive} title="Import Drive" aria-label="Import Drive"><CloudUpload size={iconSize} /><p className='buttonP'>Import Drive</p></button></li>
+                    <li><button className='listitem' onClick={navigateReport} title="Report" aria-label="Report"><ChartSpline size={iconSize} /><p className='buttonP'>Report</p></button></li>
                     
                 </ul>
             </div>
