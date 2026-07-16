@@ -47,7 +47,7 @@ const AdminLogin = () => {
         flag = 1;
         cndid = i.cndid;
         result = i.testresult ? true : false; 
-        email = i.cndemail;
+        email = i.personalemail;
 
       }
 

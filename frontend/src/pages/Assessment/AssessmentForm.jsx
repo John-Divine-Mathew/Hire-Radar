@@ -10,8 +10,7 @@ function AssessmentForm() {
   const [candidate, setCandidate] = useState({
     name: "",
     email: "",
-    phone: "",
-    department: ""
+    phone: ""
   });
 
   const [message, setMessage] = useState({ text: "", type: "" });
@@ -34,8 +33,6 @@ function AssessmentForm() {
       const body = {
         cndid: cndid,
         name: candidate.name,
-        email: email,
-        department: candidate.department,
         phone: candidate.phone
       };
       
@@ -65,9 +62,7 @@ function AssessmentForm() {
 
     if (
       !candidate.name.trim() ||
-      !candidate.email.trim() ||
-      !candidate.phone.trim() ||
-      !candidate.department
+      !candidate.phone.trim()
     ) {
       showNotification("Please fill out all fields before continuing.", "error");
       return;
@@ -84,8 +79,7 @@ function AssessmentForm() {
     
     navigate("/assessment-test", {
       state: { 
-        cndid: cndid, 
-        department: candidate.department
+        cndid: cndid
       }
     });
   };
@@ -95,22 +89,19 @@ function AssessmentForm() {
     setCandidate({
       name: "",
       email: "",
-      phone: "",
-      department: ""
+      phone: ""
     });
     showNotification("Form fields cleared.", "info");
   };
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 sm:p-6 lg:p-8 font-sans antialiased text-slate-800">
-      <div className="w-full max-w-2xl bg-white border border-slate-100 shadow-2xl rounded-2xl overflow-hidden transition-all duration-300">
+      <div className="w-full max-w-xl bg-white border border-slate-100 shadow-2xl rounded-2xl overflow-hidden transition-all duration-300">
         
-  
-
         <div className="p-8 sm:p-10">
           {/* Header Section */}
           <div className="mb-8 text-center sm:text-left">
-           <h1 className="text-4xl font-bold text-purple-800">
+            <h1 className="text-4xl font-bold text-purple-800">
               Candidate Registration
             </h1>
           </div>
@@ -153,81 +144,50 @@ function AssessmentForm() {
             </div>
           )}
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              
-              {/* Full Name */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                  Full Name
-                </label>
-                <input
-                  type="text"
-                  disabled={isSubmitting}
-                  placeholder="Enter Full Name"
-                  className="w-full border border-slate-200 px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50/50 hover:bg-slate-50 transition text-sm disabled:opacity-60"
-                  value={candidate.name}
-                  onChange={(e) => setCandidate({ ...candidate, name: e.target.value })}
-                />
-              </div>
+          {/* Form Stacked Vertically */}
+          <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+            
+            {/* Full Name */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                Full Name
+              </label>
+              <input
+                type="text"
+                disabled={isSubmitting}
+                placeholder="Enter Full Name"
+                className="w-full border border-slate-200 px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50/50 hover:bg-slate-50 transition text-sm disabled:opacity-60"
+                value={candidate.name}
+                onChange={(e) => setCandidate({ ...candidate, name: e.target.value })}
+              />
+            </div>
 
-              {/* Email */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                  Email Address
-                </label>
-                <input
-                  type="email"
-                  className="w-full border border-slate-200 px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50/50 hover:bg-slate-50 transition text-sm disabled:opacity-60"
-                  value={email}
-                  readOnly
-                />
-              </div>
+            {/* Email */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                Email Address
+              </label>
+              <input
+                type="email"
+                className="w-full border border-slate-200 px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50/50 hover:bg-slate-50 transition text-sm disabled:opacity-60"
+                value={email || ""}
+                readOnly
+              />
+            </div>
 
-              {/* Phone */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                  Phone Number
-                </label>
-                <input
-                  type="tel"
-                  disabled={isSubmitting}
-                  placeholder="+91 9626749641"
-                  className="w-full border border-slate-200 px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50/50 hover:bg-slate-50 transition text-sm disabled:opacity-60"
-                  value={candidate.phone}
-                  onChange={(e) => setCandidate({ ...candidate, phone: e.target.value })}
-                />
-              </div>
-
-              {/* Department Selector */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                  Target Department
-                </label>
-                <div className="relative">
-                  <select
-                    disabled={isSubmitting}
-                    className="w-full border border-slate-200 px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50/50 hover:bg-slate-50 transition text-sm appearance-none cursor-pointer disabled:opacity-60"
-                    value={candidate.department}
-                    onChange={(e) => setCandidate({ ...candidate, department: e.target.value })}
-                  >
-                    <option value="">Select a domain...</option>
-                    <option value="Automation">Automation Engineering</option>
-                    <option value="Design Engineering">Design Engineering</option>
-                    <option value="Software Development">Software Development</option>
-                    <option value="HR">Human Resources</option>
-                    <option value="Mechanical">Mechanical Engineering</option>
-                    <option value="Production">Production & Logistics</option>
-                    <option value="Quality Assurance">Quality Assurance</option>
-                  </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-400">
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
+            {/* Phone */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                Phone Number
+              </label>
+              <input
+                type="tel"
+                disabled={isSubmitting}
+                placeholder="+91 9626749641"
+                className="w-full border border-slate-200 px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50/50 hover:bg-slate-50 transition text-sm disabled:opacity-60"
+                value={candidate.phone}
+                onChange={(e) => setCandidate({ ...candidate, phone: e.target.value })}
+              />
             </div>
 
             {/* Structured Action Row */}
@@ -243,7 +203,6 @@ function AssessmentForm() {
                 >
                   Clear Fields
                 </button>
-                
               </div>
 
               {/* Core CTA: Start Assessment */}
