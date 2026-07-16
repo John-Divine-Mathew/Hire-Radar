@@ -17,7 +17,7 @@ const {
  
 const app = express();
 import 'dotenv/config';
-const resend = new Resend(process.env.RESEND_API_KEY);
+const resend = new Resend(process.env.resendApiKey);
  
 app.use(cors({ origin: 'http://localhost:5173' }));
 app.use(express.json());
@@ -298,7 +298,7 @@ app.post("/hireRadar/insertTestDetails", async (req, res) => {
  
 app.get("/hireRadar/getTestDetails", async (req, res) => {
     try {
-        const allData = await pool.query("select cndid,username,password,testresult from testdetails");
+        const allData = await pool.query("select * from testdetails");
         res.json(allData.rows);
     } catch (err) {
         console.error(err.message);
@@ -308,7 +308,7 @@ app.get("/hireRadar/getTestDetails", async (req, res) => {
  
 app.post("/hireRadar/updateTestDetails", async (req, res) => {
     try {
-        const { cndid, name, email, department, phone } = req.body;
+        const { cndid, name, phone } = req.body;
         const newCndData = await pool.query("update testdetails set cndname=$1, phone=$2 where cndid=$3 returning *", [name, phone, cndid]);
         res.json(newCndData.rows[0]);
     } catch (err) {
