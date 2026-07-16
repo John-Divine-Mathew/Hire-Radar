@@ -146,7 +146,6 @@ function InlineCalendarBooking({ candidateName, onClose, onBookSlot, onSendEmail
   };
 
   const handleConfirmSendEmail = () => {
-    // Construct local JavaScript dates matching selected calendar variables
     const startDateInstance = new Date(currentYear, currentMonth, selectedDate);
     const endDateInstance = new Date(currentYear, currentMonth, selectedDate);
 
@@ -156,7 +155,6 @@ function InlineCalendarBooking({ candidateName, onClose, onBookSlot, onSendEmail
     startDateInstance.setMinutes(startDateInstance.getMinutes() + startMinutes);
     endDateInstance.setMinutes(endDateInstance.getMinutes() + endMinutes);
 
-    // Append full ISO Strings for the backend's timestamptz data field
     const completeBookingDetails = {
       ...bookingDetails,
       startIsoString: startDateInstance.toISOString(),
@@ -170,11 +168,17 @@ function InlineCalendarBooking({ candidateName, onClose, onBookSlot, onSendEmail
 
   const handleSkipSendEmail = () => {
     setEmailStatus('skipped');
+    if (onClose) {
+      onClose();
+    }
   };
 
   const closeEmailPrompt = () => {
     setShowEmailPrompt(false);
     setEmailStatus(null);
+    if (onClose) {
+      onClose();
+    }
   };
 
   const isPastDate = (day) => {
@@ -388,11 +392,11 @@ function InlineCalendarBooking({ candidateName, onClose, onBookSlot, onSendEmail
                   <Mail size={20} />
                   <h4 className="text-base font-bold text-gray-900">Send confirmation email?</h4>
                 </div>
-                <p className="text-sm text-gray-500 mb-5">
+                <div className="text-sm text-gray-500 mb-5">
                   The {selectedDuration} slot for {monthNames[currentMonth]} {selectedDate}, {currentYear} from{' '}
                   {selectedSlot} to {activeRange?.endLabel} has been booked. Would you like to email {candidateName} a
                   confirmation now?
-                </p>
+                </div>
                 <div className="flex justify-end gap-2">
                   <button
                     onClick={handleSkipSendEmail}
@@ -416,9 +420,9 @@ function InlineCalendarBooking({ candidateName, onClose, onBookSlot, onSendEmail
                   <CheckCircle2 size={20} />
                   <h4 className="text-base font-bold text-gray-900">Email sent</h4>
                 </div>
-                <p className="text-sm text-gray-500 mb-5">
+                <div className="text-sm text-gray-500 mb-5">
                   A confirmation email for the booked slot has been sent to {candidateName}.
-                </p>
+                </div>
                 <div className="flex justify-end">
                   <button
                     onClick={closeEmailPrompt}
@@ -433,9 +437,9 @@ function InlineCalendarBooking({ candidateName, onClose, onBookSlot, onSendEmail
             {emailStatus === 'skipped' && (
               <>
                 <h4 className="text-base font-bold text-gray-900 mb-2">No email sent</h4>
-                <p className="text-sm text-gray-500 mb-5">
+                <div className="text-sm text-gray-500 mb-5">
                   The slot is booked. You can always send a confirmation email later.
-                </p>
+                </div>
                 <div className="flex justify-end">
                   <button
                     onClick={closeEmailPrompt}
@@ -713,88 +717,88 @@ function SavedCandidates() {
     setBookingCandidate(null);
   }
 
-    async function handleSendEmailAction(bookingDetails) {
-        const candidateId = bookingCandidate?.cndid;
-        if (!candidateId) return;
+  async function handleSendEmailAction(bookingDetails) {
+    const candidateId = bookingCandidate?.cndid;
+    if (!candidateId) return;
 
-        let creds = credentials[candidateId];
+    let creds = credentials[candidateId];
 
-        if (!creds) {
-            const generatedUsername = nanoid(5);
-            const generatedPassword = nanoid(10);
+    if (!creds) {
+      const generatedUsername = nanoid(5);
+      const generatedPassword = nanoid(10);
 
-            try {
-            const response = await fetch("http://localhost:5000/hireRadar/insertTestDetails", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                cndid: candidateId,
-                username: generatedUsername,
-                password: generatedPassword,
-                starttime: bookingDetails.startIsoString,
-                endtime: bookingDetails.endIsoString,
-                email: bookingCandidate?.cndemail,
-                name: bookingCandidate?.cndname
-                })
-            });
+      try {
+        const response = await fetch("http://localhost:5000/hireRadar/insertTestDetails", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            cndid: candidateId,
+            username: generatedUsername,
+            password: generatedPassword,
+            starttime: bookingDetails.startIsoString,
+            endtime: bookingDetails.endIsoString,
+            email: bookingCandidate?.cndemail,
+            name: bookingCandidate?.cndname
+          })
+        });
 
-            if (!response.ok) {
-                const text = await response.text();
-                throw new Error(text || "Credential generation failed");
-            }
-
-            const responseText = await response.text();
-            let parsedResponse = null;
-
-            if (responseText) {
-                try {
-                parsedResponse = JSON.parse(responseText);
-                } catch (parseError) {
-                console.warn("insertTestDetails returned non-JSON response:", responseText);
-                }
-            }
-
-            creds = {
-                username: parsedResponse?.username || generatedUsername,
-                password: parsedResponse?.password || generatedPassword
-            };
-
-            setCredentials(prev => ({
-                ...prev,
-                [candidateId]: creds
-            }));
-            } catch (err) {
-            console.error("Error generating credentials during email dispatch context:", err.message || err);
-            creds = { username: generatedUsername, password: generatedPassword };
-            }
+        if (!response.ok) {
+          const text = await response.text();
+          throw new Error(text || "Credential generation failed");
         }
 
-        const emailPayload = {
-            candidateName: bookingCandidate?.cndname || "Unknown Candidate",
-            startTime: bookingDetails.startIsoString,
-            endTime: bookingDetails.endIsoString,
-            username: creds.username,
-            password: creds.password,
-            email: bookingCandidate?.cndemail || "nomailfound@gmail.com"
+        const responseText = await response.text();
+        let parsedResponse = null;
+
+        if (responseText) {
+          try {
+            parsedResponse = JSON.parse(responseText);
+          } catch (parseError) {
+            console.warn("insertTestDetails returned non-JSON response:", responseText);
+          }
+        }
+
+        creds = {
+          username: parsedResponse?.username || generatedUsername,
+          password: parsedResponse?.password || generatedPassword
         };
 
-        try {
-            const emailResponse = await fetch("http://localhost:5000/hireRadar/sendemail", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(emailPayload)
-            });
-
-            if (!emailResponse.ok) {
-            const text = await emailResponse.text();
-            throw new Error(text || "Email sending failed");
-            }
-        } catch (err) {
-            console.error("Error sending confirmation email:", err.message || err);
-        }
-
-        console.log("Email payload generated with correct timestamp formatting parameters:", emailPayload);
+        setCredentials(prev => ({
+          ...prev,
+          [candidateId]: creds
+        }));
+      } catch (err) {
+        console.error("Error generating credentials during email dispatch context:", err.message || err);
+        creds = { username: generatedUsername, password: generatedPassword };
+      }
     }
+
+    const emailPayload = {
+      candidateName: bookingCandidate?.cndname || "Unknown Candidate",
+      startTime: bookingDetails.startIsoString,
+      endTime: bookingDetails.endIsoString,
+      username: creds.username,
+      password: creds.password,
+      email: bookingCandidate?.cndemail || "nomailfound@gmail.com"
+    };
+
+    try {
+      const emailResponse = await fetch("http://localhost:5000/hireRadar/sendemail", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(emailPayload)
+      });
+
+      if (!emailResponse.ok) {
+        const text = await emailResponse.text();
+        throw new Error(text || "Email sending failed");
+      }
+    } catch (err) {
+      console.error("Error sending confirmation email:", err.message || err);
+    }
+
+    console.log("Email payload generated with correct timestamp formatting parameters:", emailPayload);
+  }
 
   return (
     <div className="flex h-screen flex-col overflow-hidden">
@@ -947,10 +951,11 @@ function SavedCandidates() {
             </div>
           </div>
 
-          <div className="m-6 min-h-0 flex-1 bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden flex flex-col">
-            <div className="overflow-x-auto flex-1 overflow-y-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
+          {/* Cleaned layout table card wrapper matching local alignment fixes */}
+          <div className="m-6 min-h-0 max-h-[65vh] bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden flex flex-col self-start w-[calc(100%-3rem)]">
+            <div className="overflow-x-auto overflow-y-auto flex-1">
+              <table className="w-full border-collapse">
+                <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
                   <tr>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Candidate</th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Role</th>
@@ -960,7 +965,7 @@ function SavedCandidates() {
                     <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody className="divide-y divide-gray-200 bg-white">
                   {candidates.map((candidate) => (
                     <tr key={candidate.cndid} className="hover:bg-gray-50 transition duration-150">
                       <td className="px-6 py-4">
@@ -1011,7 +1016,8 @@ function SavedCandidates() {
               </table>
             </div>
 
-            <div className="border-t border-gray-200 px-6 py-4 bg-gray-50">
+            {/* Tight Footer content box */}
+            <div className="border-t border-gray-200 px-6 py-4 bg-gray-50 shrink-0">
               <p className="text-sm text-gray-700">Showing 1 to {candidates.length} of {candidates.length} results</p>
             </div>
           </div>
