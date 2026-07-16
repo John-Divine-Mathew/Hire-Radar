@@ -16,7 +16,8 @@ const {
 } = require('./searchService');
  
 const app = express();
-const resend = new Resend(process.env.resendApiKey);
+import 'dotenv/config';
+const resend = new Resend(process.env.RESEND_API_KEY);
  
 app.use(cors({ origin: 'http://localhost:5173' }));
 app.use(express.json());
