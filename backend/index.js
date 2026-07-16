@@ -359,6 +359,19 @@ app.delete("/hireRadar/deleteQuestion/:qno", async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+
+app.post("/hireRadar/updateQuestion/:qno", async (req, res) => {
+    try {
+        const { qno } = req.params;
+        const { dept, category, questiontype, question, option1, option2, option3, option4, answer } = req.body;
+        const newCndData = await pool.query("update questions set dept=$1, category=$2, question=$3, option1=$4, option2=$5, option3=$6, option4=$7, answer=$8, questiontype=$9 where qno=$10 returning *", [dept, category, question, option1, option2, option3, option4, answer, questiontype, qno]);
+        res.json(newCndData.rows[0]);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
  
 app.post("/hireRadar/setTestResult", async (req, res) => {
     try {
