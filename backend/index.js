@@ -340,8 +340,8 @@ app.get("/hireRadar/testquestions/:dept", async (req, res) => {
  
 app.post("/hireRadar/insertQuestions", async (req, res) => {
     try {
-        const { dept, category, question, option1, option2, option3, option4, answer } = req.body;
-        const allData = await pool.query("insert into questions(dept, category, question, option1, option2, option3, option4, answer) values($1, $2, $3, $4, $5, $6, $7, $8) returning *", [dept, category, question, option1, option2, option3, option4, answer]);
+        const { dept, category, questiontype, question, option1, option2, option3, option4, answer } = req.body;
+        const allData = await pool.query("insert into questions(dept, category, question, option1, option2, option3, option4, answer, questiontype) values($1, $2, $3, $4, $5, $6, $7, $8, $9) returning *", [dept, category, question, option1, option2, option3, option4, answer, questiontype]);
         res.json(allData.rows);
     } catch (err) {
         console.error(err.message);

@@ -1,14 +1,12 @@
 import React, { useEffect, useState } from "react"; 
 import Sidebar from "../../components/sideBar/sideBar";
 import Navbar from "../../components/navBar/navBar.jsx";
-import {ChevronDown,Upload,FileSpreadsheet} from "lucide-react";
+import { ChevronDown, FileSpreadsheet } from "lucide-react";
 import * as XLSX from "xlsx";
+
 function AdminAssessment() {
-
   const [questions, setQuestions] = useState([]);
-
   const [selectedDeptFilter, setSelectedDeptFilter] = useState("");
-
   const [uploading, setUploading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -25,63 +23,69 @@ function AdminAssessment() {
   useEffect(() => {
     getQuestions();
   }, []);
+  
   async function insertQuestions(form) {
     try {
       const body = {
+        dept: String(
+          form.department ||
+          form.dept ||
+          form.Department ||
+          ""
+        ).trim(),
 
-    dept: String(
-        form.department ||
-        form.dept ||
-        form.Department ||
-        ""
-    ).trim(),
+        category: String(
+          form.category ||
+          form.Category ||
+          ""
+        ).trim(),
 
-    category: String(
-        form.category ||
-        form.Category ||
-        ""
-    ).trim(),
+        questiontype: String(
+          form.type ||
+          form.Type ||
+          form.questionType ||
+          ""
+        ).trim(),
 
-    question: String(
-        form.question ||
-        form.Question ||
-        form["Question "] ||
-        ""
-    ).trim(),
+        question: String(
+          form.question ||
+          form.Question ||
+          form["Question "] ||
+          ""
+        ).trim(),
 
-    option1: String(
-        form.option1 ||
-        form.OptionA ||
-        ""
-    ).trim(),
+        option1: String(
+          form.option1 ||
+          form.OptionA ||
+          ""
+        ).trim(),
 
-    option2: String(
-        form.option2 ||
-        form.OptionB ||
-        ""
-    ).trim(),
+        option2: String(
+          form.option2 ||
+          form.OptionB ||
+          ""
+        ).trim(),
 
-    option3: String(
-        form.option3 ||
-        form.OptionC ||
-        form["OptionC "] ||
-        ""
-    ).trim(),
+        option3: String(
+          form.option3 ||
+          form.OptionC ||
+          form["OptionC "] ||
+          ""
+        ).trim(),
 
-    option4: String(
-        form.option4 ||
-        form.OptionD ||
-        form["OptionD "] ||
-        ""
-    ).trim(),
+        option4: String(
+          form.option4 ||
+          form.OptionD ||
+          form["OptionD "] ||
+          ""
+        ).trim(),
 
-    answer: String(
-        form.answer ||
-        form.Answer ||
-        ""
-    ).trim()
-
-};
+        answer: String(
+          form.answer ||
+          form.Answer ||
+          ""
+        ).trim()
+      };
 
       await fetch("http://localhost:5000/hireRadar/insertQuestions", {
         method: "POST",
@@ -94,11 +98,11 @@ function AdminAssessment() {
       console.log(err.message);
     }
   }
-    
 
   const [form, setForm] = useState({
     department: "",
     category: "",
+    type: "",
     question: "",
     option1: "",
     option2: "",
@@ -128,6 +132,7 @@ function AdminAssessment() {
     if (
       !form.department ||
       !form.category ||
+      !form.type ||
       !form.question ||
       !form.option1 ||
       !form.option2 ||
@@ -135,7 +140,7 @@ function AdminAssessment() {
       !form.option4 ||
       !form.answer
     ) {
-      alert("Please fill all fields.");
+      alert("Please fill all fields. Department and Question Type are mandatory.");
       return;
     }
 
@@ -144,6 +149,7 @@ function AdminAssessment() {
     setForm({
       department: "",
       category: "",
+      type: "",
       question: "",
       option1: "",
       option2: "",
@@ -162,14 +168,12 @@ function AdminAssessment() {
         const text = await response.text();
         throw new Error(text || 'Delete request failed');
       }
-
       await getQuestions();
     } catch (err) {
       console.error(err.message);
     }
   };
 
-  // Excel Upload Handler Function
   const handleExcelUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -183,7 +187,6 @@ function AdminAssessment() {
         const wb = XLSX.read(bstr, { type: "binary" });
         const wsname = wb.SheetNames[0];
         const ws = wb.Sheets[wsname];
-        // Parse rows as JSON matching DB column names
         const data = XLSX.utils.sheet_to_json(ws);
 
         if (data.length === 0) {
@@ -192,26 +195,24 @@ function AdminAssessment() {
           return;
         }
 
-        // Loop and upload each row asynchronously
         for (const row of data) {
           await insertQuestions(row);
         }
 
         alert("All questions uploaded successfully!");
-        await getQuestions(); // Refresh live view
+        await getQuestions();
       } catch (error) {
         console.error("Error reading or processing excel template: ", error);
         alert("Failed to process file. Make sure columns match data attributes perfectly.");
       } finally {
         setUploading(false);
-        e.target.value = ""; // Clear file selector target memory
+        e.target.value = "";
       }
     };
 
     reader.readAsBinaryString(file);
   };
 
-  // Combined real-time filter logic for both Department Dropdown and Text Search input
   const filteredQuestions = questions.filter((q) => {
     const matchesDept = selectedDeptFilter 
       ? q.dept.toLowerCase() === selectedDeptFilter.toLowerCase() 
@@ -232,71 +233,21 @@ function AdminAssessment() {
         <div className="flex-1 flex flex-col h-full min-w-0">
 
           {/* STATIC HEADER AREA */}
-         <div className="p-8 pb-4 bg-gray-100 border-b border-gray-200/50 shrink-0">
-
-<div className="flex justify-between items-center">
-
-<div>
-
-
-<h1 className="text-4xl font-bold text-gray-900">
-
-Assessment Management
-
-</h1>
-
-<p className="mt-2 text-gray-600">
-
-Create and manage technical assessment questions.
-
-</p>
-
-</div>
-
-<div className="flex gap-4">
-
-
-<label
-
-className="cursor-pointer bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-xl shadow-lg flex items-center gap-2 transition"
-
->
-
-<FileSpreadsheet size={20}/>
-
-{
-
-uploading
-
-?
-
-"Uploading..."
-
-:
-
-"Import Excel"
-
-}
-
-<input
-
-type="file"
-
-accept=".xlsx,.xls"
-
-hidden
-
-onChange={handleExcelUpload}
-
-/>
-
-</label>
-
-</div>
-
-</div>
-
-</div>
+          <div className="p-8 pb-4 bg-gray-100 border-b border-gray-200/50 shrink-0">
+            <div className="flex justify-between items-center">
+              <div>
+                <h1 className="text-4xl font-bold text-gray-900">Assessment Management</h1>
+                <p className="mt-2 text-gray-600">Create and manage technical assessment questions.</p>
+              </div>
+              <div className="flex gap-4">
+                <label className="cursor-pointer bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-xl shadow-lg flex items-center gap-2 transition">
+                  <FileSpreadsheet size={20}/>
+                  {uploading ? "Uploading..." : "Import Excel"}
+                  <input type="file" accept=".xlsx,.xls" hidden onChange={handleExcelUpload} />
+                </label>
+              </div>
+            </div>
+          </div>
 
           {/* SCROLLABLE CONTENT AREA */}
           <div className="flex-1 overflow-y-auto p-8 pt-4 custom-scrollbar">
@@ -305,11 +256,11 @@ onChange={handleExcelUpload}
             <div className="bg-white rounded-2xl shadow-lg p-8">
               <h2 className="text-2xl font-bold text-gray-700 mb-6">Add New Question</h2>
               
-              {/* Department & Category Selectors */}
-              <div className="grid md:grid-cols-2 gap-6 mb-6">
+              {/* Department, Category & Type Dropdowns */}
+              <div className="grid md:grid-cols-3 gap-6 mb-6">
                 {/* Department */}
                 <div>
-                  <label className="font-semibold text-gray-700 text-sm">Department</label>
+                  <label className="font-semibold text-gray-700 text-sm">Department *</label>
                   <div className="relative mt-2">
                     <select
                       name="department"
@@ -345,6 +296,27 @@ onChange={handleExcelUpload}
                       <option className="text-gray-900 font-normal">Verbal Ability</option>
                       <option className="text-gray-900 font-normal">General Knowledge</option>
                       <option className="text-gray-900 font-normal">Coding</option>
+                    </select>
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-400">
+                      <ChevronDown size={18} strokeWidth={2.5} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Question Type */}
+                <div>
+                  <label className="font-semibold text-gray-700 text-sm">Question Type *</label>
+                  <div className="relative mt-2">
+                    <select
+                      name="type"
+                      value={form.type}
+                      onChange={handleChange}
+                      className="w-full appearance-none pl-4 pr-10 py-3 border border-gray-300 rounded-2xl bg-white text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer transition duration-150"
+                    >
+                      <option value="" className="text-gray-400 font-normal">Select Question Type</option>
+                      <option value="beginner" className="text-gray-900 font-normal">Beginner</option>
+                      <option value="intermediate" className="text-gray-900 font-normal">Intermediate</option>
+                      <option value="advanced" className="text-gray-900 font-normal">Advanced</option>
                     </select>
                     <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-400">
                       <ChevronDown size={18} strokeWidth={2.5} />
@@ -441,7 +413,7 @@ onChange={handleExcelUpload}
               <button
                 type="button"
                 onClick={addQuestion}
-                className="mt-8 bg-green-600 hover:scale-105 transition-all text-white px-8 py-3 rounded-xl shadow-lg transition font-semibold"
+                className="mt-8 bg-green-600 hover:scale-105 transition-all text-white px-8 py-3 rounded-xl shadow-lg font-semibold"
               >
                 + Save Question
               </button>
@@ -458,7 +430,6 @@ onChange={handleExcelUpload}
                 </div>
 
                 <div className="flex flex-wrap items-center gap-4 flex-1 justify-end">
-                  {/* Controlled Text Search Input box */}
                   <div className="relative w-full max-w-sm">
                     <input
                       type="text"
@@ -469,7 +440,6 @@ onChange={handleExcelUpload}
                     />
                   </div>
 
-                  {/* Inline Department Filter Dropdown */}
                   <div className="flex items-center gap-3">
                     <label htmlFor="deptFilter" className="text-sm font-semibold text-gray-600 whitespace-nowrap">
                       Filter by Department:
@@ -518,15 +488,16 @@ onChange={handleExcelUpload}
                           <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-semibold">
                             Category: {q.category}
                           </span>
+                          {q.type && (
+                            <span className="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-xs font-semibold capitalize">
+                              Type: {q.type}
+                            </span>
+                          )}
                         </div>
                         <h3 className="text-xl font-bold text-gray-800 break-words">
                           Q{index + 1}. {q.question}
                         </h3>
                       </div>
-                     
-
-
-                     
                     </div>
 
                     <div className="grid md:grid-cols-2 gap-3 mt-5">
