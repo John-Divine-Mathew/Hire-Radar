@@ -205,6 +205,17 @@ const Home = () => {
             © 2026 Hire-Radar. All Rights Reserved.
           </p>
 
+          <div className="mt-6">
+
+  <button
+    onClick={() => setShowSupport(true)}
+    className="text-sm text-gray-300 hover:text-white underline underline-offset-4 transition"
+  >
+    Developer Support
+  </button>
+
+</div>
+
         </div>
 
       </footer>
@@ -273,31 +284,36 @@ function HeroButtons({ setShowSupport }) {
   const navigate = useNavigate();
 
   return (
-    <>
-      <div className="flex flex-wrap justify-center gap-5">
+    <div className="flex flex-wrap justify-center gap-5">
 
-        <button
-          onClick={() => navigate("/admin-login")}
-          className="px-8 py-4 rounded-xl bg-green-500 hover:bg-green-600 font-semibold shadow-xl transition-all duration-300 hover:scale-105"
-        >
-          HR / Admin Login
-        </button>
+      {/* HR */}
 
-        <button
-          onClick={() => navigate("/admin-user")}
-          className="px-8 py-4 rounded-xl bg-red-500 hover:bg-red-600 font-semibold shadow-xl transition-all duration-300 hover:scale-105"
-        >
-          Candidate Login
-        </button>
+      <button
+        onClick={() => navigate("/admin-login")}
+        className="px-8 py-4 rounded-xl bg-green-500 hover:bg-green-600 font-semibold shadow-xl transition-all duration-300 hover:scale-105"
+      >
+        HR / Admin Login
+      </button>
 
-        <button
-          onClick={() => setShowSupport(true)}
-          className="px-8 py-4 rounded-xl bg-orange-500 hover:bg-orange-600 font-semibold shadow-xl transition-all duration-300 hover:scale-105"
-        >
-          Developer Support
-        </button>
+       {/* Manager Login */}
 
-      </div>
-    </>
+      <button
+        onClick={() => navigate("/manager-login")}
+        className="px-8 py-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 font-semibold shadow-xl transition-all duration-300 hover:scale-105"
+      >
+        Manager Login
+      </button>
+
+
+      {/* Candidate */}
+
+      <button
+        onClick={() => navigate("/admin-user")}
+        className="px-8 py-4 rounded-xl bg-red-500 hover:bg-red-600 font-semibold shadow-xl transition-all duration-300 hover:scale-105"
+      >
+        Candidate Login
+      </button>
+
+    </div>
   );
 }
