@@ -205,6 +205,17 @@ const Home = () => {
             © 2026 Hire-Radar. All Rights Reserved.
           </p>
 
+          <div className="mt-6">
+
+  <button
+    onClick={() => setShowSupport(true)}
+    className="text-sm text-gray-300 hover:text-white underline underline-offset-4 transition"
+  >
+    Developer Support
+  </button>
+
+</div>
+
         </div>
 
       </footer>
