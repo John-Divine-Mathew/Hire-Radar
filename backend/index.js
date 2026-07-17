@@ -1,3 +1,4 @@
+import 'dotenv/config'; // Keep config at the very top so environment variables are loaded first
 const express = require('express');
 const multer = require('multer');
 const cors = require('cors');
@@ -5,7 +6,8 @@ const pool = require('./db');
 const { Resend } = require("resend");
 const { render } = require("@react-email/components");
 const React = require("react");
-const  {TestScheduledEmail}  =  require('./emails/template.tsx');
+const { TestScheduledEmail } = require('./emails/template.tsx');
+const managerRequestRoutes = require("./routes/managerRequest");
 
 const {
     initializeSearchService,
@@ -14,15 +16,21 @@ const {
     saveUploadedFile,
     deleteDocument
 } = require('./searchService');
- 
+
+// 1. Initialize 'app' FIRST
 const app = express();
-import 'dotenv/config';
-const resend = new Resend(process.env.resendApiKey);
- 
+
+// 2. Set up your global middlewares next
 app.use(cors({ origin: 'http://localhost:5173' }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
- 
+
+// 3. NOW you can safely mount your routes on 'app'
+app.use("/hireRadar/managerrequest", managerRequestRoutes);
+
+// 4. Other initializations
+const resend = new Resend(process.env.resendApiKey);
+
 // Initialize schema updates on boot (no directory creations)
 initializeSearchService().catch((error) => console.error('Search service startup failed:', error.message));
  
@@ -561,4 +569,326 @@ app.post("/hireRadar/sendemail", async (req, res) => {
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
     console.log(`Server has started on port ${PORT}`);
+});
+
+app.get("/hireRadar/managerlogin", async (req,res)=>{
+
+try{
+
+const data=await pool.query(
+"SELECT * FROM managerlogin ORDER BY managerid ASC"
+);
+
+res.json(data.rows);
+
+}
+
+catch(err){
+
+console.log(err.message);
+
+res.status(500).json(err.message);
+
+}
+
+});
+
+app.post("/hireRadar/managerlogin",async(req,res)=>{
+
+try{
+
+const{
+
+fullname,
+
+email,
+
+password,
+
+department,
+
+designation
+
+}=req.body;
+
+const data=await pool.query(
+
+`INSERT INTO managerlogin
+
+(fullname,email,password,department,designation)
+
+VALUES
+
+($1,$2,$3,$4,$5)
+
+RETURNING *`
+
+,
+
+[
+
+fullname,
+
+email,
+
+password,
+
+department,
+
+designation
+
+]
+
+);
+
+res.json(data.rows[0]);
+
+}
+
+catch(err){
+
+console.log(err.message);
+
+res.status(500).json(err.message);
+
+}
+
+});
+
+app.post("/hireRadar/managerrequest",async(req,res)=>{
+
+try{
+
+const{
+
+managerid,
+
+managername,
+
+department,
+
+jobtitle,
+
+employmenttype,
+
+experience,
+
+vacancies,
+
+location,
+
+joiningdate,
+
+priority,
+
+skills,
+
+jobdescription,
+
+education,
+
+minimumpercentage,
+
+salarymin,
+
+salarymax,
+
+interviewprocess,
+
+remarks
+
+}=req.body;
+
+const data=await pool.query(
+
+`INSERT INTO manager_requests(
+
+managerid,
+
+managername,
+
+department,
+
+jobtitle,
+
+employmenttype,
+
+experience,
+
+vacancies,
+
+location,
+
+joiningdate,
+
+priority,
+
+skills,
+
+jobdescription,
+
+education,
+
+minimumpercentage,
+
+salarymin,
+
+salarymax,
+
+interviewprocess,
+
+remarks
+
+)
+
+VALUES
+
+(
+
+$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,
+
+$11,$12,$13,$14,$15,$16,$17,$18
+
+)
+
+RETURNING *`
+
+,
+
+[
+
+managerid,
+
+managername,
+
+department,
+
+jobtitle,
+
+employmenttype,
+
+experience,
+
+vacancies,
+
+location,
+
+joiningdate,
+
+priority,
+
+skills,
+
+jobdescription,
+
+education,
+
+minimumpercentage,
+
+salarymin,
+
+salarymax,
+
+interviewprocess,
+
+remarks
+
+]
+
+);
+
+res.json(data.rows[0]);
+
+}
+
+catch(err){
+
+console.log(err.message);
+
+res.status(500).json(err.message);
+
+}
+
+});
+
+app.get("/hireRadar/managerrequest",async(req,res)=>{
+
+try{
+
+const data=await pool.query(
+
+"SELECT * FROM manager_requests ORDER BY requestid DESC"
+
+);
+
+res.json(data.rows);
+
+}
+
+catch(err){
+
+console.log(err.message);
+
+res.status(500).json(err.message);
+
+}
+
+});
+
+app.get("/hireRadar/managerrequest/:managerid",async(req,res)=>{
+
+try{
+
+const {managerid}=req.params;
+
+const data=await pool.query(
+
+"SELECT * FROM manager_requests WHERE managerid=$1 ORDER BY requestid DESC",
+
+[managerid]
+
+);
+
+res.json(data.rows);
+
+}
+
+catch(err){
+
+console.log(err.message);
+
+res.status(500).json(err.message);
+
+}
+
+});
+
+app.put("/hireRadar/managerrequeststatus/:requestid",async(req,res)=>{
+
+try{
+
+const {requestid}=req.params;
+
+const {status}=req.body;
+
+const data=await pool.query(
+
+"UPDATE manager_requests SET status=$1 WHERE requestid=$2 RETURNING *",
+
+[status,requestid]
+
+);
+
+res.json(data.rows[0]);
+
+}
+
+catch(err){
+
+console.log(err.message);
+
+res.status(500).json(err.message);
+
+}
+
 });
