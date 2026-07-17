@@ -13,6 +13,7 @@ import AdminLogin from "./pages/AdminLogin";
 import AdminUser from './pages/AdminUser.jsx';
 import ImportDrive from './pages/ImportDrive.jsx';
 import Dashboard_v2 from './pages/dashboard_v2.jsx';
+import ManagerLogin from './pages/Manager/ManagerLogin.jsx';
 import ManagerRequest from './pages/ManagerRequest.jsx';
 
 function App() {
@@ -35,6 +36,7 @@ function App() {
         <Route path="/admin-user" element={<AdminUser />} />
         <Route path="/import-drive" element={<ImportDrive />} />
         <Route path="/dashboard_v2" element={<Dashboard_v2 />} />
+        <Route path="/manager-login" element={<ManagerLogin />} />
         
         
         
