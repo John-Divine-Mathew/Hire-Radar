@@ -96,11 +96,6 @@ const AdminLogin = () => {
 
         <div className="relative text-center px-12 z-10">
 
-           <img
-              src="/Hire Radar Project Logo Cropped.png"
-              alt="Hire-Radar Logo"
-              className="w-40 mx-auto mb-7 drop-shadow-2xl"
-  />
 
           <h1 className="text-6xl font-extrabold text-purple-900 tracking-wide">
 
