@@ -514,7 +514,7 @@ function AdminAssessment() {
             <div className="mt-10 mb-6">
               <div className="flex flex-col xl:flex-row justify-between xl:items-center gap-4 mb-6">
                 <div className="flex items-center gap-4 shrink-0">
-                  <h2 className="text-3xl font-bold text-gray-700">Saved Questions</h2>
+                  <h2 className="text-3xl font-bold text-gray-700"> Questions Bank</h2>
                   <div className="border-2 border-purple-600 text-purple-700 px-4 py-1.5 rounded-full font-bold shadow-sm text-sm bg-transparent">
                     {filteredQuestions.length} Questions
                   </div>
