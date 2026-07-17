@@ -85,6 +85,8 @@ const AdminLogin = () => {
         <div className="absolute w-60 h-60 bg-indigo-300 rounded-full opacity-20 blur-3xl animate-ping top-1/2 left-1/3"></div>
 
         <div className="relative text-center px-12 z-10">
+
+
           <h1 className="text-6xl font-extrabold text-purple-900 tracking-wide">
             Hire-Radar
           </h1>
