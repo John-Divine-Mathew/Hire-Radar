@@ -9,18 +9,21 @@ const Home = () => {
       {/* Navbar removed from landing page (shown on admin dashboard only) */}
 
       {/* Hero Section */}
-    <section className="relative overflow-hidden bg-gradient-to-br from-[#4F46E5] via-[#6D28D9] to-[#9333EA] text-white py-24">
+      <section className="relative overflow-hidden bg-gradient-to-br from-[#4F46E5] via-[#6D28D9] to-[#9333EA] text-white py-24">
 
         <div className="max-w-7xl mx-auto px-10">
 
           <div className="text-center">
             
+            {/* Project Logo - Centered container wrapper with proper height bounds */}
+            <div className="flex justify-center items-center mb-7">
+              <img
+                src="/Hire-Radar.png"
+                alt="Hire-Radar Logo"
+                className="w-40 h-auto object-contain drop-shadow-2xl"
+              />
+            </div>
 
-            <img
-    src="/hirotec-logo.webp"
-    alt="Hirotec Logo"
-    className="w-40 mx-auto mb-7 drop-shadow-2xl"
-/>
             <h1 className="text-6xl font-bold mb-6">
               Welcome to Hire-Radar
             </h1>
@@ -37,9 +40,8 @@ const Home = () => {
 
             <div className="mt-10 flex flex-col items-center gap-4">
               <div className="flex justify-center gap-5">
-              <HeroButtons setShowSupport={setShowSupport} />
+                <HeroButtons setShowSupport={setShowSupport} />
               </div>
-
             </div>
 
           </div>
@@ -48,9 +50,7 @@ const Home = () => {
 
       </section>
 
-
       {/* About Section */}
-
       <section className="max-w-7xl mx-auto px-10 py-12">
 
         <h2 className="text-4xl font-bold text-purple-700 mb-6">
@@ -60,7 +60,6 @@ const Home = () => {
         <div className="bg-white rounded-xl shadow-lg p-8">
 
           <p className="text-gray-700 leading-8 text-lg">
-
             Hire-Radar is an intelligent recruitment platform developed
             for modern HR teams. The platform integrates with LinkedIn
             and Naukri to collect candidate profiles into a unified
@@ -73,7 +72,6 @@ const Home = () => {
             The system centralizes hiring workflows including candidate
             tracking, profile management, assessments, analytics,
             communication, and recruitment insights.
-
           </p>
 
         </div>
@@ -81,7 +79,6 @@ const Home = () => {
       </section>
 
       {/* Key Features */}
-
       <section className="bg-white py-16">
         
         <div className="max-w-7xl mx-auto px-10">
@@ -96,7 +93,6 @@ const Home = () => {
               <h3 className="text-xl font-bold text-purple-700 mb-3">
                 Multi-Platform Sourcing
               </h3>
-
               <p className="text-gray-600">
                 Search and collect candidate profiles directly from
                 LinkedIn and Naukri into a centralized system.
@@ -107,7 +103,6 @@ const Home = () => {
               <h3 className="text-xl font-bold text-purple-700 mb-3">
                 Match Score Analysis
               </h3>
-
               <p className="text-gray-600">
                 AI-driven scoring helps recruiters identify the most
                 suitable candidates based on job requirements.
@@ -118,7 +113,6 @@ const Home = () => {
               <h3 className="text-xl font-bold text-purple-700 mb-3">
                 Candidate Pipeline
               </h3>
-
               <p className="text-gray-600">
                 Save, shortlist, and manage candidates throughout
                 the recruitment lifecycle.
@@ -129,7 +123,6 @@ const Home = () => {
               <h3 className="text-xl font-bold text-purple-700 mb-3">
                 Assessment Management
               </h3>
-
               <p className="text-gray-600">
                 HR teams can create assessments and evaluate
                 candidates through online tests.
@@ -140,7 +133,6 @@ const Home = () => {
               <h3 className="text-xl font-bold text-purple-700 mb-3">
                 Analytics Dashboard
               </h3>
-
               <p className="text-gray-600">
                 View hiring trends, search statistics, candidate
                 metrics, and recruiter insights.
@@ -151,7 +143,6 @@ const Home = () => {
               <h3 className="text-xl font-bold text-purple-700 mb-3">
                 Interview Scheduling
               </h3>
-
               <p className="text-gray-600">
                 Schedule assessments and interviews with built-in
                 workflow management tools.
@@ -165,7 +156,6 @@ const Home = () => {
       </section>
 
       {/* Recruitment Process */}
-
       <section className="max-w-7xl mx-auto px-10 py-16">
 
         <h2 className="text-4xl font-bold text-center text-purple-700 mb-12">
@@ -174,23 +164,23 @@ const Home = () => {
 
         <div className="grid md:grid-cols-5 gap-4 text-center">
 
-          <div className="bg-white rounded-xl shadow-lg  p-6 hover:scale-105 transition-all">
+          <div className="bg-white rounded-xl shadow-lg p-6 hover:scale-105 transition-all">
             Search Candidates
           </div>
 
-          <div className="bg-white rounded-xl shadow-lg  p-6 hover:scale-105 transition-all">
+          <div className="bg-white rounded-xl shadow-lg p-6 hover:scale-105 transition-all">
             Analyze Profiles
           </div>
 
-          <div className="bg-white rounded-xl shadow-lg  p-6 hover:scale-105 transition-all">
+          <div className="bg-white rounded-xl shadow-lg p-6 hover:scale-105 transition-all">
             Conduct Assessment
           </div>
 
-          <div className="bg-white rounded-xl shadow-lg  p-6 hover:scale-105 transition-all">
+          <div className="bg-white rounded-xl shadow-lg p-6 hover:scale-105 transition-all">
             Schedule Interview
           </div>
 
-          <div className="bg-white rounded-xl shadow-lg  p-6 hover:scale-105 transition-all">
+          <div className="bg-white rounded-xl shadow-lg p-6 hover:scale-105 transition-all">
             Hire Talent
           </div>
 
@@ -199,7 +189,6 @@ const Home = () => {
       </section>
 
       {/* Footer */}
-
       <footer className="bg-gray-900 text-white py-8 mt-10">
 
         <div className="text-center">
@@ -215,6 +204,17 @@ const Home = () => {
           <p className="mt-4 text-sm text-gray-500">
             © 2026 Hire-Radar. All Rights Reserved.
           </p>
+
+          <div className="mt-6">
+
+  <button
+    onClick={() => setShowSupport(true)}
+    className="text-sm text-gray-300 hover:text-white underline underline-offset-4 transition"
+  >
+    Developer Support
+  </button>
+
+</div>
 
         </div>
 
@@ -284,34 +284,36 @@ function HeroButtons({ setShowSupport }) {
   const navigate = useNavigate();
 
   return (
-    <>
-     <div className="flex flex-wrap justify-center gap-5 mt-">
+    <div className="flex flex-wrap justify-center gap-5">
 
-<button
-onClick={() => navigate("/admin-login")}
-className="px-8 py-4 rounded-xl bg-green-500 hover:bg-green-600 font-semibold shadow-xl transition-all duration-300 hover:scale-105">
+      {/* HR */}
 
-HR / Admin Login
+      <button
+        onClick={() => navigate("/admin-login")}
+        className="px-8 py-4 rounded-xl bg-green-500 hover:bg-green-600 font-semibold shadow-xl transition-all duration-300 hover:scale-105"
+      >
+        HR / Admin Login
+      </button>
 
-</button>
+       {/* Manager Login */}
 
-<button
-onClick={() => navigate("/admin-user")}
-className="px-8 py-4 rounded-xl bg-red-500 hover:bg-red-600 font-semibold shadow-xl transition-all duration-300 hover:scale-105">
+      <button
+        onClick={() => navigate("/manager-login")}
+        className="px-8 py-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 font-semibold shadow-xl transition-all duration-300 hover:scale-105"
+      >
+        Manager Login
+      </button>
 
-Candidate Login
 
-</button>
+      {/* Candidate */}
 
-<button
-onClick={() => setShowSupport(true)}
-className="px-8 py-4 rounded-xl bg-orange-500 hover:bg-orange-600 font-semibold shadow-xl transition-all duration-300 hover:scale-105">
+      <button
+        onClick={() => navigate("/admin-user")}
+        className="px-8 py-4 rounded-xl bg-red-500 hover:bg-red-600 font-semibold shadow-xl transition-all duration-300 hover:scale-105"
+      >
+        Candidate Login
+      </button>
 
-Developer Support
-
-</button>
-
-</div>
-    </>
+    </div>
   );
 }
