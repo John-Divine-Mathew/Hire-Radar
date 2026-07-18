@@ -3,14 +3,18 @@ import Home from "./pages/Home";
 import SearchCandidatePage from "./pages/searchCandidate.jsx";
 import CandidateProfile from "./pages/candidateProfile.jsx";
 import Analytics from "./pages/analytics.jsx";
+import Report from "./pages/Report.jsx";
 import Dashboard from "./pages/dashboard.jsx";
 import SavedCadidates from './pages/savedCandidates.jsx';
 import AssessmentForm from './pages/Assessment/AssessmentForm.jsx';
 import AssessmentTest from "./pages/Assessment/AssessmentTest";
 import AdminAssessment from './pages/Assessment/AdminAssessment.jsx';
 import AdminLogin from "./pages/AdminLogin";
-import { Router } from 'lucide-react';
 import AdminUser from './pages/AdminUser.jsx';
+import ImportDrive from './pages/ImportDrive.jsx';
+import Dashboard_v2 from './pages/dashboard_v2.jsx';
+import ManagerLogin from './pages/Manager/ManagerLogin.jsx';
+import ManagerRequest from './pages/ManagerRequest.jsx';
 
 function App() {
   return (
@@ -22,12 +26,20 @@ function App() {
         <Route path='/searchCandidate' element={<SearchCandidatePage />} />
         <Route path='/candidateProfile' element={<CandidateProfile />} />
         <Route path='/analytics' element={<Analytics />} />
+        <Route path='/report' element={<Report />} />
         <Route path='/savedCandidates' element={<SavedCadidates />} />
         <Route path='/assessmentform' element={<AssessmentForm />} />
         <Route path="/assessment-test" element={<AssessmentTest />} />
         <Route path="/admin-assessment" element={<AdminAssessment />} />
+        <Route path="/manager-request" element={<ManagerRequest />} />
         <Route path="/admin-login" element={<AdminLogin />} />
         <Route path="/admin-user" element={<AdminUser />} />
+        <Route path="/import-drive" element={<ImportDrive />} />
+        <Route path="/dashboard_v2" element={<Dashboard_v2 />} />
+        <Route path="/manager-login" element={<ManagerLogin />} />
+        
+        
+        
         
       </Routes>
     </BrowserRouter>
