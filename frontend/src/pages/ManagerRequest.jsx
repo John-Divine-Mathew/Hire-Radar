@@ -27,15 +27,16 @@ export default function ManagerRequest() {
     }, []);
 
     const filtered = requests.filter((item) => {
-        // Handle both camelCase, snake_case, or database lowercased field names safely
         const jobTitle = item.job_title || item.jobtitle || "";
         const department = item.department || "";
         const managerName = item.manager_name || item.managername || "";
+        const designation = item.designation || "";
         const searchLower = search.toLowerCase().trim();
 
         const searchMatch =
             jobTitle.toLowerCase().includes(searchLower) ||
             department.toLowerCase().includes(searchLower) ||
+            designation.toLowerCase().includes(searchLower) ||
             managerName.toLowerCase().includes(searchLower);
 
         const statusMatch =
@@ -81,7 +82,7 @@ export default function ManagerRequest() {
                         <div className="flex flex-wrap gap-5 mt-8">
                             <input
                                 type="text"
-                                placeholder="Search by job title, department, or manager..."
+                                placeholder="Search by title, department, manager, or designation..."
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
                                 className="border border-slate-200 rounded-xl p-3 w-full md:w-96 outline-none focus:ring-2 focus:ring-blue-500 transition"
@@ -101,11 +102,14 @@ export default function ManagerRequest() {
 
                         {/* Table Area Container */}
                         <div className="overflow-x-auto mt-8 border border-slate-100 rounded-2xl">
-                            <table className="w-full min-w-[800px] border-collapse text-left">
+                            <table className="w-full min-w-[900px] border-collapse text-left">
                                 <thead>
                                     <tr className="border-b border-slate-100 bg-slate-50/50">
                                         <th className="py-4 px-6 text-sm font-semibold text-gray-600">
                                             Manager
+                                        </th>
+                                        <th className="py-4 px-6 text-sm font-semibold text-gray-600">
+                                            Designation
                                         </th>
                                         <th className="py-4 px-6 text-sm font-semibold text-gray-600">
                                             Department
@@ -130,13 +134,13 @@ export default function ManagerRequest() {
                                 <tbody className="divide-y divide-slate-100">
                                     {loading ? (
                                         <tr>
-                                            <td colSpan={7} className="text-center py-10 text-gray-500 font-medium">
+                                            <td colSpan={8} className="text-center py-10 text-gray-500 font-medium">
                                                 Loading requests...
                                             </td>
                                         </tr>
                                     ) : filtered.length === 0 ? (
                                         <tr>
-                                            <td colSpan={7} className="text-center py-10 text-gray-500">
+                                            <td colSpan={8} className="text-center py-10 text-gray-500">
                                                 No recruitment requests found.
                                             </td>
                                         </tr>
@@ -150,6 +154,10 @@ export default function ManagerRequest() {
                                                     <div className="text-sm text-gray-500">
                                                         {item.email || item.manager_email || "N/A"}
                                                     </div>
+                                                </td>
+                                                {/* Displaying Designation from managerlogin */}
+                                                <td className="py-5 px-6 text-gray-700 font-medium">
+                                                    {item.designation || "N/A"}
                                                 </td>
                                                 <td className="py-5 px-6 text-gray-700">
                                                     {item.department || "N/A"}

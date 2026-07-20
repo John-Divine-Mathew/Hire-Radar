@@ -684,12 +684,11 @@ app.post("/hireRadar/managerrequest", async (req, res) => {
         const maxSalary = salarymax ? parseInt(salarymax, 10) : null;
         const targetJoiningDate = joiningDate && joiningDate !== "" ? joiningDate : null;
 
-        // FIXED: Column names match your DB schema exactly (managername, email, jobtitle, etc.)
         const queryText = `
             INSERT INTO manager_requests (
-                managerid, managername, email, jobtitle, 
-                employmenttype, experience, vacancies, openings, location, 
-                joiningdate, priority, skills, jobdescription, 
+                managerid, manager_name, manager_email, job_title, 
+                employment_type, experience, vacancies, openings, location, 
+                joining_date, priority, skills, jobdescription, 
                 education, minimumpercentage, salarymin, salarymax, 
                 interviewprocess, remarks, status
             ) 
@@ -733,17 +732,19 @@ app.get("/hireRadar/managerrequest", async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT
-        requestid,
-        managerid,
-        managername,
-        email ,
-        department,
-        jobtitle AS job_title,
-        experience,
-        openings,
-        status
-      FROM manager_requests
-      ORDER BY requestid DESC
+        r.requestid,
+        r.managerid,
+        r.manager_name AS managername,
+        r.manager_email AS email,
+        r.department,
+        r.job_title AS job_title,
+        r.experience,
+        r.openings,
+        r.status,
+        m.designation
+      FROM manager_requests r
+      LEFT JOIN managerlogin m ON r.managerid = m.managerid
+      ORDER BY r.requestid DESC
     `);
 
     res.json(result.rows);
@@ -781,32 +782,18 @@ res.status(500).json(err.message);
 
 });
 
-app.put("/hireRadar/managerrequeststatus/:requestid",async(req,res)=>{
+app.put("/hireRadar/managerrequeststatus/:requestid", async (req, res) => {
+    try {
+        const { requestid } = req.params;
+        const { status } = req.body;
 
-try{
-
-const {requestid}=req.params;
-
-const {status}=req.body;
-
-const data=await pool.query(
-
-"UPDATE manager_requests SET status=$1 WHERE requestid=$2 RETURNING *",
-
-[status,requestid]
-
-);
-
-res.json(data.rows[0]);
-
-}
-
-catch(err){
-
-console.log(err.message);
-
-res.status(500).json(err.message);
-
-}
-
+        const data = await pool.query(
+            "UPDATE manager_requests SET status = $1 WHERE requestid = $2 RETURNING *",
+            [status, requestid]
+        );
+        res.json(data.rows[0]);
+    } catch (err) {
+        console.log(err.message);
+        res.status(500).json(err.message);
+    }
 });
