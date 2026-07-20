@@ -38,9 +38,7 @@ function App() {
         <Route path="/dashboard_v2" element={<Dashboard_v2 />} />
         <Route path="/manager-login" element={<ManagerLogin />} />
         
-        
-        
-        
+      
       </Routes>
     </BrowserRouter>
     // <CandidateProfile />
