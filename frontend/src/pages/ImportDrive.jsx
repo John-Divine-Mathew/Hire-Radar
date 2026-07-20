@@ -959,7 +959,6 @@ function ImportDrive() {
             </div>
           ) : documents.length === 0 ? (
             <div className="text-center px-6 py-12 bg-white rounded-xl border border-gray-200 shadow-sm text-gray-400 text-sm">
-              <Sparkles size={32} className="mx-auto mb-2 text-gray-300" />
               <p>No documents imported yet. Choose a workspace or folder root hierarchy above to begin parsing.</p>
             </div>
           ) : (

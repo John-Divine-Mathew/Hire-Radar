@@ -655,184 +655,102 @@ res.status(500).json(err.message);
 
 });
 
-app.post("/hireRadar/managerrequest",async(req,res)=>{
-
-try{
-
-const{
-
-managerid,
-
-managername,
-
-department,
-
-jobtitle,
-
-employmenttype,
-
-experience,
-
-vacancies,
-
-location,
-
-joiningdate,
-
-priority,
-
-skills,
-
-jobdescription,
-
-education,
-
-minimumpercentage,
-
-salarymin,
-
-salarymax,
-
-interviewprocess,
-
-remarks
-
-}=req.body;
-
-const data=await pool.query(
-
-`INSERT INTO manager_requests(
-
-managerid,
-
-managername,
-
-department,
-
-jobtitle,
-
-employmenttype,
-
-experience,
-
-vacancies,
-
-location,
-
-joiningdate,
-
-priority,
-
-skills,
-
-jobdescription,
-
-education,
-
-minimumpercentage,
-
-salarymin,
-
-salarymax,
-
-interviewprocess,
-
-remarks
-
-)
-
-VALUES
-
-(
-
-$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,
-
-$11,$12,$13,$14,$15,$16,$17,$18
-
-)
-
-RETURNING *`
-
-,
-
-[
-
-managerid,
-
-managername,
-
-department,
-
-jobtitle,
-
-employmenttype,
-
-experience,
-
-vacancies,
-
-location,
-
-joiningdate,
-
-priority,
-
-skills,
-
-jobdescription,
-
-education,
-
-minimumpercentage,
-
-salarymin,
-
-salarymax,
-
-interviewprocess,
-
-remarks
-
-]
-
-);
-
-res.json(data.rows[0]);
-
-}
-
-catch(err){
-
-console.log(err.message);
-
-res.status(500).json(err.message);
-
-}
-
+app.post("/hireRadar/managerrequest", async (req, res) => {
+    try {
+        const {
+            managerid,         
+            managerName,       
+            managerEmail,      
+            jobTitle,          
+            employmentType,    
+            experience,        
+            openings,          
+            location,          
+            joiningDate,       
+            jobPriority,       
+            skills,            
+            responsibilities,  
+            education,         
+            minimumpercentage, 
+            salarymin,         
+            salarymax,         
+            interviewprocess,  
+            remarks            
+        } = req.body;
+
+        const parsedVacancies = parseInt(openings, 10) || 1;
+        const managerIdVal = managerid ? parseInt(managerid, 10) : null;
+        const minSalary = salarymin ? parseInt(salarymin, 10) : null;
+        const maxSalary = salarymax ? parseInt(salarymax, 10) : null;
+        const targetJoiningDate = joiningDate && joiningDate !== "" ? joiningDate : null;
+
+        // FIXED: Column names match your DB schema exactly (managername, email, jobtitle, etc.)
+        const queryText = `
+            INSERT INTO manager_requests (
+                managerid, managername, email, jobtitle, 
+                employmenttype, experience, vacancies, openings, location, 
+                joiningdate, priority, skills, jobdescription, 
+                education, minimumpercentage, salarymin, salarymax, 
+                interviewprocess, remarks, status
+            ) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20) 
+            RETURNING *;
+        `;
+
+        const queryValues = [
+            managerIdVal,
+            managerName || null,
+            managerEmail || null,
+            jobTitle || null,
+            employmentType || 'Full Time',
+            experience || null,
+            parsedVacancies, 
+            parsedVacancies, 
+            location || null,
+            targetJoiningDate,
+            jobPriority || 'Medium', 
+            skills || null,
+            responsibilities || null, 
+            education || null,
+            minimumpercentage || null,
+            minSalary,
+            maxSalary,
+            interviewprocess || null,
+            remarks || null,
+            'Pending' 
+        ];
+
+        const data = await pool.query(queryText, queryValues);
+        res.status(201).json(data.rows[0]);
+
+    } catch (err) {
+        console.error("Manager request submission error:", err.message);
+        res.status(500).json({ error: err.message });
+    }
 });
 
-app.get("/hireRadar/managerrequest",async(req,res)=>{
+app.get("/hireRadar/managerrequest", async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT
+        requestid,
+        managerid,
+        managername,
+        email ,
+        department,
+        jobtitle AS job_title,
+        experience,
+        openings,
+        status
+      FROM manager_requests
+      ORDER BY requestid DESC
+    `);
 
-try{
-
-const data=await pool.query(
-
-"SELECT * FROM manager_requests ORDER BY requestid DESC"
-
-);
-
-res.json(data.rows);
-
-}
-
-catch(err){
-
-console.log(err.message);
-
-res.status(500).json(err.message);
-
-}
-
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.get("/hireRadar/managerrequest/:managerid",async(req,res)=>{
