@@ -16,7 +16,7 @@ export default function ManagerRequest() {
             );
             setRequests(res.data);
         } catch (err) {
-            console.log(err);
+            console.error("Error fetching requests:", err);
         } finally {
             setLoading(false);
         }
@@ -27,10 +27,16 @@ export default function ManagerRequest() {
     }, []);
 
     const filtered = requests.filter((item) => {
+        // Handle both camelCase, snake_case, or database lowercased field names safely
+        const jobTitle = item.job_title || item.jobtitle || "";
+        const department = item.department || "";
+        const managerName = item.manager_name || item.managername || "";
+        const searchLower = search.toLowerCase().trim();
+
         const searchMatch =
-            item.job_title?.toLowerCase().includes(search.toLowerCase()) ||
-            item.department?.toLowerCase().includes(search.toLowerCase()) ||
-            item.manager_name?.toLowerCase().includes(search.toLowerCase());
+            jobTitle.toLowerCase().includes(searchLower) ||
+            department.toLowerCase().includes(searchLower) ||
+            managerName.toLowerCase().includes(searchLower);
 
         const statusMatch =
             statusFilter === "All"
@@ -136,26 +142,26 @@ export default function ManagerRequest() {
                                         </tr>
                                     ) : (
                                         filtered.map((item) => (
-                                            <tr key={item.request_id} className="hover:bg-slate-50/80 transition duration-150">
+                                            <tr key={item.requestid || item.request_id} className="hover:bg-slate-50/80 transition duration-150">
                                                 <td className="py-5 px-6">
                                                     <div className="font-semibold text-gray-900">
-                                                        {item.manager_name}
+                                                        {item.managername || item.manager_name || "N/A"}
                                                     </div>
                                                     <div className="text-sm text-gray-500">
-                                                        {item.manager_email}
+                                                        {item.email || item.manager_email || "N/A"}
                                                     </div>
                                                 </td>
                                                 <td className="py-5 px-6 text-gray-700">
-                                                    {item.department}
+                                                    {item.department || "N/A"}
                                                 </td>
                                                 <td className="py-5 px-6 text-gray-700 font-medium">
-                                                    {item.job_title}
+                                                    {item.job_title || item.jobtitle || "N/A"}
                                                 </td>
                                                 <td className="py-5 px-6 text-gray-700">
-                                                    {item.experience}
+                                                    {item.experience || "N/A"}
                                                 </td>
                                                 <td className="py-5 px-6 text-gray-700">
-                                                    {item.openings}
+                                                    {item.openings ?? item.vacancies ?? 0}
                                                 </td>
                                                 <td className="py-5 px-6">
                                                     <span className={`inline-block px-4 py-1.5 rounded-full text-xs font-semibold ${
@@ -165,7 +171,7 @@ export default function ManagerRequest() {
                                                             ? "bg-red-100 text-red-700"
                                                             : "bg-yellow-100 text-yellow-700"
                                                     }`}>
-                                                        {item.status}
+                                                        {item.status || "Pending"}
                                                     </span>
                                                 </td>
                                                 <td className="py-5 px-6">
