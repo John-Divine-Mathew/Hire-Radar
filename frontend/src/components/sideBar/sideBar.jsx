@@ -38,7 +38,7 @@ function Sidebar(){
         <div className='sidebar'>
             <div className='sidebarPanel'>
                 <ul className="sidebarlist">
-                    <li><button className='listitem' onClick={navigateDashboard} title="Dashboard" aria-label="Dashboard"><House size={iconSize} /><p className='buttonP'>Dashboard</p></button></li>
+                   {/* <li><button className='listitem' onClick={navigateDashboard} title="Dashboard" aria-label="Dashboard"><House size={iconSize} /><p className='buttonP'>Dashboard</p></button></li> */}
                     <li><button className='listitem' onClick={navigateDashboard_v2} title="Dashboard v2" aria-label="Dashboard v2"><House size={iconSize} /><p className='buttonP'>Dashboard v2</p></button></li>
                     <li><button className='listitem' onClick={navigateSearchCandidate} title="Search Candidate" aria-label="Search Candidate"><Search size={iconSize} /><p className='buttonP'>Search Candidate</p></button></li>
                     <li><button className='listitem' onClick={navigateSavedCandidates} title="Saved Candidates" aria-label="Saved Candidates"><Bookmark size={iconSize} /><p className='buttonP'>Saved Candidates</p></button></li>
