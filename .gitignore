@@ -3,4 +3,6 @@ build/
 dist/
 .env
 *.zip
-*.log
+*.log 
+echo "postgresSave.backup" >> .gitignore
+echo "*.backup" >> .gitignore
