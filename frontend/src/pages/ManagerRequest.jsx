@@ -29,6 +29,7 @@ export default function ManagerRequest() {
     const filtered = requests.filter((item) => {
         const jobTitle = item.job_title || item.jobtitle || "";
         const department = item.department || "";
+        const targetDepartment = item.target_department || "";
         const managerName = item.manager_name || item.managername || "";
         const designation = item.designation || "";
         const searchLower = search.toLowerCase().trim();
@@ -36,6 +37,7 @@ export default function ManagerRequest() {
         const searchMatch =
             jobTitle.toLowerCase().includes(searchLower) ||
             department.toLowerCase().includes(searchLower) ||
+            targetDepartment.toLowerCase().includes(searchLower) ||
             designation.toLowerCase().includes(searchLower) ||
             managerName.toLowerCase().includes(searchLower);
 
@@ -102,71 +104,66 @@ export default function ManagerRequest() {
 
                         {/* Table Area Container */}
                         <div className="overflow-x-auto mt-8 border border-slate-100 rounded-2xl">
-                            <table className="w-full min-w-[900px] border-collapse text-left">
+                            <table className="w-full min-w-[1000px] border-collapse text-left">
                                 <thead>
                                     <tr className="border-b border-slate-100 bg-slate-50/50">
-                                        <th className="py-4 px-6 text-sm font-semibold text-gray-600">
-                                            Manager
-                                        </th>
-                                        <th className="py-4 px-6 text-sm font-semibold text-gray-600">
-                                            Designation
-                                        </th>
-                                        <th className="py-4 px-6 text-sm font-semibold text-gray-600">
-                                            Department
-                                        </th>
-                                        <th className="py-4 px-6 text-sm font-semibold text-gray-600">
-                                            Job Title
-                                        </th>
-                                        <th className="py-4 px-6 text-sm font-semibold text-gray-600">
-                                            Experience
-                                        </th>
-                                        <th className="py-4 px-6 text-sm font-semibold text-gray-600">
-                                            Openings
-                                        </th>
-                                        <th className="py-4 px-6 text-sm font-semibold text-gray-600">
-                                            Status
-                                        </th>
-                                        <th className="py-4 px-6 text-sm font-semibold text-gray-600">
-                                            Action
-                                        </th>
+                                        <th className="py-4 px-6 text-sm font-semibold text-gray-600">Manager</th>
+                                        <th className="py-4 px-6 text-sm font-semibold text-gray-600">Designation</th>
+                                        <th className="py-4 px-6 text-sm font-semibold text-gray-600">Manager Dept</th>
+                                        <th className="py-4 px-6 text-sm font-semibold text-gray-600">Target Dept</th>
+                                        <th className="py-4 px-6 text-sm font-semibold text-gray-600">Job Title</th>
+                                        <th className="py-4 px-6 text-sm font-semibold text-gray-600">Experience</th>
+                                        <th className="py-4 px-6 text-sm font-semibold text-gray-600">Salary Range</th>
+                                        <th className="py-4 px-6 text-sm font-semibold text-gray-600">Openings</th>
+                                        <th className="py-4 px-6 text-sm font-semibold text-gray-600">Status</th>
+                                        <th className="py-4 px-6 text-sm font-semibold text-gray-600">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
                                     {loading ? (
                                         <tr>
-                                            <td colSpan={8} className="text-center py-10 text-gray-500 font-medium">
+                                            <td colSpan={10} className="text-center py-10 text-gray-500 font-medium">
                                                 Loading requests...
                                             </td>
                                         </tr>
                                     ) : filtered.length === 0 ? (
                                         <tr>
-                                            <td colSpan={8} className="text-center py-10 text-gray-500">
+                                            <td colSpan={10} className="text-center py-10 text-gray-500">
                                                 No recruitment requests found.
                                             </td>
                                         </tr>
                                     ) : (
                                         filtered.map((item) => (
-                                            <tr key={item.requestid || item.request_id} className="hover:bg-slate-50/80 transition duration-150">
+                                            <tr key={item.request_id || item.requestid} className="hover:bg-slate-50/80 transition duration-150">
                                                 <td className="py-5 px-6">
                                                     <div className="font-semibold text-gray-900">
-                                                        {item.managername || item.manager_name || "N/A"}
+                                                        {item.manager_name || item.managername || "N/A"}
                                                     </div>
                                                     <div className="text-sm text-gray-500">
-                                                        {item.email || item.manager_email || "N/A"}
+                                                        {item.manager_email || item.email || "N/A"}
                                                     </div>
                                                 </td>
-                                                {/* Displaying Designation from managerlogin */}
                                                 <td className="py-5 px-6 text-gray-700 font-medium">
                                                     {item.designation || "N/A"}
                                                 </td>
                                                 <td className="py-5 px-6 text-gray-700">
                                                     {item.department || "N/A"}
                                                 </td>
+                                                <td className="py-5 px-6 text-gray-700">
+                                                    {item.target_department || "N/A"}
+                                                </td>
                                                 <td className="py-5 px-6 text-gray-700 font-medium">
-                                                    {item.job_title || item.jobtitle || "N/A"}
+                                                    {item.job_title || "N/A"}
                                                 </td>
                                                 <td className="py-5 px-6 text-gray-700">
                                                     {item.experience || "N/A"}
+                                                </td>
+                                                <td className="py-5 px-6 text-gray-700 text-sm">
+                                                    {item.salary_min && item.salary_max
+                                                        ? `₹${item.salary_min.toLocaleString()} - ₹${item.salary_max.toLocaleString()}`
+                                                        : item.salary_min
+                                                        ? `Min ₹${item.salary_min.toLocaleString()}`
+                                                        : "N/A"}
                                                 </td>
                                                 <td className="py-5 px-6 text-gray-700">
                                                     {item.openings ?? item.vacancies ?? 0}
