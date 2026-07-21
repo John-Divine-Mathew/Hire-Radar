@@ -1,6 +1,6 @@
 import React from 'react';
 import './sideBar.css';
-import {House, Search, Bookmark, ChartSpline, ClipboardPen, CloudUpload} from 'lucide-react';
+import {House, Search, Bookmark, ChartSpline, ClipboardPen, CloudUpload, Calendar} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 function Sidebar(){
@@ -31,6 +31,13 @@ function Sidebar(){
     const navigateDashboard_v2 = ()=>{
         nav('/dashboard_v2');
     }
+    const navigateInterviewScheduler = ()=>{
+        nav('/interview-scheduler');
+    }
+    const navigateSettings = ()=>{
+        nav('/settings');
+    }   
+
 
 
     const iconSize = 22;
@@ -46,7 +53,10 @@ function Sidebar(){
                     <li><button className='listitem' onClick={navigateImportDrive} title="Import Drive" aria-label="Import Drive"><CloudUpload size={iconSize} /><p className='buttonP'>Import Drive</p></button></li>
                     <li><button className='listitem' onClick={navigateReport} title="Report" aria-label="Report"><ChartSpline size={iconSize} /><p className='buttonP'>Report</p></button></li>
                     <li><button className='listitem' onClick={navigateManagerRequest} title="Manager Request" aria-label="Manager Request"><ClipboardPen size={iconSize} /><p className='buttonP'>Manager Request</p></button></li>
+                    <li><button className='listitem' onClick={navigateInterviewScheduler} title="Interview Scheduler" aria-label="Interview Scheduler"><Calendar size={iconSize} /><p className='buttonP'>Interview Scheduler</p></button></li>
+                    <li><button className='listitem' onClick={navigateSettings} title="Settings" aria-label="Settings"><House size={iconSize} /><p className='buttonP'>Settings</p></button></li>
                 </ul>
+                  
             </div>
             </div>
     );
