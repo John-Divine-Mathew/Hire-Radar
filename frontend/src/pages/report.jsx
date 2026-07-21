@@ -16,7 +16,14 @@ import {
 } from "recharts";
 import Sidebar from "../components/sideBar/sideBar";
 import Navbar from "../components/navBar/navBar.jsx";
-import { TrendingUp, Users, Briefcase, Clock } from "lucide-react";
+import {
+  TrendingUp,
+  Users,
+  Briefcase,
+  Clock,
+  Download,
+  CheckCircle,
+} from "lucide-react";
 
 // Vacancy Report Data
 const vacancyData = [
@@ -99,9 +106,15 @@ const ReportSection = ({ title, children, icon: Icon }) => (
 
 export default function Report() {
   const [activeTab, setActiveTab] = useState("vacancy");
+  const [showDownloadPopup, setShowDownloadPopup] = useState(false);
+
+  const handleDownload = () => {
+    // Custom download logic can go here
+    setShowDownloadPopup(true);
+  };
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-[#F8FAFC]">
+    <div className="relative flex h-screen flex-col overflow-hidden bg-[#F8FAFC]">
       <Navbar />
 
       <div className="flex flex-1 min-h-0">
@@ -109,7 +122,17 @@ export default function Report() {
         <div className="flex min-w-0 flex-1 flex-col bg-slate-50">
           {/* Header */}
           <div className="shrink-0 flex justify-between items-center border-b border-slate-200 bg-slate-50 p-5">
-            <h1 className="text-4xl font-bold text-[#1E293B]">Reports</h1>
+            <h1 className="text-4xl font-bold text-[#1E293B]">
+              Reports
+            </h1>
+
+            <button
+              onClick={handleDownload}
+              className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-5 py-3 rounded-lg font-semibold shadow transition cursor-pointer"
+            >
+              <Download size={20} />
+              Download Data
+            </button>
           </div>
 
           <div className="flex-1 overflow-y-auto p-5">
@@ -414,6 +437,33 @@ export default function Report() {
           </div>
         </div>
       </div>
+
+      {/* Download Success Modal Popup */}
+      {showDownloadPopup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl p-10 w-[500px] max-w-[90%] text-center">
+            <CheckCircle
+              size={90}
+              className="mx-auto text-green-500 mb-6"
+            />
+
+            <h2 className="text-3xl font-bold text-slate-800 mb-3">
+              Download Successful
+            </h2>
+
+            <p className="text-slate-600 text-lg mb-8">
+              Your datas have successfully downloaded
+            </p>
+
+            <button
+              onClick={() => setShowDownloadPopup(false)}
+              className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-lg font-semibold transition cursor-pointer"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
