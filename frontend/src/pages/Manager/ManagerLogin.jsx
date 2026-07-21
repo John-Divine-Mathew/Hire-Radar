@@ -10,8 +10,9 @@ export default function ManagerLogin() {
         managerid: "", 
         managerName: "",
         managerEmail: "",
-        department: "",
+        department: "",             // Manager's Department
         jobTitle: "",
+        targetDepartment: "",       // Department for the hiring requirement
         experience: "",
         employmentType: "Full Time",
         openings: 1,
@@ -57,13 +58,14 @@ export default function ManagerLogin() {
 
             alert("Request Submitted Successfully");
             
-            // Reset form (re-applying today's date as default)
+            // Reset form
             setForm({
                 managerid: "",
                 managerName: "",
                 managerEmail: "",
                 department: "",
                 jobTitle: "",
+                targetDepartment: "",
                 experience: "",
                 employmentType: "Full Time",
                 openings: 1,
@@ -98,6 +100,7 @@ export default function ManagerLogin() {
                 </div>
 
                 <div className="bg-white rounded-3xl mt-8 shadow-lg border border-gray-200 p-10">
+                    {/* Manager Information Section */}
                     <h2 className="text-2xl font-semibold mb-8">
                         Manager Information
                     </h2>
@@ -123,27 +126,39 @@ export default function ManagerLogin() {
                             />
                         </div>
                         <div>
-                            <label className="font-medium">Department</label>
+                            <label className="font-medium">Manager Department</label>
                             <input
                                 name="department"
                                 value={form.department}
                                 onChange={handleChange}
                                 className="w-full border rounded-xl p-3 mt-2"
+                                placeholder="e.g. Operations"
                             />
                         </div>
                     </div>
 
+                    {/* Job Requirement Section */}
                     <h2 className="text-2xl font-semibold mt-10 mb-8">
                         Job Requirement
                     </h2>
                     <div className="grid grid-cols-2 gap-6">
                         <div>
-                            <label>Job Title</label>
+                            <label className="font-medium">Job Title</label>
                             <input
                                 name="jobTitle"
                                 value={form.jobTitle}
                                 onChange={handleChange}
                                 className="w-full border rounded-xl p-3 mt-2"
+                            />
+                        </div>
+                        <div>
+                            <label className="font-medium">Hiring Department</label>
+                            <input
+                                name="targetDepartment"
+                                value={form.targetDepartment}
+                                onChange={handleChange}
+                                className="w-full border rounded-xl p-3 mt-2"
+                                placeholder="e.g. Engineering, HR"
                             />
                         </div>
                         <div>
