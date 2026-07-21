@@ -743,72 +743,83 @@ app.post("/hireRadar/managerrequest", async (req, res) => {
     }
 });
 
-    app.get("/hireRadar/managerrequest", async (req, res) => {
+// GET all manager requests with joined manager details
+app.get("/hireRadar/managerrequest", async (req, res) => {
     try {
         const result = await pool.query(`
-        SELECT
-            r.requestid,
-            r.managerid,
-            r.manager_name AS managername,
-            r.manager_email AS email,
-            r.department,
-            r.job_title AS job_title,
-            r.experience,
-            r.openings,
-            r.status,
-            m.designation
-        FROM manager_requests r
-        LEFT JOIN managerlogin m ON r.managerid = m.managerid
-        ORDER BY r.requestid DESC
+            SELECT
+                r.request_id,
+                r.managerid,
+                r.manager_name,
+                r.manager_email,
+                r.department,
+                r.target_department,
+                r.job_title,
+                r.experience,
+                r.salary_min,
+                r.salary_max,
+                r.openings,
+                r.vacancies,
+                r.status,
+                r.created_at,
+                m.designation
+            FROM manager_requests r
+            LEFT JOIN managerlogin m ON r.managerid = m.managerid
+            ORDER BY r.request_id DESC
         `);
 
         res.json(result.rows);
     } catch (err) {
-        console.error(err.message);
+        console.error("Fetch requests error:", err.message);
         res.status(500).json({ error: err.message });
     }
-    });
+});
 
-    app.get("/hireRadar/managerrequest/:managerid",async(req,res)=>{
+// GET manager requests for a specific manager
+app.get("/hireRadar/managerrequest/:managerid", async (req, res) => {
+    try {
+        const { managerid } = req.params;
+        const parsedManagerId = parseInt(managerid, 10);
 
-    try{
-
-    const {managerid}=req.params;
-
-    const data=await pool.query(
-
-    "SELECT * FROM manager_requests WHERE managerid=$1 ORDER BY requestid DESC",
-
-    [managerid]
-
-    );
-
-    res.json(data.rows);
-
-    }
-
-    catch(err){
-
-    console.log(err.message);
-
-    res.status(500).json(err.message);
-
-    }
-
-    });
-
-    app.put("/hireRadar/managerrequeststatus/:requestid", async (req, res) => {
-        try {
-            const { requestid } = req.params;
-            const { status } = req.body;
-
-            const data = await pool.query(
-                "UPDATE manager_requests SET status = $1 WHERE requestid = $2 RETURNING *",
-                [status, requestid]
-            );
-            res.json(data.rows[0]);
-        } catch (err) {
-            console.log(err.message);
-            res.status(500).json(err.message);
+        if (isNaN(parsedManagerId)) {
+            return res.status(400).json({ error: "Invalid Manager ID" });
         }
-    });
+
+        const data = await pool.query(
+            "SELECT * FROM manager_requests WHERE managerid = $1 ORDER BY request_id DESC",
+            [parsedManagerId]
+        );
+
+        res.json(data.rows);
+    } catch (err) {
+        console.error("Fetch manager request error:", err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// UPDATE status of a specific manager request
+app.put("/hireRadar/managerrequeststatus/:requestid", async (req, res) => {
+    try {
+        const { requestid } = req.params;
+        const { status } = req.body;
+        const parsedRequestId = parseInt(requestid, 10);
+
+        if (isNaN(parsedRequestId)) {
+            return res.status(400).json({ error: "Invalid Request ID" });
+        }
+
+        const data = await pool.query(
+            "UPDATE manager_requests SET status = $1 WHERE request_id = $2 RETURNING *",
+            [status, parsedRequestId]
+        );
+
+        if (data.rows.length === 0) {
+            return res.status(404).json({ error: "Request not found" });
+        }
+
+        res.json(data.rows[0]);
+    } catch (err) {
+        console.error("Update request status error:", err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
