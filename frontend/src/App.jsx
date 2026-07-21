@@ -16,6 +16,7 @@ import Dashboard_v2 from './pages/dashboard_v2.jsx';
 import ManagerLogin from './pages/Manager/ManagerLogin.jsx';
 import ManagerRequest from './pages/ManagerRequest.jsx';
 import InterviewScheduler from './pages/InterviewScheduler.jsx';
+import Settings from './pages/Settings.jsx';
 
 function App() {
   return (
@@ -39,13 +40,14 @@ function App() {
         <Route path="/dashboard_v2" element={<Dashboard_v2 />} />
         <Route path="/manager-login" element={<ManagerLogin />} />
         <Route path="/interview-scheduler" element={<InterviewScheduler />} />
-        
-      
+        <Route path="/settings" element={<Settings />} />
       </Routes>
     </BrowserRouter>
-    // <CandidateProfile />
-    // <Analytics />
   );
 }
+        
+    
+    // <CandidateProfile />
+    // <Analytics />
 
 export default App;
