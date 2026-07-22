@@ -711,13 +711,6 @@ function ImportDrive() {
       } catch (e) { /* Fallback to standard text layout below */ }
     }
 
-    // 5. NATIVE TEXT-BASED PREVIEWS (.txt, .docx, .doc, etc.)
-    // NOTE: previously this was `if ([...].includes(ext) || content)`, which
-    // meant ANY doc with non-empty extracted text — including a pdf whose
-    // `ext` failed to match branch 2 for whatever reason — would render here
-    // instead. Restricting the `|| content` fallback to extensions NOT
-    // already handled by an earlier branch keeps pdf/image/xlsx/json docs
-    // locked to their dedicated (correctly toolbar'd) preview branches.
     if (['txt', 'docx', 'doc'].includes(ext) || (content && !KNOWN_SPECIAL_EXTS.includes(ext))) {
       const paragraphs = content.split('\n');
       return (

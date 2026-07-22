@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { GoogleGenAI } from '@google/genai';
+import 'dotenv/config'; 
 
 // Initialize the client. 
 // NOTE: For client-side environments, use the /web entrypoint if available.
