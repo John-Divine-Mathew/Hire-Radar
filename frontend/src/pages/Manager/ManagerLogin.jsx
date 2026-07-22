@@ -113,6 +113,7 @@ export default function ManagerLogin() {
                                 value={form.managerName}
                                 onChange={handleChange}
                                 className="w-full border rounded-xl p-3 mt-2"
+                                placeholder="e.g. Mathew"
                             />
                         </div>
                         <div>
@@ -123,6 +124,7 @@ export default function ManagerLogin() {
                                 value={form.managerEmail}
                                 onChange={handleChange}
                                 className="w-full border rounded-xl p-3 mt-2"
+                                placeholder="mathew@hirotecindia.com"
                             />
                         </div>
                         <div>
@@ -132,7 +134,7 @@ export default function ManagerLogin() {
                                 value={form.department}
                                 onChange={handleChange}
                                 className="w-full border rounded-xl p-3 mt-2"
-                                placeholder="e.g. Operations"
+                                placeholder="e.g. Automation"
                             />
                         </div>
                     </div>
@@ -149,6 +151,7 @@ export default function ManagerLogin() {
                                 value={form.jobTitle}
                                 onChange={handleChange}
                                 className="w-full border rounded-xl p-3 mt-2"
+                                placeholder="e.g. Design Engineer"
                             />
                         </div>
                         <div>
@@ -168,6 +171,7 @@ export default function ManagerLogin() {
                                 value={form.experience}
                                 onChange={handleChange}
                                 className="w-full border rounded-xl p-3 mt-2"
+                                placeholder="3-4 years"
                             />
                         </div>
                         <div>
@@ -223,6 +227,7 @@ export default function ManagerLogin() {
                                 value={form.location}
                                 onChange={handleChange}
                                 className="w-full border rounded-xl p-3 mt-2"
+                                placeholder="e.g. Chennai "
                             />
                         </div>
                         <div>
