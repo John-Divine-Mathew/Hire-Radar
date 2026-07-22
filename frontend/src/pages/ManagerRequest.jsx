@@ -9,6 +9,11 @@ export default function ManagerRequest() {
     const [loading, setLoading] = useState(true);
     const [statusFilter, setStatusFilter] = useState("All");
 
+    // State for AI JD Modal
+    const [selectedRequest, setSelectedRequest] = useState(null);
+    const [aiJdData, setAiJdData] = useState(null);
+    const [generatingJd, setGeneratingJd] = useState(false);
+
     const loadRequests = async () => {
         try {
             const res = await axios.get(
@@ -25,6 +30,27 @@ export default function ManagerRequest() {
     useEffect(() => {
         loadRequests();
     }, []);
+
+    // Handler to open modal and generate AI JD for the selected request
+    const handleViewClick = async (item) => {
+        setSelectedRequest(item);
+        setAiJdData(null);
+        setGeneratingJd(true);
+
+        try {
+            const response = await axios.post("http://localhost:5000/hireRadar/generate-jd", {
+                jobTitle: item.job_title || item.jobtitle,
+                department: item.target_department || item.department,
+                experience: item.experience,
+                keySkills: item.designation || item.job_title
+            });
+            setAiJdData(response.data);
+        } catch (err) {
+            console.error("Error generating AI JD:", err);
+        } finally {
+            setGeneratingJd(false);
+        }
+    };
 
     const filtered = requests.filter((item) => {
         const jobTitle = item.job_title || item.jobtitle || "";
@@ -180,7 +206,10 @@ export default function ManagerRequest() {
                                                     </span>
                                                 </td>
                                                 <td className="py-5 px-6">
-                                                    <button className="bg-blue-700 text-white px-5 py-2 rounded-xl text-sm font-semibold hover:bg-blue-800 shadow-md shadow-blue-700/10 hover:shadow-lg transition">
+                                                    <button 
+                                                        onClick={() => handleViewClick(item)}
+                                                        className="bg-blue-700 text-white px-5 py-2 rounded-xl text-sm font-semibold hover:bg-blue-800 shadow-md shadow-blue-700/10 hover:shadow-lg transition flex items-center gap-1"
+                                                    >
                                                         View
                                                     </button>
                                                 </td>
@@ -194,6 +223,82 @@ export default function ManagerRequest() {
                     </div>
                 </div>
             </div>
+
+            {/* AI Generated Job Description Modal */}
+            {selectedRequest && (
+                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex justify-center items-center p-4">
+                    <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl p-6 overflow-y-auto max-h-[90vh]">
+                        <div className="flex justify-between items-center pb-4 border-b border-slate-100">
+                            <div>
+                                <span className="text-xs font-bold text-blue-600 uppercase tracking-wider">AI Generated Job Description</span>
+                                <h2 className="text-xl font-bold text-gray-900">{selectedRequest.job_title || selectedRequest.jobtitle}</h2>
+                            </div>
+                            <button 
+                                onClick={() => setSelectedRequest(null)}
+                                className="text-gray-400 hover:text-gray-600 text-lg font-bold p-2"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        {generatingJd ? (
+                            <div className="py-12 text-center text-gray-500 space-y-3">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-700 mx-auto"></div>
+                                <p className="text-sm font-medium">Generating AI Job Description & Key Responsibilities...</p>
+                            </div>
+                        ) : aiJdData ? (
+                            <div className="mt-4 space-y-5 text-sm text-gray-700">
+                                <div>
+                                    <h4 className="font-semibold text-gray-900 mb-1">Role Summary</h4>
+                                    <p className="bg-slate-50 p-3 rounded-xl border border-slate-100">{aiJdData.roleSummary}</p>
+                                </div>
+
+                                <div>
+                                    <h4 className="font-semibold text-gray-900 mb-1">Key Responsibilities</h4>
+                                    <ul className="list-disc pl-5 space-y-1">
+                                        {aiJdData.keyResponsibilities?.map((resp, idx) => (
+                                            <li key={idx}>{resp}</li>
+                                        ))}
+                                    </ul>
+                                </div>
+
+                                <div>
+                                    <h4 className="font-semibold text-gray-900 mb-1">Required Skills</h4>
+                                    <div className="flex flex-wrap gap-2">
+                                        {aiJdData.requiredSkills?.map((skill, idx) => (
+                                            <span key={idx} className="bg-blue-50 text-blue-700 px-3 py-1 rounded-lg text-xs font-medium border border-blue-100">
+                                                {skill}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4 pt-2 border-t">
+                                    <div>
+                                        <span className="text-xs text-gray-400">Experience Required</span>
+                                        <p className="font-semibold">{aiJdData.experience}</p>
+                                    </div>
+                                    <div>
+                                        <span className="text-xs text-gray-400">Suggested Benchmark Salary</span>
+                                        <p className="font-semibold text-emerald-600">{aiJdData.suggestedSalaryRange}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <p className="py-6 text-center text-red-500 text-sm">Failed to generate AI data. Please try again.</p>
+                        )}
+
+                        <div className="mt-6 pt-4 border-t flex justify-end">
+                            <button
+                                onClick={() => setSelectedRequest(null)}
+                                className="bg-gray-100 text-gray-700 px-5 py-2 rounded-xl text-sm font-semibold hover:bg-gray-200 transition"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
