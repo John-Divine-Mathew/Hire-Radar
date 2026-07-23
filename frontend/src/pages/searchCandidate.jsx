@@ -10,7 +10,7 @@ function SearchCandidatePage() {
     const [locationInput, setLocationInput] = useState(''); 
     const [errorMessage, setErrorMessage] = useState('');
     
-    // Tracks the actual active filters currently driving RenderList API fetches
+    // Tracks the active filters driving RenderList API queries
     const [activeSourcingFilters, setActiveSourcingFilters] = useState({
         JobTitle: '', 
         MinExp: '',
@@ -25,7 +25,7 @@ function SearchCandidatePage() {
         SidebarSkills: ''
     });
 
-    // Staging state container used to hold pending inputs for workspace parameters
+    // Pending state container for inputs
     const [filterValues, setFilterValues] = useState({ ...activeSourcingFilters });
 
     const handleSidebarChange = (field, value) => {
@@ -38,20 +38,20 @@ function SearchCandidatePage() {
             e.preventDefault();
             const trimmed = skillInput.trim();
             if (trimmed && !filterValues.Skills.includes(trimmed)) {
-                setFilterValues({
-                    ...filterValues,
-                    Skills: [...filterValues.Skills, trimmed]
-                });
+                setFilterValues((prev) => ({
+                    ...prev,
+                    Skills: [...prev.Skills, trimmed]
+                }));
             }
             setSkillInput('');
         }
     };
 
     const removeSkillTag = (skillToRemove) => {
-        setFilterValues({
-            ...filterValues,
-            Skills: filterValues.Skills.filter(s => s !== skillToRemove)
-        });
+        setFilterValues((prev) => ({
+            ...prev,
+            Skills: prev.Skills.filter(s => s !== skillToRemove)
+        }));
     };
 
     const handleKeywordKeyDown = (e) => {
@@ -59,20 +59,20 @@ function SearchCandidatePage() {
             e.preventDefault();
             const trimmed = keywordInput.trim();
             if (trimmed && !filterValues.Keywords.includes(trimmed)) {
-                setFilterValues({
-                    ...filterValues,
-                    Keywords: [...filterValues.Keywords, trimmed]
-                });
+                setFilterValues((prev) => ({
+                    ...prev,
+                    Keywords: [...prev.Keywords, trimmed]
+                }));
             }
             setKeywordInput('');
         }
     };
 
     const removeKeywordTag = (keywordToRemove) => {
-        setFilterValues({
-            ...filterValues,
-            Keywords: filterValues.Keywords.filter(k => k !== keywordToRemove)
-        });
+        setFilterValues((prev) => ({
+            ...prev,
+            Keywords: prev.Keywords.filter(k => k !== keywordToRemove)
+        }));
     };
 
     const handleLocationKeyDown = (e) => {
@@ -80,23 +80,22 @@ function SearchCandidatePage() {
             e.preventDefault();
             const trimmed = locationInput.trim();
             if (trimmed && !filterValues.LocationSearch.includes(trimmed)) {
-                setFilterValues({
-                    ...filterValues,
-                    LocationSearch: [...filterValues.LocationSearch, trimmed]
-                });
+                setFilterValues((prev) => ({
+                    ...prev,
+                    LocationSearch: [...prev.LocationSearch, trimmed]
+                }));
             }
             setLocationInput('');
         }
     };
 
     const removeLocationTag = (locationToRemove) => {
-        setFilterValues({
-            ...filterValues,
-            LocationSearch: filterValues.LocationSearch.filter(l => l !== locationToRemove)
-        });
+        setFilterValues((prev) => ({
+            ...prev,
+            LocationSearch: prev.LocationSearch.filter(l => l !== locationToRemove)
+        }));
     };
 
-    // Submits and updates everything from the workspace panel explicitly
     const handleSearchSubmit = () => {
         setErrorMessage('');
         setActiveSourcingFilters({ ...filterValues });
@@ -105,7 +104,6 @@ function SearchCandidatePage() {
     const handleClearFilters = () => {
         setErrorMessage("");
         
-        // Clear ONLY the sidebar fields in state, leave workspace selections untouched
         const clearedSidebar = {
             SidebarLocation: '',
             SidebarExperience: '',
@@ -196,7 +194,7 @@ function SearchCandidatePage() {
                         </div>
                     </div>
 
-                    {/* Right Pane: Sourcing Workspace Container */}
+                    {/* Right Pane: Workspace Container */}
                     <div className="flex-1 p-6 space-y-6 min-w-0 flex flex-col h-full overflow-hidden">
                         
                         {/* Top Input Form Container */}
