@@ -8,6 +8,8 @@
     const React = require("react");
     const { TestScheduledEmail } = require('./emails/template.tsx');
     const managerRequestRoutes = require("./routes/managerRequest");
+    const { GoogleGenAI } = require("@google/genai");
+    
 
     const {
         initializeSearchService,
@@ -823,3 +825,100 @@ app.put("/hireRadar/managerrequeststatus/:requestid", async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+
+
+
+
+
+
+
+
+// --- AI Job Description Generator Route ---
+app.post("/hireRadar/generate-jd", async (req, res) => {
+  const { jobTitle, department, experience, keySkills } = req.body;
+
+  if (!jobTitle) {
+    return res.status(400).json({ error: "Job title is required." });
+  }
+
+  const apiKey = process.env.GEMINI_API_KEY;
+
+  try {
+    if (apiKey) {
+      const promptText = `
+        You are an expert HR Specialist. Generate a detailed and professional Job Description (JD) in JSON format based on these parameters:
+        - Job Title: ${jobTitle}
+        - Department: ${department || "Engineering / Technology"}
+        - Experience Level: ${experience || "3-5 years"}
+        - Key Skills/Responsibilities: ${keySkills || "Standard domain skills"}
+
+        Return ONLY a valid raw JSON object matching this schema:
+        {
+          "roleSummary": "Brief overview of the role...",
+          "keyResponsibilities": ["Responsibility 1", "Responsibility 2", "Responsibility 3"],
+          "requiredSkills": ["Skill 1", "Skill 2", "Skill 3"],
+          "experience": "${experience || "3-5 years"}",
+          "suggestedSalaryRange": "₹8,00,000 - ₹12,00,000 per annum"
+        }
+      `;
+
+      // Pass API key via x-goog-api-key header (required for AQ. keys)
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent`,
+        {
+          method: "POST",
+          headers: { 
+            "Content-Type": "application/json",
+            "x-goog-api-key": apiKey.trim()
+          },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: promptText }] }],
+            generationConfig: {
+              responseMimeType: "application/json",
+            },
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
+        let rawText = data.candidates[0].content.parts[0].text;
+        rawText = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
+        const jdData = JSON.parse(rawText);
+        return res.status(200).json(jdData);
+      } else {
+        console.warn("⚠️ Gemini API Call failed. Response:", data);
+      }
+    }
+  } catch (err) {
+    console.error("⚠️ Gemini API Request Error:", err.message);
+  }
+
+  // Fallback: Default structured JD if API key fails
+  console.log("ℹ️ Generating Fallback Job Description for:", jobTitle);
+  const fallbackJD = {
+    roleSummary: `We are looking for an experienced ${jobTitle} to join our ${department || "Engineering"} team. The ideal candidate will drive success, collaborate across teams, and execute high-quality work.`,
+    keyResponsibilities: [
+      `Lead and execute day-to-day operations for ${jobTitle} tasks.`,
+      "Collaborate with cross-functional teams to achieve organizational goals.",
+      "Analyze workflows, identify bottlenecks, and implement continuous improvements."
+    ],
+    requiredSkills: keySkills ? keySkills.split(",").map(s => s.trim()) : [
+      "Problem Solving",
+      "Team Collaboration",
+      "Domain Expertise",
+      "Communication Skills"
+    ],
+    experience: experience || "3-5 years",
+    suggestedSalaryRange: "₹8,00,000 - ₹12,00,000 per annum"
+  };
+
+  return res.status(200).json(fallbackJD);
+});
+
+
+
+
+
+
