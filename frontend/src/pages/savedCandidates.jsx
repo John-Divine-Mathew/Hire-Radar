@@ -1,6 +1,6 @@
 import Sidebar from "../components/sideBar/sideBar";
 import Navbar from "../components/navBar/navBar.jsx";
-import { Funnel, Eye, MoreVertical, UserKey, ChevronDown, ChevronLeft, ChevronRight, X, CheckCircle2, Mail } from "lucide-react";
+import { Funnel, Eye, MoreVertical, ChevronDown, ChevronLeft, ChevronRight, X, CheckCircle2, Mail } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { format } from 'date-fns';
 import { useNavigate } from "react-router-dom";
@@ -64,7 +64,7 @@ function InlineCalendarBooking({ candidateName, onClose, onBookSlot, onSendEmail
 
   const daysOfWeek = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
-  // Hardcoded layout for July 2026 (starts on Wednesday)
+  // Layout for July 2026
   const prefixDays = [28, 29, 30];
   const totalDays = 31;
   const suffixDays = [1, 2, 3, 4, 5, 6, 7, 8];
@@ -462,8 +462,6 @@ function SavedCandidates() {
   const [openMenuId, setOpenMenuId] = useState(null);
   const [credentials, setCredentials] = useState({});
   const [openCredentialMenuId, setOpenCredentialMenuId] = useState(null);
-  const [copyText1, setCopyText1] = useState('Copy');
-  const [copyText2, setCopyText2] = useState('Copy');
 
   const [searchVar, setSearchVar] = useState("");
   const [showFilters, setShowFilters] = useState(false);
@@ -499,7 +497,7 @@ function SavedCandidates() {
       'QA Automation Engineer', 'DevOps Engineer', 'Backend Developer',
       'Frontend Developer', 'IoT Systems Engineer'
     ],
-    Status: ['Applied', 'Interviewing', 'Offered', 'Rejected']
+    Status: ['NA', 'Pending', 'Scheduled', 'Completed', 'Passed', 'Failed']
   };
 
   useEffect(() => {
@@ -689,25 +687,6 @@ function SavedCandidates() {
     nav('/candidateProfile', { state: { tempCndId: null, permCndId: id } });
   }
 
-  const copyToClipboard = async (text, n) => {
-    try {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(text);
-      } else {
-        throw new Error("Clipboard API unavailable");
-      }
-      if (n === 1) {
-        setCopyText1('✓');
-        setTimeout(() => setCopyText1("Copy"), 2000);
-      } else {
-        setCopyText2('✓');
-        setTimeout(() => setCopyText2("Copy"), 2000);
-      }
-    } catch (err) {
-      console.error('copyToClipboard error:', err.message || err);
-    }
-  };
-
   function openCalendar(candidate) {
     setBookingCandidate(candidate);
     setOpenMenuId(null);
@@ -796,9 +775,27 @@ function SavedCandidates() {
     } catch (err) {
       console.error("Error sending confirmation email:", err.message || err);
     }
-
-    console.log("Email payload generated with correct timestamp formatting parameters:", emailPayload);
   }
+
+  // Helper for rendering status badges
+  const renderStatusBadge = (status) => {
+    const s = status || 'NA';
+    let bgClasses = 'bg-gray-100 text-gray-700 border-gray-200';
+
+    if (['passed', 'completed', 'offered', 'passs'].includes(s.toLowerCase())) {
+      bgClasses = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+    } else if (['scheduled', 'interviewing', 'pending', 'applied'].includes(s.toLowerCase())) {
+      bgClasses = 'bg-amber-50 text-amber-700 border-amber-200';
+    } else if (['failed', 'rejected', 'fail'].includes(s.toLowerCase())) {
+      bgClasses = 'bg-rose-50 text-rose-700 border-rose-200';
+    }
+
+    return (
+      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${bgClasses}`}>
+        {s}
+      </span>
+    );
+  };
 
   return (
     <div className="flex h-screen flex-col overflow-hidden">
@@ -951,7 +948,6 @@ function SavedCandidates() {
             </div>
           </div>
 
-          {/* Cleaned layout table card wrapper matching local alignment fixes */}
           <div className="m-6 min-h-0 max-h-[65vh] bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden flex flex-col self-start w-[calc(100%-3rem)]">
             <div className="overflow-x-auto overflow-y-auto flex-1">
               <table className="w-full border-collapse">
@@ -962,6 +958,8 @@ function SavedCandidates() {
                     <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Experience</th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Match Score</th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Saved On</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Test Status</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Interview Status</th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Action</th>
                   </tr>
                 </thead>
@@ -984,7 +982,13 @@ function SavedCandidates() {
                           {candidate.matchScore || '80%'}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-gray-700">{candidate.searchDate || format(new Date(), 'dd/MM/yyyy')}</td>
+                      <td className="px-6 py-4 text-gray-700">{candidate.searchdate || candidate.searchDate || format(new Date(), 'dd/MM/yyyy')}</td>
+                      <td className="px-6 py-4">
+                        {renderStatusBadge(candidate.teststatus)}
+                      </td>
+                      <td className="px-6 py-4">
+                        {renderStatusBadge(candidate.interviewstatus)}
+                      </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <button
@@ -1016,7 +1020,6 @@ function SavedCandidates() {
               </table>
             </div>
 
-            {/* Tight Footer content box */}
             <div className="border-t border-gray-200 px-6 py-4 bg-gray-50 shrink-0">
               <p className="text-sm text-gray-700">Showing 1 to {candidates.length} of {candidates.length} results</p>
             </div>
