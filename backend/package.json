@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
-"scripts": {
+  "scripts": {
     "start": "node --import tsx index.js",
     "dev": "nodemon --exec node --import tsx index.js",
     "email": "email dev"
@@ -13,6 +13,7 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@google/genai": "^2.13.0",
     "@react-email/components": "^1.0.12",
     "chokidar": "^3.5.4",
     "concurrently": "^10.0.3",
