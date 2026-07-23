@@ -14,17 +14,109 @@ import {
 } from 'lucide-react';
 import Sidebar from '../components/sideBar/sideBar.jsx';
 import Navbar from '../components/navBar/navBar.jsx';
-import Tesseract from 'tesseract.js'; 
+import Tesseract from 'tesseract.js';
 import * as pdfjsLib from 'pdfjs-dist/build/pdf';
 import mammoth from 'mammoth';
 import * as XLSX from 'xlsx';
+import { GoogleGenAI } from '@google/genai';
+
 
 const API_BASE_URL = 'http://localhost:5000';
-
-// Extensions that have a dedicated preview branch. Used to keep the generic
-// text/docx catch-all branch from ever swallowing a pdf/image/xlsx/json doc,
-// even if `ext` momentarily fails to match its own branch.
 const KNOWN_SPECIAL_EXTS = ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'xlsx', 'xls', 'csv', 'json'];
+
+// Helper function to safely read the environment variable at runtime
+const getGeminiApiKey = () => {
+  return (
+    (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GEMINI_API_KEY) ||
+    (typeof process !== 'undefined' && process.env?.REACT_APP_GEMINI_API_KEY) ||
+    ''
+  );
+};
+
+// Response Schema specifying all 8 required candidate fields
+const CandidateResumeSchema = {
+  type: 'OBJECT',
+  properties: {
+    name: { type: 'STRING', description: "Candidate's full name" },
+    location: { type: 'STRING', description: "Candidate's current location or city/country" },
+    role: { type: 'STRING', description: 'Designation, job title, or target role' },
+    experience: { type: 'STRING', description: "Total years of experience or summary string (e.g. '5 years')" },
+    saved_date: { type: 'STRING', description: "Date extracted or current date string (YYYY-MM-DD)" },
+    linkedin: { type: 'STRING', description: 'LinkedIn profile URL if present, otherwise empty' },
+    skills: {
+      type: 'ARRAY',
+      items: { type: 'STRING' },
+      description: 'List of technical and soft skills',
+    },
+    education: {
+      type: 'ARRAY',
+      items: { type: 'STRING' },
+      description: 'List of degrees, universities, or educational qualifications',
+    },
+  },
+  required: ['name', 'location', 'role', 'experience', 'saved_date', 'linkedin', 'skills', 'education'],
+};
+
+// Function to analyze raw text using Gemini AI
+const analyzeResumeWithGemini = async (rawText, fileName) => {
+  const currentKey = getGeminiApiKey();
+
+  if (!currentKey) {
+    console.warn(
+      `⚠️ [Gemini AI] Missing API Key. Set VITE_GEMINI_API_KEY or REACT_APP_GEMINI_API_KEY in your .env file to enable Gemini resume extraction.`
+    );
+    return {
+      name: fileName || 'Unknown',
+      location: 'N/A',
+      role: 'N/A',
+      experience: 'N/A',
+      saved_date: new Date().toISOString().split('T')[0],
+      linkedin: 'N/A',
+      skills: [],
+      education: [],
+    };
+  }
+
+  if (!rawText || !rawText.trim()) {
+    return {
+      name: fileName || 'Unknown',
+      location: 'N/A',
+      role: 'N/A',
+      experience: 'N/A',
+      saved_date: new Date().toISOString().split('T')[0],
+      linkedin: 'N/A',
+      skills: [],
+      education: [],
+    };
+  }
+
+try {
+    const ai = new GoogleGenAI({ apiKey: currentKey });
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash', // <-- Updated model identifier
+      contents: `Analyze the following document text parsed from an uploaded file (${fileName}). Extract candidate information into the requested schema structure:\n\n${rawText}`,
+      config: {
+        responseMimeType: 'application/json',
+        responseSchema: CandidateResumeSchema,
+        temperature: 0.1,
+      },
+    });
+
+    return JSON.parse(response.text);
+  } catch (error) {
+    console.error(`Gemini analysis error for ${fileName}:`, error);
+    return {
+      name: fileName,
+      location: 'N/A',
+      role: 'N/A',
+      experience: 'N/A',
+      saved_date: new Date().toISOString().split('T')[0],
+      linkedin: 'N/A',
+      skills: [],
+      education: [],
+    };
+  }
+};
 
 function ImportDrive() {
   const [documents, setDocuments] = useState([]);
@@ -40,18 +132,22 @@ function ImportDrive() {
   const [selectedFile, setSelectedFile] = useState(null);
   const fileInputRef = useRef(null);
   const [viewMode, setViewMode] = useState('native');
-  // The actual URL fed to the <iframe>/<img> in preview. For locally-uploaded
-  // files this is just the existing blob: URL. For backend-loaded files, we
-  // fetch the bytes ourselves and build a fresh blob: URL from them so the
-  // browser renders inline instead of following the download endpoint's
-  // Content-Disposition header and prompting a file save.
   const [previewSrc, setPreviewSrc] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
 
-  // Safely initialize PDFJS properties once mounted to bypass ES Module mutation locks
+  // Safely initialize PDF.js worker without breaking module imports
   useEffect(() => {
     if (pdfjsLib?.GlobalWorkerOptions) {
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version || '3.4.120'}/pdf.worker.min.js`;
+      try {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+          'pdfjs-dist/build/pdf.worker.min.mjs',
+          import.meta.url
+        ).toString();
+      } catch (e) {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${
+          pdfjsLib.version || '3.4.120'
+        }/build/pdf.worker.min.js`;
+      }
     }
   }, []);
 
@@ -60,8 +156,6 @@ function ImportDrive() {
     []
   );
 
-  // Normalizes any extension-ish value: trims whitespace, lowercases, and
-  // strips a leading dot if present (defensive against inconsistent inputs).
   const normalizeExt = (value) => (value || '').toString().trim().toLowerCase().replace(/^\./, '');
 
   const isValidFile = (fileName) => {
@@ -92,22 +186,18 @@ function ImportDrive() {
       const route = searchQuery.trim() ? '/api/search' : '/api/documents';
       const response = await fetch(`${API_BASE_URL}${route}?${params.toString()}`);
       if (!response.ok) throw new Error('Network failed to fetch documents');
-      
+
       const data = await response.json();
-      const normalizedData = data.map(doc => ({
+      const normalizedData = data.map((doc) => ({
         id: doc.id,
         fileName: doc.fileName,
-        // Fall back to deriving the extension from the filename itself if the
-        // backend's `extension` field is missing/blank/mis-cased — this is
-        // what previously let docs silently fall through to the wrong
-        // preview branch (e.g. a pdf rendering as plain extracted text).
         extension: normalizeExt(doc.extension) || normalizeExt(doc.fileName?.split('.').pop()),
         size: doc.fileSizeLabel || formatFileSize(doc.file_size),
         sizeBytes: doc.file_size || 0,
         lastModified: doc.uploadedAt ? new Date(doc.uploadedAt).toLocaleDateString() : new Date().toLocaleDateString(),
         blobURL: `${API_BASE_URL}/api/documents/${doc.id}/download`,
         content: doc.extractedText || '',
-        nlpEntities: doc.nlpEntities || []
+        nlpEntities: doc.nlpEntities || [],
       }));
       setDocuments(normalizedData);
     } catch (err) {
@@ -120,7 +210,7 @@ function ImportDrive() {
   useEffect(() => {
     fetchBackendDocuments('', '', '', 'newest');
     return () => {
-      documents.forEach(doc => {
+      documents.forEach((doc) => {
         if (doc.blobURL && doc.blobURL.startsWith('blob:')) {
           URL.revokeObjectURL(doc.blobURL);
         }
@@ -191,15 +281,19 @@ function ImportDrive() {
   };
 
   const extractTextContent = async (file) => {
-    try { return await file.text(); } catch (e) { return ''; }
+    try {
+      return await file.text();
+    } catch (e) {
+      return '';
+    }
   };
-  
+
   const extractImageText = async (file) => {
     try {
-      const worker = await Tesseract.createWorker('eng', 1, {
-        logger: () => {} 
-      });
-      const { data: { text } } = await worker.recognize(file);
+      const worker = await Tesseract.createWorker('eng', 1, { logger: () => {} });
+      const {
+        data: { text },
+      } = await worker.recognize(file);
       await worker.terminate();
       return text?.trim() || '';
     } catch (error) {
@@ -211,15 +305,13 @@ function ImportDrive() {
   const extractPdfText = async (file) => {
     try {
       const arrayBuffer = await file.arrayBuffer();
-      
-      const pdf = await pdfjsLib.getDocument({ 
+      const pdf = await pdfjsLib.getDocument({
         data: arrayBuffer,
         ignoreErrors: true,
-        verbosity: 0 
+        verbosity: 0,
       }).promise;
-      
+
       let text = '';
-      
       for (let pageNum = 1; pageNum <= pdf.numPages; pageNum += 1) {
         const page = await pdf.getPage(pageNum);
         const content = await page.getTextContent();
@@ -229,18 +321,18 @@ function ImportDrive() {
       if (!text.trim()) {
         let ocrText = '';
         const worker = await Tesseract.createWorker('eng', 1, { logger: () => {} });
-        
         for (let pageNum = 1; pageNum <= pdf.numPages; pageNum += 1) {
           const page = await pdf.getPage(pageNum);
           const viewport = page.getViewport({ scale: 1.5 });
-          
           const canvas = document.createElement('canvas');
           const context = canvas.getContext('2d');
           canvas.height = viewport.height;
           canvas.width = viewport.width;
 
           await page.render({ canvasContext: context, viewport: viewport }).promise;
-          const { data: { text: pageText } } = await worker.recognize(canvas);
+          const {
+            data: { text: pageText },
+          } = await worker.recognize(canvas);
           ocrText += pageText + '\n';
         }
         await worker.terminate();
@@ -249,7 +341,7 @@ function ImportDrive() {
 
       return text.trim();
     } catch (e) {
-      console.error('Failed reading PDF content matrix layers:', e);
+      console.error('Failed reading PDF content:', e);
       return '';
     }
   };
@@ -299,6 +391,21 @@ function ImportDrive() {
           const content = await extractFileContent(file);
           const blobURL = URL.createObjectURL(file);
 
+          // Extract Structured Metadata via Gemini AI
+          const parsedMetadata = await analyzeResumeWithGemini(content, file.name);
+
+          // Log the 8 required candidate profile fields to console
+          console.log(`📄 Document Log [${file.name}]:`, {
+            name: parsedMetadata.name,
+            location: parsedMetadata.location,
+            'role/designation': parsedMetadata.role,
+            experience: parsedMetadata.experience,
+            'saved date': parsedMetadata.saved_date,
+            'linkedin profile link': parsedMetadata.linkedin,
+            skills: parsedMetadata.skills,
+            education: parsedMetadata.education,
+          });
+
           newDocuments.push({
             id: crypto.randomUUID(),
             fileName: file.name,
@@ -309,7 +416,7 @@ function ImportDrive() {
             lastModified: new Date(file.lastModified).toLocaleDateString(),
             blobURL: blobURL,
             content: content,
-            nlpEntities: []
+            nlpEntities: parsedMetadata.skills || [],
           });
         }
       } else if (item.kind === 'directory' || item.isDirectory) {
@@ -351,9 +458,9 @@ function ImportDrive() {
       if (entries.length > 0) {
         const newDocs = await processFilesRecursively(entries);
         setDocuments((prev) => [...newDocs, ...prev]);
-        
+
         if (selectedFile) {
-          const matched = newDocs.find(d => d.fileName === selectedFile.fileName);
+          const matched = newDocs.find((d) => d.fileName === selectedFile.fileName);
           if (matched) setSelectedFile(matched);
         }
       }
@@ -375,7 +482,7 @@ function ImportDrive() {
           console.error(`Failed uploading ${file.name} to server backend:`, uploadErr);
         }
       }
-      
+
       fetchBackendDocuments('', '', '', 'newest');
     } catch (error) {
       console.error('Error processing uploaded items:', error);
@@ -405,7 +512,6 @@ function ImportDrive() {
   };
 
   const openPreview = async (file) => {
-    // Clean up any previously created preview blob URL before switching files.
     if (previewSrc && previewSrc.startsWith('blob:')) {
       URL.revokeObjectURL(previewSrc);
     }
@@ -414,16 +520,11 @@ function ImportDrive() {
     setPreviewOpen(true);
     setViewMode('native');
 
-    // Locally-uploaded files already have a blob: URL from processFilesRecursively — use it as-is.
     if (file.blobURL && file.blobURL.startsWith('blob:')) {
       setPreviewSrc(file.blobURL);
       return;
     }
 
-    // Backend-loaded files: fetch the bytes ourselves rather than pointing
-    // the iframe/img straight at the download endpoint. Loading that URL
-    // directly makes the browser honor the response's Content-Disposition
-    // header and prompt a save-file dialog instead of rendering it.
     setPreviewSrc(null);
     setPreviewLoading(true);
     try {
@@ -433,7 +534,7 @@ function ImportDrive() {
       const objectUrl = URL.createObjectURL(blob);
       setPreviewSrc(objectUrl);
     } catch (err) {
-      console.error('Unable to load inline preview, falling back to none:', err);
+      console.error('Unable to load inline preview:', err);
       setPreviewSrc(null);
     } finally {
       setPreviewLoading(false);
@@ -483,7 +584,7 @@ function ImportDrive() {
 
   const highlightSnippet = (text = '', searchKeyword = '') => {
     if (!searchKeyword.trim() || !text) return text.slice(0, 140) + '...';
-    
+
     const index = text.toLowerCase().indexOf(searchKeyword.toLowerCase());
     if (index === -1) return text.slice(0, 140) + '...';
 
@@ -509,15 +610,9 @@ function ImportDrive() {
 
   const renderPreviewContent = () => {
     if (!selectedFile) return null;
-    // Normalized once here so every branch below is checked against the same
-    // trimmed/lowercased value — this is what previously let a pdf (or any
-    // doc whose extension field was blank/mis-cased coming from the backend)
-    // silently fall through to the generic text-preview branch instead of
-    // its dedicated one.
     const ext = normalizeExt(selectedFile.extension);
     const content = selectedFile.content || '';
 
-    // 1. SPECIFIC IMAGE PREVIEW WORKSPACE (Retained with toggle)
     if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext)) {
       return (
         <div className="w-full flex flex-col h-[68vh] rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shadow-sm">
@@ -526,13 +621,21 @@ function ImportDrive() {
             <div className="flex bg-slate-200/80 p-0.5 rounded-lg border border-slate-300/40">
               <button
                 onClick={() => setViewMode('native')}
-                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${viewMode === 'native' ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
+                  viewMode === 'native'
+                    ? 'bg-white text-purple-700 shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
               >
                 Native Image View
               </button>
               <button
                 onClick={() => setViewMode('extracted')}
-                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${viewMode === 'extracted' ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
+                  viewMode === 'extracted'
+                    ? 'bg-white text-purple-700 shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
               >
                 Extracted OCR Text
               </button>
@@ -546,10 +649,10 @@ function ImportDrive() {
                   <LoaderCircle size={18} className="animate-spin" /> Loading preview…
                 </div>
               ) : previewSrc ? (
-                <img 
-                  src={previewSrc} 
-                  alt={selectedFile.fileName} 
-                  className="max-w-full max-h-[58vh] object-contain rounded-lg shadow-sm select-none" 
+                <img
+                  src={previewSrc}
+                  alt={selectedFile.fileName}
+                  className="max-w-full max-h-[58vh] object-contain rounded-lg shadow-sm select-none"
                 />
               ) : (
                 <div className="flex flex-col items-center justify-center py-24 text-slate-400">
@@ -565,7 +668,6 @@ function ImportDrive() {
                 ) : (
                   <div className="flex flex-col items-center justify-center py-24 text-slate-400">
                     <p className="italic font-sans">No text found inside this image layer.</p>
-                    <p className="text-[11px] text-slate-400 mt-1 not-italic">Ensure Tesseract processing is fully complete.</p>
                   </div>
                 )}
               </div>
@@ -575,7 +677,6 @@ function ImportDrive() {
       );
     }
 
-    // 2. SPECIFIC PDF DOCUMENT WORKSPACE
     if (ext === 'pdf') {
       return (
         <div className="w-full flex flex-col h-[68vh] rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shadow-sm">
@@ -584,13 +685,21 @@ function ImportDrive() {
             <div className="flex bg-slate-200/80 p-0.5 rounded-lg border border-slate-300/40">
               <button
                 onClick={() => setViewMode('native')}
-                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${viewMode === 'native' ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
+                  viewMode === 'native'
+                    ? 'bg-white text-purple-700 shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
               >
                 Native Document View
               </button>
               <button
                 onClick={() => setViewMode('extracted')}
-                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${viewMode === 'extracted' ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
+                  viewMode === 'extracted'
+                    ? 'bg-white text-purple-700 shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
               >
                 Extracted Text Layer
               </button>
@@ -623,7 +732,6 @@ function ImportDrive() {
                 ) : (
                   <div className="flex flex-col items-center justify-center py-24 text-slate-400">
                     <p className="italic font-sans">No text found inside this PDF layer.</p>
-                    <p className="text-[11px] text-slate-400 mt-1 not-italic">Ensure document parsing is complete or use native view layers instead.</p>
                   </div>
                 )}
               </div>
@@ -633,9 +741,8 @@ function ImportDrive() {
       );
     }
 
-    // 3. SPREADSHEETS
     if (['xlsx', 'xls', 'csv'].includes(ext)) {
-      const rows = content.split('\n').filter(row => row.trim());
+      const rows = content.split('\n').filter((row) => row.trim());
       const getExcelColLabel = (index) => String.fromCharCode(65 + (index % 26));
 
       return (
@@ -645,16 +752,22 @@ function ImportDrive() {
               <thead>
                 <tr className="bg-slate-100 border-b border-slate-300 sticky top-0 z-20 shadow-[0_1px_0_rgba(0,0,0,0.05)]">
                   <th className="w-10 bg-slate-200 text-center border-r border-slate-300 p-1.5 text-[10px] font-bold text-slate-500 font-mono sticky left-0 z-30"></th>
-                  {rows[0] && rows[0].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map((_, idx) => (
-                    <th key={idx} className="w-[160px] p-2 bg-slate-100 text-slate-600 font-semibold font-mono border-r border-slate-300 text-center tracking-wider text-[11px]">
-                      {getExcelColLabel(idx)}
-                    </th>
-                  ))}
+                  {rows[0] &&
+                    rows[0]
+                      .split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/)
+                      .map((_, idx) => (
+                        <th
+                          key={idx}
+                          className="w-[160px] p-2 bg-slate-100 text-slate-600 font-semibold font-mono border-r border-slate-300 text-center tracking-wider text-[11px]"
+                        >
+                          {getExcelColLabel(idx)}
+                        </th>
+                      ))}
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-slate-100">
                 {rows.map((row, rIdx) => {
-                  const cells = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/); 
+                  const cells = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
                   return (
                     <tr key={rIdx} className="hover:bg-purple-50/30 group transition-colors">
                       <td className="bg-slate-50 border-r border-slate-300 text-center p-1.5 font-mono text-[10px] text-slate-400 font-medium sticky left-0 z-10 group-hover:bg-purple-100/50 group-hover:text-purple-700 transition-colors">
@@ -663,10 +776,12 @@ function ImportDrive() {
                       {cells.map((cell, cIdx) => {
                         const formattedValue = cell.replace(/^"|font="/g, '').replace(/"$/g, '').trim();
                         return (
-                          <td 
-                            key={cIdx} 
+                          <td
+                            key={cIdx}
                             title={formattedValue}
-                            className={`p-2.5 border-r border-slate-200 truncate font-normal text-slate-700 tracking-wide ${rIdx === 0 ? 'bg-slate-50/80 font-medium text-slate-900' : ''}`}
+                            className={`p-2.5 border-r border-slate-200 truncate font-normal text-slate-700 tracking-wide ${
+                              rIdx === 0 ? 'bg-slate-50/80 font-medium text-slate-900' : ''
+                            }`}
                           >
                             {formattedValue || <span className="text-slate-300 font-serif">-</span>}
                           </td>
@@ -682,12 +797,11 @@ function ImportDrive() {
       );
     }
 
-    // 4. JSON METADATA
     if (ext === 'json') {
       try {
         const parsed = typeof content === 'object' ? content : JSON.parse(content);
         const jsonStr = JSON.stringify(parsed, null, 2);
-        
+
         return (
           <div className="w-full max-h-[65vh] overflow-auto bg-slate-950 p-6 rounded-xl font-mono text-xs shadow-xl leading-relaxed border border-slate-800">
             <pre className="text-slate-300 whitespace-pre-wrap break-all">
@@ -703,12 +817,16 @@ function ImportDrive() {
                     </span>
                   );
                 }
-                return <div key={lIdx} className="hover:bg-slate-900/40 px-2 py-0.5 rounded transition-colors">{styledLine}</div>;
+                return (
+                  <div key={lIdx} className="hover:bg-slate-900/40 px-2 py-0.5 rounded transition-colors">
+                    {styledLine}
+                  </div>
+                );
               })}
             </pre>
           </div>
         );
-      } catch (e) { /* Fallback to standard text layout below */ }
+      } catch (e) {}
     }
 
     if (['txt', 'docx', 'doc'].includes(ext) || (content && !KNOWN_SPECIAL_EXTS.includes(ext))) {
@@ -718,7 +836,7 @@ function ImportDrive() {
           {paragraphs.map((para, idx) => {
             const trimmed = para.trim();
             if (!trimmed) return <div key={idx} className="h-3" />;
-            
+
             if (trimmed.length < 75 && (trimmed.toUpperCase() === trimmed || trimmed.endsWith(':') || trimmed.startsWith('##'))) {
               return (
                 <h4 key={idx} className="font-sans font-bold text-base text-slate-900 pt-4 tracking-tight border-b border-slate-100 pb-1">
@@ -726,18 +844,23 @@ function ImportDrive() {
                 </h4>
               );
             }
-            return <p key={idx} className="text-slate-700 indent-2 tracking-wide font-normal">{trimmed}</p>;
+            return (
+              <p key={idx} className="text-slate-700 indent-2 tracking-wide font-normal">
+                {trimmed}
+              </p>
+            );
           })}
         </div>
       );
     }
 
-    // UNKNOWN FORMATS
     return (
       <div className="text-center p-12 bg-white rounded-xl border border-slate-200 shadow-sm max-w-sm mx-auto">
         <p className="font-bold text-slate-800 text-base">Preview Not Supported</p>
-        <p className="text-xs text-slate-400 mt-1 mb-6">This file node cannot be displayed inline inside your web app workspace window view.</p>
-        <button 
+        <p className="text-xs text-slate-400 mt-1 mb-6">
+          This file node cannot be displayed inline inside your web app workspace window view.
+        </p>
+        <button
           onClick={() => downloadFile(selectedFile)}
           className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2.5 rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 transition active:scale-95 shadow-sm"
         >
@@ -758,7 +881,9 @@ function ImportDrive() {
           <div className="flex justify-between items-center mb-2 shrink-0">
             <div>
               <h1 className="text-2xl font-bold">Import Workspace</h1>
-              <p className="text-sm text-gray-500">Upload directory document roots to index and search file content keywords instantly.</p>
+              <p className="text-sm text-gray-500">
+                Upload directory document roots to index and search file content keywords instantly.
+              </p>
             </div>
           </div>
 
@@ -797,7 +922,10 @@ function ImportDrive() {
 
             <button
               className="bg-purple-600 text-white px-6 py-2.5 rounded-lg text-sm font-semibold tracking-wide shadow-sm hover:bg-purple-700 transition duration-150"
-              onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                fileInputRef.current?.click();
+              }}
             >
               {isUploading ? 'Processing File Trees...' : 'Browse Drive Folder'}
             </button>
@@ -823,7 +951,9 @@ function ImportDrive() {
                 onKeyDown={(e) => e.key === 'Enter' && executeSearch(searchTerm)}
                 className="w-full pl-10 pr-10 py-2 bg-slate-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
               />
-              {isLoading && <LoaderCircle size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-purple-600 animate-spin" />}
+              {isLoading && (
+                <LoaderCircle size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-purple-600 animate-spin" />
+              )}
             </div>
 
             <div className="flex items-center gap-2 text-xs text-gray-500">
@@ -835,7 +965,9 @@ function ImportDrive() {
               >
                 <option value="">All Extensions</option>
                 {supportedExtensions.map((ext) => (
-                  <option key={ext} value={ext}>{ext.toUpperCase()}</option>
+                  <option key={ext} value={ext}>
+                    {ext.toUpperCase()}
+                  </option>
                 ))}
               </select>
             </div>
