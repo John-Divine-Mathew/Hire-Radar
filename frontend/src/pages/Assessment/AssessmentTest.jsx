@@ -35,18 +35,18 @@ const [tabSwitchDetected, setTabSwitchDetected] = useState(false);
    getListData();
  },[]);
  
- async function setFinalResult(percentage){
+  async function setFinalResult(percentage){
    try {
      const response1 = await fetch("http://localhost:5000/hireRadar/setTestResult",{
        method: "POST",
        headers: { "Content-Type": "application/json" },
-       body: JSON.stringify({'result':percentage, 'cndid':cndid})
+       body: JSON.stringify({result:percentage, cndid:cndid, teststatus: percentage>=50.00?'Pass':'Fail'})
      });
      const jsonData1 = await response1.json();
    } catch (err) {
      console.log(err.message);
    }
- }
+  }
  
  useEffect(() => {
    if (!testStarted || isSubmitted) return;

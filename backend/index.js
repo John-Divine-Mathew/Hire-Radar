@@ -1,4 +1,3 @@
-    import 'dotenv/config'; 
     const express = require('express');
     const multer = require('multer');
     const cors = require('cors');
@@ -9,7 +8,6 @@
     const { TestScheduledEmail } = require('./emails/template.tsx');
     const managerRequestRoutes = require("./routes/managerRequest");
     const { GoogleGenAI } = require("@google/genai");
-    
 
     const {
         initializeSearchService,
@@ -381,8 +379,9 @@
     
     app.post("/hireRadar/setTestResult", async (req, res) => {
         try {
-            const { result, cndid } = req.body;
+            const { result, cndid, teststatus } = req.body;
             const newCndData = await pool.query("update testdetails set testresult=$1 where cndid=$2 returning *", [result, cndid]);
+            const cndPermSaveData = await pool.query("update cndpermsave set teststatus=$1 where cndid=$2", [teststatus, cndid]);
             res.json(newCndData.rows[0]);
         } catch (err) {
             console.error(err.message);
@@ -826,6 +825,76 @@ app.put("/hireRadar/managerrequeststatus/:requestid", async (req, res) => {
     }
 });
 
+// Response Schema specifying all 8 required candidate fields
+const CandidateResumeSchema = {
+  type: 'OBJECT',
+  properties: {
+    name: { type: 'STRING', description: "Candidate's full name" },
+    location: { type: 'STRING', description: "Candidate's current location or city/country" },
+    role: { type: 'STRING', description: 'Designation, job title, or target role' },
+    experience: { type: 'STRING', description: "Total years of experience or summary string (e.g. '5 years')" },
+    saved_date: { type: 'STRING', description: "Date extracted or current date string (YYYY-MM-DD)" },
+    linkedin: { type: 'STRING', description: 'LinkedIn profile URL if present, otherwise empty' },
+    skills: {
+      type: 'ARRAY',
+      items: { type: 'STRING' },
+      description: 'List of technical and soft skills',
+    },
+    education: {
+      type: 'ARRAY',
+      items: { type: 'STRING' },
+      description: 'List of degrees, universities, or educational qualifications',
+    },
+  },
+  required: ['name', 'location', 'role', 'experience', 'saved_date', 'linkedin', 'skills', 'education'],
+};
+
+app.post('/api/analyze-resume', async (req, res) => {
+  const { rawText, fileName } = req.body;
+  const apiKey = process.env.GEMINI_API_KEY;
+
+  if (!apiKey || !rawText || !rawText.trim()) {
+    return res.json({
+      name: fileName || 'Unknown',
+      location: 'N/A',
+      role: 'N/A',
+      experience: 'N/A',
+      saved_date: new Date().toISOString().split('T')[0],
+      linkedin: 'N/A',
+      skills: [],
+      education: [],
+    });
+  }
+
+  try {
+    const ai = new GoogleGenAI({ apiKey });
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: `Analyze the following document text parsed from an uploaded file (${fileName}). Extract candidate information into the requested schema structure:\n\n${rawText}`,
+      config: {
+        responseMimeType: 'application/json',
+        responseSchema: CandidateResumeSchema,
+        temperature: 0.1,
+      },
+    });
+
+    const result = JSON.parse(response.text);
+    return res.json(result);
+  } catch (error) {
+    console.error(`Gemini backend error for ${fileName}:`, error);
+    return res.json({
+      name: fileName || 'Unknown',
+      location: 'N/A',
+      role: 'N/A',
+      experience: 'N/A',
+      saved_date: new Date().toISOString().split('T')[0],
+      linkedin: 'N/A',
+      skills: [],
+      education: [],
+    });
+  }
+});
+
 
 
 
@@ -896,7 +965,7 @@ app.post("/hireRadar/generate-jd", async (req, res) => {
   }
 
   // Fallback: Default structured JD if API key fails
-  console.log("ℹ️ Generating Fallback Job Description for:", jobTitle);
+  console.log(" Generating Fallback Job Description for:", jobTitle);
   const fallbackJD = {
     roleSummary: `We are looking for an experienced ${jobTitle} to join our ${department || "Engineering"} team. The ideal candidate will drive success, collaborate across teams, and execute high-quality work.`,
     keyResponsibilities: [
