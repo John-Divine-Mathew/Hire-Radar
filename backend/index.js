@@ -742,79 +742,14 @@ app.put("/hireRadar/managerrequeststatus/:requestid", async (req, res) => {
     }
 });
 
-/* ==========================================================================
-   GEMINI AI RESUME ANALYSIS & JD GENERATION
-   ========================================================================== */
 
-const CandidateResumeSchema = {
-    type: 'OBJECT',
-    properties: {
-        name: { type: 'STRING', description: "Candidate's full name" },
-        location: { type: 'STRING', description: "Candidate's current location or city/country" },
-        role: { type: 'STRING', description: 'Designation, job title, or target role' },
-        experience: { type: 'STRING', description: "Total years of experience or summary string (e.g. '5 years')" },
-        saved_date: { type: 'STRING', description: "Date extracted or current date string (YYYY-MM-DD)" },
-        linkedin: { type: 'STRING', description: 'LinkedIn profile URL if present, otherwise empty' },
-        skills: {
-            type: 'ARRAY',
-            items: { type: 'STRING' },
-            description: 'List of technical and soft skills',
-        },
-        education: {
-            type: 'ARRAY',
-            items: { type: 'STRING' },
-            description: 'List of degrees, universities, or educational qualifications',
-        },
-    },
-    required: ['name', 'location', 'role', 'experience', 'saved_date', 'linkedin', 'skills', 'education'],
-};
 
-app.post('/api/analyze-resume', async (req, res) => {
-    const { rawText, fileName } = req.body;
-    const apiKey = process.env.GEMINI_API_KEY;
 
-    if (!apiKey || !rawText || !rawText.trim()) {
-        return res.json({
-            name: fileName || 'Unknown',
-            location: 'N/A',
-            role: 'N/A',
-            experience: 'N/A',
-            saved_date: new Date().toISOString().split('T')[0],
-            linkedin: 'N/A',
-            skills: [],
-            education: [],
-        });
-    }
 
-    try {
-        const ai = new GoogleGenAI({ apiKey });
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: `Analyze the following document text parsed from an uploaded file (${fileName}). Extract candidate information into the requested schema structure:\n\n${rawText}`,
-            config: {
-                responseMimeType: 'application/json',
-                responseSchema: CandidateResumeSchema,
-                temperature: 0.1,
-            },
-        });
 
-        const result = JSON.parse(response.text);
-        return res.json(result);
-    } catch (error) {
-        console.error(`Gemini backend error for ${fileName}:`, error);
-        return res.json({
-            name: fileName || 'Unknown',
-            location: 'N/A',
-            role: 'N/A',
-            experience: 'N/A',
-            saved_date: new Date().toISOString().split('T')[0],
-            linkedin: 'N/A',
-            skills: [],
-            education: [],
-        });
-    }
-});
 
+{/*}
+// --- AI Job Description Generator Route ---
 app.post("/hireRadar/generate-jd", async (req, res) => {
     const { jobTitle, department, experience, keySkills } = req.body;
 
@@ -888,8 +823,96 @@ app.post("/hireRadar/generate-jd", async (req, res) => {
 
     return res.status(200).json(fallbackJD);
 });
+*/}
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-    console.log(`Server started on port ${PORT}`);
+
+
+// --- Hugging Face AI Job Description Generator Route ---
+app.post("/hireRadar/generate-jd", async (req, res) => {
+  const { jobTitle, department, experience, keySkills } = req.body;
+
+  if (!jobTitle) {
+    return res.status(400).json({ error: "Job title is required." });
+  }
+
+  const token = process.env.HF_TOKEN;
+
+  try {
+    if (token) {
+      const promptText = `
+You are an expert HR Specialist. Generate a detailed and professional Job Description (JD) in valid JSON format based on these parameters:
+- Job Title: ${jobTitle}
+- Department: ${department || "Engineering / Technology"}
+- Experience Level: ${experience || "3-5 years"}
+- Key Skills/Responsibilities: ${keySkills || "Standard domain skills"}
+
+Respond ONLY with a raw, valid JSON object strictly matching this schema, without any extra text or commentary:
+{
+  "roleSummary": "Brief overview of the role...",
+  "keyResponsibilities": ["Responsibility 1", "Responsibility 2", "Responsibility 3"],
+  "requiredSkills": ["Skill 1", "Skill 2", "Skill 3"],
+  "experience": "${experience || "3-5 years"}",
+  "suggestedSalaryRange": "₹8,00,000 - ₹12,00,000 per annum"
+}
+      `;
+
+      // Call Hugging Face Router API (OpenAI Compatible)
+      const response = await fetch("https://router.huggingface.co/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token.trim()}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model: "Qwen/Qwen2.5-Coder-32B-Instruct",
+          messages: [
+            { role: "system", content: "You output only valid JSON." },
+            { role: "user", content: promptText }
+          ],
+          temperature: 0.3,
+          max_tokens: 1000
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.choices?.[0]?.message?.content) {
+        let rawContent = data.choices[0].message.content.trim();
+        
+        // Clean markdown backticks if present
+        rawContent = rawContent.replace(/```json/g, "").replace(/```/g, "").trim();
+
+        const jdData = JSON.parse(rawContent);
+        return res.status(200).json(jdData);
+      } else {
+        console.warn("⚠️ Hugging Face API Response Error:", data);
+      }
+    } else {
+      console.error("❌ HF_TOKEN is missing in .env file!");
+    }
+  } catch (err) {
+    console.error("⚠️ Hugging Face generation error:", err.message);
+  }
+
+  // --- Fallback in case API fails or model is loading ---
+  console.log("ℹ️ Generating Fallback Job Description for:", jobTitle);
+  const fallbackJD = {
+    roleSummary: `We are seeking a qualified ${jobTitle} to join our ${department || "Engineering"} team. You will play a key role in delivering operational excellence and driving performance goals.`,
+    keyResponsibilities: [
+      `Design and implement standard processes for ${jobTitle}.`,
+      "Collaborate with engineering and operational teams.",
+      "Identify bottlenecks and optimize core technical workflows."
+    ],
+    requiredSkills: keySkills ? keySkills.split(",").map(s => s.trim()) : [
+      "Technical Problem Solving",
+      "Process Optimization",
+      "Cross-Functional Leadership",
+      "Communication"
+    ],
+    experience: experience || "3-5 years",
+    suggestedSalaryRange: "₹8,00,000 - ₹12,00,000 per annum"
+  };
+
+  return res.status(200).json(fallbackJD);
 });
+
