@@ -21,11 +21,12 @@ const InterviewScheduler = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const candRes = await axios.get("http://localhost:5000/hireRadar/candidates");
+      const response = await fetch("http://localhost:5000/hireRadar/cndpermsavepass");
+      const candRes = await response.json();
       setCandidates(candRes.data || []);
 
-      const intRes = await axios.get("http://localhost:5000/hireRadar/interviews");
-      setInterviews(intRes.data || []);
+      // const intRes = await fetch("http://localhost:5000/hireRadar/interviews");
+      // setInterviews(intRes.data || []);
     } catch (err) {
       console.error("Error fetching data:", err);
     } finally {
@@ -45,14 +46,15 @@ const InterviewScheduler = () => {
       return;
     }
 
+    // Look up candidate using the correct API keys (cndid, cndemail, cndname)
     const candidateObj = candidates.find(
-      (c) => c.candidate_id?.toString() === selectedCandidate || c.email === selectedCandidate
+      (c) => c.cndid?.toString() === selectedCandidate || c.cndemail === selectedCandidate
     );
 
     const newInterview = {
       interview_id: Date.now(),
-      candidate_name: candidateObj ? candidateObj.name || candidateObj.candidate_name : selectedCandidate,
-      candidate_email: candidateObj ? candidateObj.email : "",
+      candidate_name: candidateObj ? (candidateObj.cndname || candidateObj.name) : selectedCandidate,
+      candidate_email: candidateObj ? (candidateObj.cndemail || candidateObj.email) : "",
       interviewer_name: interviewer,
       interview_type: interviewType,
       date: interviewDate,
@@ -70,6 +72,7 @@ const InterviewScheduler = () => {
       setInterviews((prev) => [newInterview, ...prev]);
     }
 
+    // Reset form
     setSelectedCandidate("");
     setInterviewer("");
     setInterviewType("Technical Round 1");
@@ -134,10 +137,10 @@ const InterviewScheduler = () => {
                       required
                       className="w-full p-3.5 rounded-2xl border border-gray-200 text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#7C24D3] outline-none transition"
                     >
-                      <option value="">Select Candidate</option>
-                      {candidates.map((c, idx) => (
-                        <option key={c.candidate_id || idx} value={c.candidate_id || c.email || c.name}>
-                          {c.name || c.candidate_name} ({c.email || c.job_title || "Applicant"})
+                      <option value="">--Select Candidate--</option>
+                      {candidates?.map((c, idx) => (
+                        <option key={c.cndid || idx} value={c.cndid}>
+                          {c.cndname || 'Guest'} ({c.cndemail || c.cndrole || "Applicant"})
                         </option>
                       ))}
                     </select>

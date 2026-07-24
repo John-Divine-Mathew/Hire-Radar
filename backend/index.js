@@ -827,8 +827,6 @@ app.post("/hireRadar/generate-jd", async (req, res) => {
 */}
 
 
-
-
 // --- Hugging Face AI Job Description Generator Route ---
 app.post("/hireRadar/generate-jd", async (req, res) => {
   const { jobTitle, department, experience, keySkills } = req.body;
@@ -858,7 +856,6 @@ Respond ONLY with a raw, valid JSON object strictly matching this schema, withou
 }
       `;
 
-      // Call Hugging Face Router API (OpenAI Compatible)
       const response = await fetch("https://router.huggingface.co/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -880,8 +877,6 @@ Respond ONLY with a raw, valid JSON object strictly matching this schema, withou
 
       if (response.ok && data.choices?.[0]?.message?.content) {
         let rawContent = data.choices[0].message.content.trim();
-        
-        // Clean markdown backticks if present
         rawContent = rawContent.replace(/```json/g, "").replace(/```/g, "").trim();
 
         const jdData = JSON.parse(rawContent);
@@ -896,8 +891,7 @@ Respond ONLY with a raw, valid JSON object strictly matching this schema, withou
     console.error("⚠️ Hugging Face generation error:", err.message);
   }
 
-  // --- Fallback in case API fails or model is loading ---
-  console.log("ℹ️ Generating Fallback Job Description for:", jobTitle);
+  // Fallback JD
   const fallbackJD = {
     roleSummary: `We are seeking a qualified ${jobTitle} to join our ${department || "Engineering"} team. You will play a key role in delivering operational excellence and driving performance goals.`,
     keyResponsibilities: [
@@ -917,92 +911,10 @@ Respond ONLY with a raw, valid JSON object strictly matching this schema, withou
 
   return res.status(200).json(fallbackJD);
 });
-// --- Hugging Face AI Job Description Generator Route ---
-app.post("/hireRadar/generate-jd", async (req, res) => {
-  const { jobTitle, department, experience, keySkills } = req.body;
 
-  if (!jobTitle) {
-    return res.status(400).json({ error: "Job title is required." });
-  }
-
-  const token = process.env.HF_TOKEN;
-
-  try {
-    if (token) {
-      const promptText = `
-You are an expert HR Specialist. Generate a detailed and professional Job Description (JD) in valid JSON format based on these parameters:
-- Job Title: ${jobTitle}
-- Department: ${department || "Engineering / Technology"}
-- Experience Level: ${experience || "3-5 years"}
-- Key Skills/Responsibilities: ${keySkills || "Standard domain skills"}
-
-Respond ONLY with a raw, valid JSON object strictly matching this schema, without any extra text or commentary:
-{
-  "roleSummary": "Brief overview of the role...",
-  "keyResponsibilities": ["Responsibility 1", "Responsibility 2", "Responsibility 3"],
-  "requiredSkills": ["Skill 1", "Skill 2", "Skill 3"],
-  "experience": "${experience || "3-5 years"}",
-  "suggestedSalaryRange": "₹8,00,000 - ₹12,00,000 per annum"
-}
-      `;
-
-      // Call Hugging Face Router API (OpenAI Compatible)
-      const response = await fetch("https://router.huggingface.co/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${token.trim()}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          model: "Qwen/Qwen2.5-Coder-32B-Instruct",
-          messages: [
-            { role: "system", content: "You output only valid JSON." },
-            { role: "user", content: promptText }
-          ],
-          temperature: 0.3,
-          max_tokens: 1000
-        })
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.choices?.[0]?.message?.content) {
-        let rawContent = data.choices[0].message.content.trim();
-        
-        // Clean markdown backticks if present
-        rawContent = rawContent.replace(/```json/g, "").replace(/```/g, "").trim();
-
-        const jdData = JSON.parse(rawContent);
-        return res.status(200).json(jdData);
-      } else {
-        console.warn("⚠️ Hugging Face API Response Error:", data);
-      }
-    } else {
-      console.error("❌ HF_TOKEN is missing in .env file!");
-    }
-  } catch (err) {
-    console.error("⚠️ Hugging Face generation error:", err.message);
-  }
-
-  // --- Fallback in case API fails or model is loading ---
-  console.log("ℹ️ Generating Fallback Job Description for:", jobTitle);
-  const fallbackJD = {
-    roleSummary: `We are seeking a qualified ${jobTitle} to join our ${department || "Engineering"} team. You will play a key role in delivering operational excellence and driving performance goals.`,
-    keyResponsibilities: [
-      `Design and implement standard processes for ${jobTitle}.`,
-      "Collaborate with engineering and operational teams.",
-      "Identify bottlenecks and optimize core technical workflows."
-    ],
-    requiredSkills: keySkills ? keySkills.split(",").map(s => s.trim()) : [
-      "Technical Problem Solving",
-      "Process Optimization",
-      "Cross-Functional Leadership",
-      "Communication"
-    ],
-    experience: experience || "3-5 years",
-    suggestedSalaryRange: "₹8,00,000 - ₹12,00,000 per annum"
-  };
-
-  return res.status(200).json(fallbackJD);
+// START THE EXPRESS SERVER (Required)
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
 });
 
