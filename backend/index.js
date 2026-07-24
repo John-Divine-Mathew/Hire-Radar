@@ -165,6 +165,18 @@ app.get("/hireRadar/cndpermsave", async (req, res) => {
     }
 });
 
+app.get("/hireRadar/cndpermsavepass", async (req, res) => {
+    try {
+        const result = await pool.query("SELECT * FROM cndpermsave ORDER BY cndid ASC");
+        // Returning JSON wrapped in data to match React's expectations
+        res.json({ data: result.rows });
+    } catch (err) {
+        console.error("cndpermsavepass error:", err.message);
+        res.status(500).json({ error: err.message, data: [] });
+    }
+});
+
+
 app.get("/hireRadar/cndpermsavesearch", async (req, res) => {
     try {
         const { search, experience, location, role, status, teststatus, interviewstatus, skills } = req.query;
