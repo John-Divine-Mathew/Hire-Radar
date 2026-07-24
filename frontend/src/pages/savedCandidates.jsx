@@ -782,7 +782,7 @@ function SavedCandidates() {
     const s = status || 'NA';
     let bgClasses = 'bg-gray-100 text-gray-700 border-gray-200';
 
-    if (['passed', 'completed', 'offered', 'passs'].includes(s.toLowerCase())) {
+    if (['passed', 'completed', 'offered', 'pass'].includes(s.toLowerCase())) {
       bgClasses = 'bg-emerald-50 text-emerald-700 border-emerald-200';
     } else if (['scheduled', 'interviewing', 'pending', 'applied'].includes(s.toLowerCase())) {
       bgClasses = 'bg-amber-50 text-amber-700 border-amber-200';
