@@ -5,7 +5,6 @@ import {
   Download,
   Eye,
   Trash2,
-  Sparkles,
   FileText,
   FileSpreadsheet,
   FileArchive,
@@ -18,104 +17,101 @@ import Tesseract from 'tesseract.js';
 import * as pdfjsLib from 'pdfjs-dist/build/pdf';
 import mammoth from 'mammoth';
 import * as XLSX from 'xlsx';
-import { GoogleGenAI } from '@google/genai';
-
 
 const API_BASE_URL = 'http://localhost:5000';
 const KNOWN_SPECIAL_EXTS = ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'xlsx', 'xls', 'csv', 'json'];
 
-// Helper function to safely read the environment variable at runtime
-const getGeminiApiKey = () => {
+// Helper function to safely read the Hugging Face API Token at runtime
+const getHuggingFaceToken = () => {
   return (
-    (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GEMINI_API_KEY) ||
-    (typeof process !== 'undefined' && process.env?.REACT_APP_GEMINI_API_KEY) ||
+    (typeof import.meta !== 'undefined' && import.meta.env?.VITE_HF_TOKEN) ||
+    (typeof process !== 'undefined' && process.env?.REACT_APP_HF_TOKEN) ||
     ''
   );
 };
 
-// Response Schema specifying all 8 required candidate fields
-const CandidateResumeSchema = {
-  type: 'OBJECT',
-  properties: {
-    name: { type: 'STRING', description: "Candidate's full name" },
-    location: { type: 'STRING', description: "Candidate's current location or city/country" },
-    role: { type: 'STRING', description: 'Designation, job title, or target role' },
-    experience: { type: 'STRING', description: "Total years of experience or summary string (e.g. '5 years')" },
-    saved_date: { type: 'STRING', description: "Date extracted or current date string (YYYY-MM-DD)" },
-    linkedin: { type: 'STRING', description: 'LinkedIn profile URL if present, otherwise empty' },
-    skills: {
-      type: 'ARRAY',
-      items: { type: 'STRING' },
-      description: 'List of technical and soft skills',
-    },
-    education: {
-      type: 'ARRAY',
-      items: { type: 'STRING' },
-      description: 'List of degrees, universities, or educational qualifications',
-    },
-  },
-  required: ['name', 'location', 'role', 'experience', 'saved_date', 'linkedin', 'skills', 'education'],
-};
+// Function to analyze raw resume text using Hugging Face (Qwen2.5-Coder-32B-Instruct)
+const analyzeResumeWithHuggingFace = async (rawText, fileName) => {
+  const token = getHuggingFaceToken();
 
-// Function to analyze raw text using Gemini AI
-const analyzeResumeWithGemini = async (rawText, fileName) => {
-  const currentKey = getGeminiApiKey();
+  const fallbackData = {
+    name: fileName || 'Unknown',
+    location: 'N/A',
+    role: 'N/A',
+    experience: 'N/A',
+    saved_date: new Date().toISOString().split('T')[0],
+    linkedin: 'N/A',
+    skills: [],
+    education: [],
+  };
 
-  if (!currentKey) {
+  if (!token) {
     console.warn(
-      `⚠️ [Gemini AI] Missing API Key. Set VITE_GEMINI_API_KEY or REACT_APP_GEMINI_API_KEY in your .env file to enable Gemini resume extraction.`
+      `⚠️ [Hugging Face AI] Missing API Token. Set VITE_HF_TOKEN or REACT_APP_HF_TOKEN in your .env file.`
     );
-    return {
-      name: fileName || 'Unknown',
-      location: 'N/A',
-      role: 'N/A',
-      experience: 'N/A',
-      saved_date: new Date().toISOString().split('T')[0],
-      linkedin: 'N/A',
-      skills: [],
-      education: [],
-    };
+    return fallbackData;
   }
 
   if (!rawText || !rawText.trim()) {
-    return {
-      name: fileName || 'Unknown',
-      location: 'N/A',
-      role: 'N/A',
-      experience: 'N/A',
-      saved_date: new Date().toISOString().split('T')[0],
-      linkedin: 'N/A',
-      skills: [],
-      education: [],
-    };
+    return fallbackData;
   }
 
-try {
-    const ai = new GoogleGenAI({ apiKey: currentKey });
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash', // <-- Updated model identifier
-      contents: `Analyze the following document text parsed from an uploaded file (${fileName}). Extract candidate information into the requested schema structure:\n\n${rawText}`,
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: CandidateResumeSchema,
-        temperature: 0.1,
+  const promptText = `
+You are an expert HR Data Extraction Specialist. Analyze the following resume text extracted from an uploaded file (${fileName}).
+Extract candidate information into a strictly valid JSON object matching this schema structure:
+
+{
+  "name": "Candidate's full name",
+  "location": "Current location or city/country",
+  "role": "Designation, job title, or target role",
+  "experience": "Total years of experience or summary string (e.g. '5 years')",
+  "saved_date": "${new Date().toISOString().split('T')[0]}",
+  "linkedin": "LinkedIn profile URL if present, otherwise 'N/A'",
+  "skills": ["Skill 1", "Skill 2"],
+  "education": ["Degree/University 1", "Degree/University 2"]
+}
+
+Respond ONLY with a raw, valid JSON object without any extra commentary or markdown formatting.
+
+Document Content:
+${rawText}
+  `;
+
+  try {
+    const response = await fetch('https://router.huggingface.co/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token.trim()}`,
+        'Content-Type': 'application/json',
       },
+      body: JSON.stringify({
+        model: 'Qwen/Qwen2.5-Coder-32B-Instruct',
+        messages: [
+          { role: 'system', content: 'You output only valid JSON.' },
+          { role: 'user', content: promptText },
+        ],
+        temperature: 0.1,
+        max_tokens: 1000,
+      }),
     });
 
-    return JSON.parse(response.text);
+    const data = await response.json();
+
+    if (response.ok && data.choices?.[0]?.message?.content) {
+      let rawContent = data.choices[0].message.content.trim();
+      
+      // Clean markdown code fence wrappers if present
+      rawContent = rawContent.replace(/```json/gi, '').replace(/```/g, '').trim();
+
+      return JSON.parse(rawContent);
+    } else {
+      console.warn('⚠️ Hugging Face API Response Error:', data);
+    }
   } catch (error) {
-    console.error(`Gemini analysis error for ${fileName}:`, error);
-    return {
-      name: fileName,
-      location: 'N/A',
-      role: 'N/A',
-      experience: 'N/A',
-      saved_date: new Date().toISOString().split('T')[0],
-      linkedin: 'N/A',
-      skills: [],
-      education: [],
-    };
+    console.error(`Hugging Face analysis error for ${fileName}:`, error);
   }
+
+  return fallbackData;
 };
 
 function ImportDrive() {
@@ -391,8 +387,8 @@ function ImportDrive() {
           const content = await extractFileContent(file);
           const blobURL = URL.createObjectURL(file);
 
-          // Extract Structured Metadata via Gemini AI
-          const parsedMetadata = await analyzeResumeWithGemini(content, file.name);
+          // Extract Structured Metadata via Hugging Face AI
+          const parsedMetadata = await analyzeResumeWithHuggingFace(content, file.name);
 
           // Log the 8 required candidate profile fields to console
           console.log(`📄 Document Log [${file.name}]:`, {
@@ -431,66 +427,39 @@ function ImportDrive() {
     return newDocuments;
   };
 
-  const handleFolderSelect = async (event) => {
-    const items = event.dataTransfer?.items || event.target.files;
-    if (!items || items.length === 0) return;
+const handleFolderSelect = async (event) => {
+  const files = event.target.files;
+  if (!files || files.length === 0) return;
 
-    setIsUploading(true);
-    try {
-      const entries = [];
-      const filesToUpload = [];
+  setIsUploading(true);
+  const formData = new FormData();
 
-      if (event.dataTransfer?.items) {
-        for (let i = 0; i < items.length; i++) {
-          const entry = items[i].webkitGetAsEntry?.();
-          if (entry) entries.push(entry);
-        }
-      } else {
-        for (let i = 0; i < items.length; i++) {
-          const file = items[i];
-          if (isValidFile(file.name)) {
-            filesToUpload.push(file);
-            entries.push({ kind: 'file', getFile: async () => file });
-          }
-        }
-      }
-
-      if (entries.length > 0) {
-        const newDocs = await processFilesRecursively(entries);
-        setDocuments((prev) => [...newDocs, ...prev]);
-
-        if (selectedFile) {
-          const matched = newDocs.find((d) => d.fileName === selectedFile.fileName);
-          if (matched) setSelectedFile(matched);
-        }
-      }
-
-      const targetUploadList = event.target.files || filesToUpload;
-      for (let i = 0; i < targetUploadList.length; i++) {
-        const file = targetUploadList[i];
-        if (!isValidFile(file.name)) continue;
-
-        const formData = new FormData();
-        formData.append('file', file);
-
-        try {
-          await fetch(`${API_BASE_URL}/api/upload`, {
-            method: 'POST',
-            body: formData,
-          });
-        } catch (uploadErr) {
-          console.error(`Failed uploading ${file.name} to server backend:`, uploadErr);
-        }
-      }
-
-      fetchBackendDocuments('', '', '', 'newest');
-    } catch (error) {
-      console.error('Error processing uploaded items:', error);
-    } finally {
-      setIsUploading(false);
-      if (event.target) event.target.value = '';
+  for (let i = 0; i < files.length; i++) {
+    if (isValidFile(files[i].name)) {
+      formData.append('file', files[i]);
     }
-  };
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/upload`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      console.log('📄 Processed Documents with LlamaIndex:', data);
+      
+      // Refresh list from backend
+      fetchBackendDocuments('', '', '', 'newest');
+    }
+  } catch (uploadErr) {
+    console.error('Failed uploading files to server backend:', uploadErr);
+  } finally {
+    setIsUploading(false);
+    if (event.target) event.target.value = '';
+  }
+};
 
   const handleDragOver = (e) => {
     e.preventDefault();
