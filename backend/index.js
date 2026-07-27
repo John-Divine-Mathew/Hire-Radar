@@ -1,15 +1,16 @@
 const express = require('express');
 const multer = require('multer');
 const cors = require('cors');
-const pool = require('./db');
-const { Resend } = require("resend");
-const { render } = require("@react-email/components");
-const React = require("react");
-const { TestScheduledEmail } = require('./emails/template.tsx');
-const managerRequestRoutes = require("./routes/managerRequest");
+const fs = require('fs');
+const path = require('path');
+const React = require('react');
+const { Resend } = require('resend');
+const { render } = require('@react-email/components');
+const { LlamaParseReader } = require('@llamaindex/cloud');
 
-// LlamaIndex TS imports
-const { Document, OpenAI } = require('llamaindex');
+const pool = require('./db');
+const { TestScheduledEmail } = require('./emails/template.tsx');
+const managerRequestRoutes = require('./routes/managerRequest');
 
 const {
     initializeSearchService,
@@ -32,15 +33,21 @@ app.use(express.urlencoded({ extended: true }));
 const resend = new Resend(process.env.resendApiKey);
 
 // Initialize DB search schema on server startup
-initializeSearchService().catch((error) => 
+initializeSearchService().catch((error) =>
     console.error('Search service startup failed:', error.message)
 );
 
-// Multer memory storage for uploads
+// Memory storage for incoming HTTP file uploads
 const upload = multer({ storage: multer.memoryStorage() });
 
+// Ensure temporary folder exists for LlamaParse processing
+const TEMP_UPLOADS_DIR = path.join(__dirname, 'temp_uploads');
+if (!fs.existsSync(TEMP_UPLOADS_DIR)) {
+    fs.mkdirSync(TEMP_UPLOADS_DIR, { recursive: true });
+}
+
 // ==========================================================================
-// HELPER FUNCTIONS
+// HELPER FUNCTIONS & LLAMAPARSE / LLAMAINdex RESOLUTION
 // ==========================================================================
 
 function formatFileSize(bytes) {
@@ -81,6 +88,87 @@ const MIME_BY_EXT = {
     '.webp': 'image/webp',
 };
 
+// Safe LlamaIndex Class Resolver
+function getLlamaIndexClasses() {
+    let DocClass = null;
+    let LLMClass = null;
+
+    try {
+        const llamaindex = require('llamaindex');
+        DocClass = llamaindex.Document || llamaindex.default?.Document;
+        LLMClass = llamaindex.OpenAI || llamaindex.default?.OpenAI;
+    } catch (e) {}
+
+    if (!LLMClass) {
+        try {
+            const openAiModule = require('@llamaindex/openai');
+            LLMClass = openAiModule.OpenAI || openAiModule.default?.OpenAI;
+        } catch (e) {}
+    }
+
+    return { Document: DocClass, OpenAI: LLMClass };
+}
+
+// ==========================================================================
+// LLAMAPARSE EXTRACT SERVICE
+// ==========================================================================
+
+/**
+ * Direct extraction via LlamaParse AI Reader
+ */
+async function extractCandidateJsonWithLlamaParse(fileBuffer, originalName) {
+    const tempFilePath = path.join(TEMP_UPLOADS_DIR, `${Date.now()}_${originalName}`);
+    const fallbackMetadata = {
+        name: originalName || 'Unknown',
+        location: 'N/A',
+        role: 'N/A',
+        experience: 'N/A',
+        saved_date: new Date().toISOString().split('T')[0],
+        linkedin: 'N/A',
+        skills: [],
+        education: []
+    };
+
+    try {
+        fs.writeFileSync(tempFilePath, fileBuffer);
+
+        const parser = new LlamaParseReader({
+            resultType: 'markdown',
+            language: 'en',
+            parsingInstruction: `
+                You are an expert HR Data Extraction Specialist.
+                Parse this document and extract core text as structured Markdown.
+                Pay close attention to candidate contact details, experience, key skills, and education history.
+            `
+        });
+
+        const documents = await parser.loadData(tempFilePath);
+        if (!documents || documents.length === 0) {
+            throw new Error('No content returned from LlamaParse');
+        }
+
+        const extractedMarkdown = documents.map((doc) => doc.text).join('\n\n');
+
+        // Optional post-extraction pass to format into structured JSON schema
+        const extractedMetadata = await analyzeResumeWithLlamaIndex(extractedMarkdown, originalName);
+
+        return {
+            extractedText: extractedMarkdown,
+            metadata: extractedMetadata
+        };
+    } catch (err) {
+        console.warn(`[LlamaParse Direct Extract Fallback] ${originalName}:`, err.message);
+        return {
+            extractedText: fileBuffer.toString('utf-8'),
+            metadata: fallbackMetadata
+        };
+    } finally {
+        if (fs.existsSync(tempFilePath)) {
+            fs.unlinkSync(tempFilePath);
+        }
+    }
+}
+
 // ==========================================================================
 // LLAMAINdex RESUME EXTRACTION SERVICE
 // ==========================================================================
@@ -99,18 +187,21 @@ async function analyzeResumeWithLlamaIndex(rawText, fileName) {
 
     if (!rawText || !rawText.trim()) return fallbackData;
 
+    const apiKey = process.env.OPENAI_API_KEY || process.env.OPENAI_APIKEY || process.env.GPT_API_KEY;
+
     try {
-        // Create LlamaIndex Document Node
-        const docNode = new Document({
-            text: rawText,
-            id_: fileName,
-            metadata: { fileName, date: new Date().toISOString() }
-        });
+        const { Document: DocClass, OpenAI: LLMClass } = getLlamaIndexClasses();
 
-        // Initialize LLM (reads OPENAI_API_KEY from env)
-        const llm = new OpenAI({ model: "gpt-4o-mini", temperature: 0.1 });
+        if (typeof LLMClass === 'function' && typeof DocClass === 'function') {
+            const docNode = new DocClass({
+                text: rawText,
+                id_: fileName,
+                metadata: { fileName, date: new Date().toISOString() }
+            });
 
-        const promptText = `
+            const llm = new LLMClass({ apiKey, model: "gpt-4o-mini", temperature: 0.1 });
+
+            const promptText = `
 You are an expert HR Data Extraction Specialist.
 Analyze the following resume document text extracted from an uploaded file (${fileName}).
 Extract candidate information into a strictly valid JSON object matching this schema structure:
@@ -132,20 +223,93 @@ Document Content:
 ${docNode.getText()}
 `;
 
-        const response = await llm.complete({ prompt: promptText });
-        let rawContent = response.text.trim();
-        rawContent = rawContent.replace(/```json/gi, '').replace(/```/g, '').trim();
+            const response = await llm.complete({ prompt: promptText });
+            let rawContent = response?.text || response?.message?.content || response?.toString() || '';
+            rawContent = rawContent.replace(/```json/gi, '').replace(/```/g, '').trim();
 
-        return JSON.parse(rawContent);
+            return JSON.parse(rawContent);
+        }
+
+        if (apiKey) {
+            const promptText = `
+You are an expert HR Data Extraction Specialist.
+Analyze the following resume document text extracted from an uploaded file (${fileName}).
+Extract candidate information into a strictly valid JSON object matching this schema structure:
+
+{
+  "name": "Candidate's full name",
+  "location": "Current location or city/country",
+  "role": "Designation, job title, or target role",
+  "experience": "Total years of experience or summary string (e.g. '5 years')",
+  "saved_date": "${new Date().toISOString().split('T')[0]}",
+  "linkedin": "LinkedIn profile URL if present, otherwise 'N/A'",
+  "skills": ["Skill 1", "Skill 2"],
+  "education": ["Degree/University 1", "Degree/University 2"]
+}
+
+Respond ONLY with a raw, valid JSON object without any extra commentary or markdown formatting.
+
+Document Content:
+${rawText}
+`;
+
+            const apiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${apiKey.trim()}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    model: "gpt-4o-mini",
+                    temperature: 0.1,
+                    messages: [
+                        { role: "system", content: "You output only valid raw JSON." },
+                        { role: "user", content: promptText }
+                    ]
+                })
+            });
+
+            if (apiRes.ok) {
+                const apiData = await apiRes.json();
+                let rawContent = apiData.choices?.[0]?.message?.content || '';
+                rawContent = rawContent.replace(/```json/gi, '').replace(/```/g, '').trim();
+                return JSON.parse(rawContent);
+            }
+        }
+
+        return fallbackData;
     } catch (error) {
-        console.error(`[LlamaIndex] Extraction error for ${fileName}:`, error.message);
+        console.error(`[LlamaIndex Backend] Extraction error for ${fileName}:`, error.message);
         return fallbackData;
     }
 }
 
-// ==========================================================================
-// CANDIDATE TEMPORARY DATABASE ROUTES
-// ==========================================================================
+app.put("/hireRadar/updateCandidateStatus/:cndid", async (req, res) => {
+  try {
+    const { cndid } = req.params;
+    const { teststatus, interviewstatus } = req.body;
+
+    const updateQuery = await pool.query(
+      `UPDATE cndpermsave 
+       SET teststatus = $1, interviewstatus = $2 
+       WHERE cndid = $3 
+       RETURNING *`,
+      [teststatus, interviewstatus, cndid]
+    );
+
+    if (updateQuery.rows.length === 0) {
+      return res.status(404).json({ message: "Candidate not found" });
+    }
+
+    res.json({
+      message: "Candidate status updated successfully",
+      candidate: updateQuery.rows[0]
+    });
+  } catch (err) {
+    console.error("Error updating candidate status:", err.message);
+    res.status(500).send("Server Error");
+  }
+});
 
 app.get("/hireRadar/cndtempsave", async (req, res) => {
     try {
@@ -577,23 +741,30 @@ app.get('/api/documents', async (req, res) => {
 app.post('/api/upload', upload.any(), async (req, res) => {
     try {
         const filesCollection = req.files || (req.file ? [req.file] : []);
-        
+
         if (filesCollection.length === 0) {
             return res.status(400).json({ error: 'No files were detected inside payload arrays.' });
         }
 
         const uploadedDocuments = await Promise.all(
             filesCollection.map(async (file) => {
-                const savedDoc = await saveUploadedFile(file);
-                const extractedText = savedDoc.extractedText || file.buffer.toString('utf-8');
-                const parsedMetadata = await analyzeResumeWithLlamaIndex(extractedText, file.originalname);
+                // Execute direct extraction via LlamaParse
+                const extractionResult = await extractCandidateJsonWithLlamaParse(file.buffer, file.originalname);
+
+                // Save to PostgreSQL search index
+                const savedDoc = await saveUploadedFile({
+                    ...file,
+                    extractedText: extractionResult.extractedText
+                });
 
                 return {
                     ...savedDoc,
-                    metadata: parsedMetadata
+                    extractedText: extractionResult.extractedText,
+                    metadata: extractionResult.metadata
                 };
             })
         );
+
         res.status(200).json(uploadedDocuments);
     } catch (error) {
         console.error('Upload API unified processing error:', error.message);
@@ -674,11 +845,11 @@ app.post("/hireRadar/sendemail", async (req, res) => {
 
         const { data, error } = await resend.emails.send({
             from: "Hirotec India <onboarding@resend.dev>",
-            to: email || "vijayanandhaj@gmail.com",
+            to: "vijayanandhaj@gmail.com",
             subject: `${candidateName}, your Test is Scheduled`,
             html: emailHtml, 
         });
-
+        console.log('email sent');
         if (error) console.error("Resend error:", error.message);
         res.status(200).json({ data });
     } catch (err) {
@@ -916,9 +1087,7 @@ Respond ONLY with a raw, valid JSON object strictly matching this schema, withou
 // Attach imported sub-router for Manager Requests if used
 app.use("/hireRadar/managerrequest", managerRequestRoutes);
 
-// ==========================================================================
-// START SERVER
-// ==========================================================================
+
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

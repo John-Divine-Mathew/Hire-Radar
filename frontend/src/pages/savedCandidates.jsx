@@ -1,6 +1,6 @@
 import Sidebar from "../components/sideBar/sideBar";
 import Navbar from "../components/navBar/navBar.jsx";
-import { Funnel, Eye, MoreVertical, ChevronDown, ChevronLeft, ChevronRight, X, CheckCircle2, Mail } from "lucide-react";
+import { Funnel, Eye, MoreVertical, ChevronDown, ChevronLeft, ChevronRight, X, CheckCircle2, Mail, Check } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { format } from 'date-fns';
 import { useNavigate } from "react-router-dom";
@@ -475,6 +475,13 @@ function SavedCandidates() {
 
   const [bookingCandidate, setBookingCandidate] = useState(null);
 
+  // Inline editing status states
+  const [editingCndId, setEditingCndId] = useState(null);
+  const [editStatusForm, setEditStatusForm] = useState({
+    teststatus: "NA",
+    interviewstatus: "NA"
+  });
+
   const filterOptions = ['Experience', 'Skills', 'Location', 'Role', 'Status'].sort();
 
   const dropdownOptions = {
@@ -696,6 +703,40 @@ function SavedCandidates() {
     setBookingCandidate(null);
   }
 
+  // Handle Edit Action Click - Pre-fills with existing candidate status
+  const handleEditClick = (candidate) => {
+    setEditingCndId(candidate.cndid);
+    setEditStatusForm({
+      teststatus: candidate.teststatus || "NA",
+      interviewstatus: candidate.interviewstatus || "NA"
+    });
+    setOpenMenuId(null);
+  };
+
+  // Save Candidate Statuses
+  const saveCandidateStatus = async (cndid) => {
+    try {
+      const response = await fetch(`http://localhost:5000/hireRadar/updateCandidateStatus/${cndid}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          teststatus: editStatusForm.teststatus,
+          interviewstatus: editStatusForm.interviewstatus
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || "Failed to update status");
+      }
+
+      setEditingCndId(null);
+      await getListData();
+    } catch (err) {
+      console.error("Error saving candidate status:", err.message || err);
+    }
+  };
+
   async function handleSendEmailAction(bookingDetails) {
     const candidateId = bookingCandidate?.cndid;
     if (!candidateId) return;
@@ -782,11 +823,11 @@ function SavedCandidates() {
     const s = status || 'NA';
     let bgClasses = 'bg-gray-100 text-gray-700 border-gray-200';
 
-    if (['passed', 'completed', 'offered', 'pass'].includes(s.toLowerCase())) {
+    if (['pass', 'passed', 'completed', 'offered'].includes(s.toLowerCase())) {
       bgClasses = 'bg-emerald-50 text-emerald-700 border-emerald-200';
     } else if (['scheduled', 'interviewing', 'pending', 'applied'].includes(s.toLowerCase())) {
       bgClasses = 'bg-amber-50 text-amber-700 border-amber-200';
-    } else if (['failed', 'rejected', 'fail'].includes(s.toLowerCase())) {
+    } else if (['fail', 'failed', 'rejected'].includes(s.toLowerCase())) {
       bgClasses = 'bg-rose-50 text-rose-700 border-rose-200';
     }
 
@@ -964,58 +1005,125 @@ function SavedCandidates() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 bg-white">
-                  {candidates.map((candidate) => (
-                    <tr key={candidate.cndid} className="hover:bg-gray-50 transition duration-150">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <img src={candidate.cndphoto} alt={candidate.cndname} className="h-12 w-12 rounded-full object-cover" />
-                          <div>
-                            <p className="font-semibold text-gray-900">{candidate.cndname}</p>
-                            <p className="text-sm text-gray-600">{candidate.cndlocation}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-gray-700">{candidate.cndrole}</td>
-                      <td className="px-6 py-4 text-gray-700">{`${candidate.cndexperience} years`}</td>
-                      <td className="px-6 py-4">
-                        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800">
-                          {candidate.matchScore || '80%'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-gray-700">{candidate.searchdate || candidate.searchDate || format(new Date(), 'dd/MM/yyyy')}</td>
-                      <td className="px-6 py-4">
-                        {renderStatusBadge(candidate.teststatus)}
-                      </td>
-                      <td className="px-6 py-4">
-                        {renderStatusBadge(candidate.interviewstatus)}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <button
-                            onClick={() => navigateSavedCandidateProfile(candidate.cndid)}
-                            className="text-purple-600 hover:text-purple-800 transition duration-200"
-                            title="View profile"
-                          >
-                            <Eye size={20} />
-                          </button>
-                          <div className="menu-container relative inline-block">
-                            <button
-                              className="text-gray-400 hover:text-gray-600 transition duration-200"
-                              title="More options"
-                              onClick={() => toggleMenu(candidate.cndid)}
-                            >
-                              <MoreVertical size={20} />
-                            </button>
-                            <div className={`absolute right-full top-1/2 -translate-y-1/2 -mr-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg p-3 z-50 transition-opacity duration-200 ${openMenuId === candidate.cndid ? 'block opacity-100' : 'hidden opacity-0'}`}>
-                              <a onClick={() => alert('Edit: ' + candidate.cndname)} className="block px-3 py-2 text-gray-700 text-sm rounded hover:bg-gray-100 cursor-pointer transition duration-150">Edit</a>
-                              <a onClick={() => deleteRecord(candidate.cndid)} className="block px-3 py-2 text-gray-700 text-sm rounded hover:bg-gray-100 cursor-pointer transition duration-150">Delete</a>
-                              <a onClick={() => openCalendar(candidate)} className="block px-3 py-2 text-gray-700 text-sm rounded hover:bg-gray-100 cursor-pointer transition duration-150">Book slot</a>
+                  {candidates.map((candidate) => {
+                    const isEditing = editingCndId === candidate.cndid;
+
+                    return (
+                      <tr key={candidate.cndid} className="hover:bg-gray-50 transition duration-150">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <img src={candidate.cndphoto} alt={candidate.cndname} className="h-12 w-12 rounded-full object-cover" />
+                            <div>
+                              <p className="font-semibold text-gray-900">{candidate.cndname}</p>
+                              <p className="text-sm text-gray-600">{candidate.cndlocation}</p>
                             </div>
                           </div>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td className="px-6 py-4 text-gray-700">{candidate.cndrole}</td>
+                        <td className="px-6 py-4 text-gray-700">{`${candidate.cndexperience} years`}</td>
+                        <td className="px-6 py-4">
+                          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800">
+                            {candidate.matchScore || '80%'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-gray-700">{candidate.searchdate || candidate.searchDate || format(new Date(), 'dd/MM/yyyy')}</td>
+                        
+                        {/* Test Status Column */}
+                        <td className="px-6 py-4">
+                          {isEditing ? (
+                            <div className="relative inline-block w-32">
+                              <select
+                                value={editStatusForm.teststatus}
+                                onChange={(e) => setEditStatusForm({ ...editStatusForm, teststatus: e.target.value })}
+                                className="w-full appearance-none px-3 py-1.5 border border-purple-300 rounded-lg text-xs font-semibold bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer shadow-sm pr-7"
+                              >
+                                <option value="NA">NA</option>
+                                <option value="Pass">Pass</option>
+                                <option value="Fail">Fail</option>
+                                <option value="Pending">Pending</option>
+                                <option value="Scheduled">Scheduled</option>
+                                <option value="Completed">Completed</option>
+                              </select>
+                              <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                            </div>
+                          ) : (
+                            renderStatusBadge(candidate.teststatus)
+                          )}
+                        </td>
+
+                        {/* Interview Status Column */}
+                        <td className="px-6 py-4">
+                          {isEditing ? (
+                            <div className="relative inline-block w-32">
+                              <select
+                                value={editStatusForm.interviewstatus}
+                                onChange={(e) => setEditStatusForm({ ...editStatusForm, interviewstatus: e.target.value })}
+                                className="w-full appearance-none px-3 py-1.5 border border-purple-300 rounded-lg text-xs font-semibold bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer shadow-sm pr-7"
+                              >
+                                <option value="NA">NA</option>
+                                <option value="Pass">Pass</option>
+                                <option value="Fail">Fail</option>
+                                <option value="Pending">Pending</option>
+                                <option value="Scheduled">Scheduled</option>
+                                <option value="Completed">Completed</option>
+                              </select>
+                              <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                            </div>
+                          ) : (
+                            renderStatusBadge(candidate.interviewstatus)
+                          )}
+                        </td>
+
+                        {/* Actions Column */}
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            {isEditing ? (
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => saveCandidateStatus(candidate.cndid)}
+                                  className="p-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition duration-150"
+                                  title="Save Status"
+                                >
+                                  <Check size={18} />
+                                </button>
+                                <button
+                                  onClick={() => setEditingCndId(null)}
+                                  className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition duration-150"
+                                  title="Cancel Edit"
+                                >
+                                  <X size={18} />
+                                </button>
+                              </div>
+                            ) : (
+                              <>
+                                <button
+                                  onClick={() => navigateSavedCandidateProfile(candidate.cndid)}
+                                  className="text-purple-600 hover:text-purple-800 transition duration-200"
+                                  title="View profile"
+                                >
+                                  <Eye size={20} />
+                                </button>
+                                <div className="menu-container relative inline-block">
+                                  <button
+                                    className="text-gray-400 hover:text-gray-600 transition duration-200"
+                                    title="More options"
+                                    onClick={() => toggleMenu(candidate.cndid)}
+                                  >
+                                    <MoreVertical size={20} />
+                                  </button>
+                                  <div className={`absolute right-full top-1/2 -translate-y-1/2 -mr-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg p-3 z-50 transition-opacity duration-200 ${openMenuId === candidate.cndid ? 'block opacity-100' : 'hidden opacity-0'}`}>
+                                    <a onClick={() => handleEditClick(candidate)} className="block px-3 py-2 text-gray-700 text-sm rounded hover:bg-gray-100 cursor-pointer transition duration-150">Edit</a>
+                                    <a onClick={() => deleteRecord(candidate.cndid)} className="block px-3 py-2 text-gray-700 text-sm rounded hover:bg-gray-100 cursor-pointer transition duration-150">Delete</a>
+                                    <a onClick={() => openCalendar(candidate)} className="block px-3 py-2 text-gray-700 text-sm rounded hover:bg-gray-100 cursor-pointer transition duration-150">Book slot</a>
+                                  </div>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
