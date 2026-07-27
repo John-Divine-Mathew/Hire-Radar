@@ -21,99 +21,6 @@ import * as XLSX from 'xlsx';
 const API_BASE_URL = 'http://localhost:5000';
 const KNOWN_SPECIAL_EXTS = ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'xlsx', 'xls', 'csv', 'json'];
 
-// Helper function to safely read the Hugging Face API Token at runtime
-const getHuggingFaceToken = () => {
-  return (
-    (typeof import.meta !== 'undefined' && import.meta.env?.VITE_HF_TOKEN) ||
-    (typeof process !== 'undefined' && process.env?.REACT_APP_HF_TOKEN) ||
-    ''
-  );
-};
-
-// Function to analyze raw resume text using Hugging Face (Qwen2.5-Coder-32B-Instruct)
-const analyzeResumeWithHuggingFace = async (rawText, fileName) => {
-  const token = getHuggingFaceToken();
-
-  const fallbackData = {
-    name: fileName || 'Unknown',
-    location: 'N/A',
-    role: 'N/A',
-    experience: 'N/A',
-    saved_date: new Date().toISOString().split('T')[0],
-    linkedin: 'N/A',
-    skills: [],
-    education: [],
-  };
-
-  if (!token) {
-    console.warn(
-      `⚠️ [Hugging Face AI] Missing API Token. Set VITE_HF_TOKEN or REACT_APP_HF_TOKEN in your .env file.`
-    );
-    return fallbackData;
-  }
-
-  if (!rawText || !rawText.trim()) {
-    return fallbackData;
-  }
-
-  const promptText = `
-You are an expert HR Data Extraction Specialist. Analyze the following resume text extracted from an uploaded file (${fileName}).
-Extract candidate information into a strictly valid JSON object matching this schema structure:
-
-{
-  "name": "Candidate's full name",
-  "location": "Current location or city/country",
-  "role": "Designation, job title, or target role",
-  "experience": "Total years of experience or summary string (e.g. '5 years')",
-  "saved_date": "${new Date().toISOString().split('T')[0]}",
-  "linkedin": "LinkedIn profile URL if present, otherwise 'N/A'",
-  "skills": ["Skill 1", "Skill 2"],
-  "education": ["Degree/University 1", "Degree/University 2"]
-}
-
-Respond ONLY with a raw, valid JSON object without any extra commentary or markdown formatting.
-
-Document Content:
-${rawText}
-  `;
-
-  try {
-    const response = await fetch('https://router.huggingface.co/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token.trim()}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'Qwen/Qwen2.5-Coder-32B-Instruct',
-        messages: [
-          { role: 'system', content: 'You output only valid JSON.' },
-          { role: 'user', content: promptText },
-        ],
-        temperature: 0.1,
-        max_tokens: 1000,
-      }),
-    });
-
-    const data = await response.json();
-
-    if (response.ok && data.choices?.[0]?.message?.content) {
-      let rawContent = data.choices[0].message.content.trim();
-      
-      // Clean markdown code fence wrappers if present
-      rawContent = rawContent.replace(/```json/gi, '').replace(/```/g, '').trim();
-
-      return JSON.parse(rawContent);
-    } else {
-      console.warn('⚠️ Hugging Face API Response Error:', data);
-    }
-  } catch (error) {
-    console.error(`Hugging Face analysis error for ${fileName}:`, error);
-  }
-
-  return fallbackData;
-};
-
 function ImportDrive() {
   const [documents, setDocuments] = useState([]);
   const [filteredDocuments, setFilteredDocuments] = useState([]);
@@ -131,7 +38,7 @@ function ImportDrive() {
   const [previewSrc, setPreviewSrc] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
 
-  // Safely initialize PDF.js worker without breaking module imports
+  // Initialize PDF.js worker
   useEffect(() => {
     if (pdfjsLib?.GlobalWorkerOptions) {
       try {
@@ -170,6 +77,7 @@ function ImportDrive() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(i === 0 ? 0 : 1)) + ' ' + sizes[i];
   };
 
+  // Fetch index from server backend
   const fetchBackendDocuments = async (searchQuery = '', ext = '', size = '', sortOrder = 'relevance') => {
     setIsLoading(true);
     try {
@@ -197,7 +105,7 @@ function ImportDrive() {
       }));
       setDocuments(normalizedData);
     } catch (err) {
-      console.error('Unable to fetch updated search index from server backend:', err);
+      console.error('Unable to fetch search index from server backend:', err);
     } finally {
       setIsLoading(false);
     }
@@ -276,190 +184,37 @@ function ImportDrive() {
     }
   };
 
-  const extractTextContent = async (file) => {
-    try {
-      return await file.text();
-    } catch (e) {
-      return '';
-    }
-  };
+  const handleFolderSelect = async (event) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
 
-  const extractImageText = async (file) => {
-    try {
-      const worker = await Tesseract.createWorker('eng', 1, { logger: () => {} });
-      const {
-        data: { text },
-      } = await worker.recognize(file);
-      await worker.terminate();
-      return text?.trim() || '';
-    } catch (error) {
-      console.error('OCR failed:', error);
-      return '';
-    }
-  };
+    setIsUploading(true);
 
-  const extractPdfText = async (file) => {
-    try {
-      const arrayBuffer = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({
-        data: arrayBuffer,
-        ignoreErrors: true,
-        verbosity: 0,
-      }).promise;
-
-      let text = '';
-      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum += 1) {
-        const page = await pdf.getPage(pageNum);
-        const content = await page.getTextContent();
-        text += content.items.map((item) => item.str).join(' ') + '\n';
+    const formData = new FormData();
+    for (let i = 0; i < files.length; i++) {
+      if (isValidFile(files[i].name)) {
+        formData.append('file', files[i]);
       }
-
-      if (!text.trim()) {
-        let ocrText = '';
-        const worker = await Tesseract.createWorker('eng', 1, { logger: () => {} });
-        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum += 1) {
-          const page = await pdf.getPage(pageNum);
-          const viewport = page.getViewport({ scale: 1.5 });
-          const canvas = document.createElement('canvas');
-          const context = canvas.getContext('2d');
-          canvas.height = viewport.height;
-          canvas.width = viewport.width;
-
-          await page.render({ canvasContext: context, viewport: viewport }).promise;
-          const {
-            data: { text: pageText },
-          } = await worker.recognize(canvas);
-          ocrText += pageText + '\n';
-        }
-        await worker.terminate();
-        return ocrText.trim();
-      }
-
-      return text.trim();
-    } catch (e) {
-      console.error('Failed reading PDF content:', e);
-      return '';
     }
-  };
 
-  const extractDocxContent = async (file) => {
     try {
-      const arrayBuffer = await file.arrayBuffer();
-      const result = await mammoth.extractRawText({ arrayBuffer });
-      return result.value.trim();
-    } catch (e) {
-      return '';
-    }
-  };
-
-  const extractXlsxText = async (file) => {
-    try {
-      const arrayBuffer = await file.arrayBuffer();
-      const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-      let text = '';
-      workbook.SheetNames.forEach((sheetName) => {
-        const sheet = workbook.Sheets[sheetName];
-        text += XLSX.utils.sheet_to_csv(sheet) + '\n';
+      const response = await fetch(`${API_BASE_URL}/api/upload`, {
+        method: 'POST',
+        body: formData,
       });
-      return text.trim();
-    } catch (e) {
-      return '';
-    }
-  };
 
-  const extractFileContent = async (file) => {
-    const ext = normalizeExt(file.name.split('.').pop());
-    if (['txt', 'csv'].includes(ext)) return extractTextContent(file);
-    if (['docx'].includes(ext)) return extractDocxContent(file);
-    if (['pdf'].includes(ext)) return extractPdfText(file);
-    if (['xlsx', 'xls'].includes(ext)) return extractXlsxText(file);
-    if (['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'].includes(ext)) return extractImageText(file);
-    return '';
-  };
-
-  const processFilesRecursively = async (items) => {
-    const newDocuments = [];
-    for (const item of items) {
-      if (item.kind === 'file') {
-        const file = typeof item.getFile === 'function' ? await item.getFile() : item;
-        if (isValidFile(file.name)) {
-          const ext = normalizeExt(file.name.split('.').pop());
-          const content = await extractFileContent(file);
-          const blobURL = URL.createObjectURL(file);
-
-          // Extract Structured Metadata via Hugging Face AI
-          const parsedMetadata = await analyzeResumeWithHuggingFace(content, file.name);
-
-          // Log the 8 required candidate profile fields to console
-          console.log(`📄 Document Log [${file.name}]:`, {
-            name: parsedMetadata.name,
-            location: parsedMetadata.location,
-            'role/designation': parsedMetadata.role,
-            experience: parsedMetadata.experience,
-            'saved date': parsedMetadata.saved_date,
-            'linkedin profile link': parsedMetadata.linkedin,
-            skills: parsedMetadata.skills,
-            education: parsedMetadata.education,
-          });
-
-          newDocuments.push({
-            id: crypto.randomUUID(),
-            fileName: file.name,
-            extension: ext,
-            size: formatFileSize(file.size),
-            sizeBytes: file.size,
-            path: file.webkitRelativePath || file.name,
-            lastModified: new Date(file.lastModified).toLocaleDateString(),
-            blobURL: blobURL,
-            content: content,
-            nlpEntities: parsedMetadata.skills || [],
-          });
-        }
-      } else if (item.kind === 'directory' || item.isDirectory) {
-        const dirReader = item.createReader();
-        const entries = await new Promise((resolve, reject) => {
-          dirReader.readEntries(resolve, reject);
-        });
-        const subFiles = await processFilesRecursively(entries);
-        newDocuments.push(...subFiles);
+      if (response.ok) {
+        const data = await response.json();
+        console.log('📄 Documents parsed & indexed via backend server:', data);
+        fetchBackendDocuments('', '', '', 'newest');
       }
+    } catch (uploadErr) {
+      console.error('Failed uploading files to server backend:', uploadErr);
+    } finally {
+      setIsUploading(false);
+      if (event.target) event.target.value = '';
     }
-    return newDocuments;
   };
-
-const handleFolderSelect = async (event) => {
-  const files = event.target.files;
-  if (!files || files.length === 0) return;
-
-  setIsUploading(true);
-  const formData = new FormData();
-
-  for (let i = 0; i < files.length; i++) {
-    if (isValidFile(files[i].name)) {
-      formData.append('file', files[i]);
-    }
-  }
-
-  try {
-    const response = await fetch(`${API_BASE_URL}/api/upload`, {
-      method: 'POST',
-      body: formData,
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      console.log('📄 Processed Documents with LlamaIndex:', data);
-      
-      // Refresh list from backend
-      fetchBackendDocuments('', '', '', 'newest');
-    }
-  } catch (uploadErr) {
-    console.error('Failed uploading files to server backend:', uploadErr);
-  } finally {
-    setIsUploading(false);
-    if (event.target) event.target.value = '';
-  }
-};
 
   const handleDragOver = (e) => {
     e.preventDefault();
