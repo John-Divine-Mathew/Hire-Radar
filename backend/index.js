@@ -1,13 +1,16 @@
 const express = require('express');
 const multer = require('multer');
 const cors = require('cors');
+const fs = require('fs');
+const path = require('path');
+const React = require('react');
+const { Resend } = require('resend');
+const { render } = require('@react-email/components');
+const { LlamaParseReader } = require('@llamaindex/cloud');
+
 const pool = require('./db');
-const { Resend } = require("resend");
-const { render } = require("@react-email/components");
-const React = require("react");
 const { TestScheduledEmail } = require('./emails/template.tsx');
-const managerRequestRoutes = require("./routes/managerRequest");
-const { GoogleGenAI } = require("@google/genai");
+const managerRequestRoutes = require('./routes/managerRequest');
 
 const {
     initializeSearchService,
@@ -19,18 +22,33 @@ const {
 
 const app = express();
 
-// Set up global middlewares
+// ==========================================================================
+// MIDDLEWARES & INITIALIZATION
+// ==========================================================================
+
 app.use(cors({ origin: 'http://localhost:5173' }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 const resend = new Resend(process.env.resendApiKey);
 
-// Initialize schema updates on boot
-initializeSearchService().catch((error) => console.error('Search service startup failed:', error.message));
+// Initialize DB search schema on server startup
+initializeSearchService().catch((error) =>
+    console.error('Search service startup failed:', error.message)
+);
 
-// Configure Multer for in-memory uploads
+// Memory storage for incoming HTTP file uploads
 const upload = multer({ storage: multer.memoryStorage() });
+
+// Ensure temporary folder exists for LlamaParse processing
+const TEMP_UPLOADS_DIR = path.join(__dirname, 'temp_uploads');
+if (!fs.existsSync(TEMP_UPLOADS_DIR)) {
+    fs.mkdirSync(TEMP_UPLOADS_DIR, { recursive: true });
+}
+
+// ==========================================================================
+// HELPER FUNCTIONS & LLAMAPARSE / LLAMAINdex RESOLUTION
+// ==========================================================================
 
 function formatFileSize(bytes) {
     if (!bytes && bytes !== 0) return '0 Bytes';
@@ -52,16 +70,253 @@ function normalizeDocument(row) {
     };
 }
 
-/* ==========================================================================
-   CANDIDATE TEMPORARY SEARCH & RETRIEVAL ENDPOINTS
-   ========================================================================== */
+const MIME_BY_EXT = {
+    '.pdf': 'application/pdf',
+    '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    '.doc': 'application/msword',
+    '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    '.xls': 'application/vnd.ms-excel',
+    '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    '.csv': 'text/csv',
+    '.txt': 'text/plain',
+    '.json': 'application/json',
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.gif': 'image/gif',
+    '.bmp': 'image/bmp',
+    '.webp': 'image/webp',
+};
+
+// Safe LlamaIndex Class Resolver
+function getLlamaIndexClasses() {
+    let DocClass = null;
+    let LLMClass = null;
+
+    try {
+        const llamaindex = require('llamaindex');
+        DocClass = llamaindex.Document || llamaindex.default?.Document;
+        LLMClass = llamaindex.OpenAI || llamaindex.default?.OpenAI;
+    } catch (e) {}
+
+    if (!LLMClass) {
+        try {
+            const openAiModule = require('@llamaindex/openai');
+            LLMClass = openAiModule.OpenAI || openAiModule.default?.OpenAI;
+        } catch (e) {}
+    }
+
+    return { Document: DocClass, OpenAI: LLMClass };
+}
+
+// ==========================================================================
+// LLAMAPARSE EXTRACT SERVICE
+// ==========================================================================
+
+/**
+ * Direct extraction via LlamaParse AI Reader
+ */
+async function extractCandidateJsonWithLlamaParse(fileBuffer, originalName) {
+    const tempFilePath = path.join(TEMP_UPLOADS_DIR, `${Date.now()}_${originalName}`);
+    const fallbackMetadata = {
+        name: originalName || 'Unknown',
+        location: 'N/A',
+        role: 'N/A',
+        experience: 'N/A',
+        saved_date: new Date().toISOString().split('T')[0],
+        linkedin: 'N/A',
+        skills: [],
+        education: []
+    };
+
+    try {
+        fs.writeFileSync(tempFilePath, fileBuffer);
+
+        const parser = new LlamaParseReader({
+            resultType: 'markdown',
+            language: 'en',
+            parsingInstruction: `
+                You are an expert HR Data Extraction Specialist.
+                Parse this document and extract core text as structured Markdown.
+                Pay close attention to candidate contact details, experience, key skills, and education history.
+            `
+        });
+
+        const documents = await parser.loadData(tempFilePath);
+        if (!documents || documents.length === 0) {
+            throw new Error('No content returned from LlamaParse');
+        }
+
+        const extractedMarkdown = documents.map((doc) => doc.text).join('\n\n');
+
+        // Optional post-extraction pass to format into structured JSON schema
+        const extractedMetadata = await analyzeResumeWithLlamaIndex(extractedMarkdown, originalName);
+
+        return {
+            extractedText: extractedMarkdown,
+            metadata: extractedMetadata
+        };
+    } catch (err) {
+        console.warn(`[LlamaParse Direct Extract Fallback] ${originalName}:`, err.message);
+        return {
+            extractedText: fileBuffer.toString('utf-8'),
+            metadata: fallbackMetadata
+        };
+    } finally {
+        if (fs.existsSync(tempFilePath)) {
+            fs.unlinkSync(tempFilePath);
+        }
+    }
+}
+
+// ==========================================================================
+// LLAMAINdex RESUME EXTRACTION SERVICE
+// ==========================================================================
+
+async function analyzeResumeWithLlamaIndex(rawText, fileName) {
+    const fallbackData = {
+        name: fileName || 'Unknown',
+        location: 'N/A',
+        role: 'N/A',
+        experience: 'N/A',
+        saved_date: new Date().toISOString().split('T')[0],
+        linkedin: 'N/A',
+        skills: [],
+        education: []
+    };
+
+    if (!rawText || !rawText.trim()) return fallbackData;
+
+    const apiKey = process.env.OPENAI_API_KEY || process.env.OPENAI_APIKEY || process.env.GPT_API_KEY;
+
+    try {
+        const { Document: DocClass, OpenAI: LLMClass } = getLlamaIndexClasses();
+
+        if (typeof LLMClass === 'function' && typeof DocClass === 'function') {
+            const docNode = new DocClass({
+                text: rawText,
+                id_: fileName,
+                metadata: { fileName, date: new Date().toISOString() }
+            });
+
+            const llm = new LLMClass({ apiKey, model: "gpt-4o-mini", temperature: 0.1 });
+
+            const promptText = `
+You are an expert HR Data Extraction Specialist.
+Analyze the following resume document text extracted from an uploaded file (${fileName}).
+Extract candidate information into a strictly valid JSON object matching this schema structure:
+
+{
+  "name": "Candidate's full name",
+  "location": "Current location or city/country",
+  "role": "Designation, job title, or target role",
+  "experience": "Total years of experience or summary string (e.g. '5 years')",
+  "saved_date": "${new Date().toISOString().split('T')[0]}",
+  "linkedin": "LinkedIn profile URL if present, otherwise 'N/A'",
+  "skills": ["Skill 1", "Skill 2"],
+  "education": ["Degree/University 1", "Degree/University 2"]
+}
+
+Respond ONLY with a raw, valid JSON object without any extra commentary or markdown formatting.
+
+Document Content:
+${docNode.getText()}
+`;
+
+            const response = await llm.complete({ prompt: promptText });
+            let rawContent = response?.text || response?.message?.content || response?.toString() || '';
+            rawContent = rawContent.replace(/```json/gi, '').replace(/```/g, '').trim();
+
+            return JSON.parse(rawContent);
+        }
+
+        if (apiKey) {
+            const promptText = `
+You are an expert HR Data Extraction Specialist.
+Analyze the following resume document text extracted from an uploaded file (${fileName}).
+Extract candidate information into a strictly valid JSON object matching this schema structure:
+
+{
+  "name": "Candidate's full name",
+  "location": "Current location or city/country",
+  "role": "Designation, job title, or target role",
+  "experience": "Total years of experience or summary string (e.g. '5 years')",
+  "saved_date": "${new Date().toISOString().split('T')[0]}",
+  "linkedin": "LinkedIn profile URL if present, otherwise 'N/A'",
+  "skills": ["Skill 1", "Skill 2"],
+  "education": ["Degree/University 1", "Degree/University 2"]
+}
+
+Respond ONLY with a raw, valid JSON object without any extra commentary or markdown formatting.
+
+Document Content:
+${rawText}
+`;
+
+            const apiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${apiKey.trim()}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    model: "gpt-4o-mini",
+                    temperature: 0.1,
+                    messages: [
+                        { role: "system", content: "You output only valid raw JSON." },
+                        { role: "user", content: promptText }
+                    ]
+                })
+            });
+
+            if (apiRes.ok) {
+                const apiData = await apiRes.json();
+                let rawContent = apiData.choices?.[0]?.message?.content || '';
+                rawContent = rawContent.replace(/```json/gi, '').replace(/```/g, '').trim();
+                return JSON.parse(rawContent);
+            }
+        }
+
+        return fallbackData;
+    } catch (error) {
+        console.error(`[LlamaIndex Backend] Extraction error for ${fileName}:`, error.message);
+        return fallbackData;
+    }
+}
+
+app.put("/hireRadar/updateCandidateStatus/:cndid", async (req, res) => {
+  try {
+    const { cndid } = req.params;
+    const { teststatus, interviewstatus } = req.body;
+
+    const updateQuery = await pool.query(
+      `UPDATE cndpermsave 
+       SET teststatus = $1, interviewstatus = $2 
+       WHERE cndid = $3 
+       RETURNING *`,
+      [teststatus, interviewstatus, cndid]
+    );
+
+    if (updateQuery.rows.length === 0) {
+      return res.status(404).json({ message: "Candidate not found" });
+    }
+
+    res.json({
+      message: "Candidate status updated successfully",
+      candidate: updateQuery.rows[0]
+    });
+  } catch (err) {
+    console.error("Error updating candidate status:", err.message);
+    res.status(500).send("Server Error");
+  }
+});
 
 app.get("/hireRadar/cndtempsave", async (req, res) => {
     try {
         const allData = await pool.query("SELECT * FROM cndtempsave");
         res.json(allData.rows);
     } catch (err) {
-        console.error("cndtempsave error:", err.message);
+        console.error("cndtempsave fetch error:", err.message);
         res.status(500).json({ error: err.message });
     }
 });
@@ -103,7 +358,7 @@ app.get("/hireRadar/cndtempsavesearch", async (req, res) => {
             queryParams.push(`%${role.toLowerCase().trim()}%`);
             paramCounter++;
         }
-        
+
         if (status) {
             queryText += ` AND LOWER(cndstatus) = $${paramCounter}`;
             queryParams.push(status.toLowerCase().trim());
@@ -112,11 +367,9 @@ app.get("/hireRadar/cndtempsavesearch", async (req, res) => {
 
         if (location) {
             const locationsArray = location.split(',');
-            const locationConditions = [];
-            locationsArray.forEach(loc => {
-                locationConditions.push(`LOWER(cndlocation) LIKE $${paramCounter}`);
+            const locationConditions = locationsArray.map(loc => {
                 queryParams.push(`%${loc.toLowerCase().trim()}%`);
-                paramCounter++;
+                return `LOWER(cndlocation) LIKE $${paramCounter++}`;
             });
             if (locationConditions.length > 0) {
                 queryText += ` AND (${locationConditions.join(' OR ')})`;
@@ -135,7 +388,7 @@ app.get("/hireRadar/cndtempsavesearch", async (req, res) => {
         const filteredData = await pool.query(queryText, queryParams);
         res.json(filteredData.rows);
     } catch (err) {
-        console.error("Backend filter processing error:", err.message);
+        console.error("Backend temp filter processing error:", err.message);
         res.status(500).send("Server Error");
     }
 });
@@ -146,36 +399,34 @@ app.get("/hireRadar/cndtempsave/:cndid", async (req, res) => {
         const oneData = await pool.query("SELECT * FROM cndtempsave WHERE cndid = $1", [cndid]);
         res.json(oneData.rows[0]);
     } catch (err) {
-        console.error("cndtempsave ID error:", err.message);
+        console.error("cndtempsave ID fetch error:", err.message);
         res.status(500).json({ error: err.message });
     }
 });
 
-/* ==========================================================================
-   CANDIDATE PERMANENT SEARCH & RETRIEVAL ENDPOINTS
-   ========================================================================== */
+// ==========================================================================
+// CANDIDATE PERMANENT DATABASE ROUTES
+// ==========================================================================
 
 app.get("/hireRadar/cndpermsave", async (req, res) => {
     try {
         const allData = await pool.query("SELECT * FROM cndpermsave ORDER BY cndid ASC");
         res.json(allData.rows);
     } catch (err) {
-        console.error("cndpermsave error:", err.message);
+        console.error("cndpermsave fetch error:", err.message);
         res.status(500).json({ error: err.message });
     }
 });
 
 app.get("/hireRadar/cndpermsavepass", async (req, res) => {
     try {
-        const result = await pool.query("SELECT * FROM cndpermsave ORDER BY cndid ASC");
-        // Returning JSON wrapped in data to match React's expectations
+        const result = await pool.query("SELECT * FROM cndpermsave WHERE LOWER(teststatus)='pass' ORDER BY cndid ASC");
         res.json({ data: result.rows });
     } catch (err) {
         console.error("cndpermsavepass error:", err.message);
         res.status(500).json({ error: err.message, data: [] });
     }
 });
-
 
 app.get("/hireRadar/cndpermsavesearch", async (req, res) => {
     try {
@@ -235,11 +486,9 @@ app.get("/hireRadar/cndpermsavesearch", async (req, res) => {
 
         if (location) {
             const locationsArray = location.split(',');
-            const locationConditions = [];
-            locationsArray.forEach(loc => {
-                locationConditions.push(`LOWER(cndlocation) LIKE $${paramCounter}`);
+            const locationConditions = locationsArray.map(loc => {
                 queryParams.push(`%${loc.toLowerCase().trim()}%`);
-                paramCounter++;
+                return `LOWER(cndlocation) LIKE $${paramCounter++}`;
             });
             if (locationConditions.length > 0) {
                 queryText += ` AND (${locationConditions.join(' OR ')})`;
@@ -297,7 +546,6 @@ app.get("/hireRadar/cndworkdetails/:cndid", async (req, res) => {
     }
 });
 
-// FIXED: Adjusted columns to use teststatus and interviewstatus instead of invalid cndstatus
 app.post("/hireRadar/insertCandidate", async (req, res) => {
     try {
         const { date, name, email, phone, age, gender, role, skills, texp, experience, location, teststatus, interviewstatus } = req.body;
@@ -331,9 +579,9 @@ app.delete("/hireRadar/deleteCandidate/:cndid", async (req, res) => {
     }
 });
 
-/* ==========================================================================
-   TEST & ASSESSMENT DETAILS ENDPOINTS
-   ========================================================================== */
+// ==========================================================================
+// TESTS & ASSESSMENT ROUTES
+// ==========================================================================
 
 app.post("/hireRadar/insertTestDetails", async (req, res) => {
     try {
@@ -456,9 +704,9 @@ app.get("/hireRadar/adminlogin", async (req, res) => {
     }
 });
 
-/* ==========================================================================
-   DOCUMENT INDEXING & PREVIEW ENDPOINTS
-   ========================================================================== */
+// ==========================================================================
+// DOCUMENT SEARCH, PREVIEW, DOWNLOAD & UPLOAD ENDPOINTS
+// ==========================================================================
 
 app.get('/api/search', async (req, res) => {
     try {
@@ -493,14 +741,30 @@ app.get('/api/documents', async (req, res) => {
 app.post('/api/upload', upload.any(), async (req, res) => {
     try {
         const filesCollection = req.files || (req.file ? [req.file] : []);
-        
+
         if (filesCollection.length === 0) {
             return res.status(400).json({ error: 'No files were detected inside payload arrays.' });
         }
 
         const uploadedDocuments = await Promise.all(
-            filesCollection.map(async (file) => saveUploadedFile(file))
+            filesCollection.map(async (file) => {
+                // Execute direct extraction via LlamaParse
+                const extractionResult = await extractCandidateJsonWithLlamaParse(file.buffer, file.originalname);
+
+                // Save to PostgreSQL search index
+                const savedDoc = await saveUploadedFile({
+                    ...file,
+                    extractedText: extractionResult.extractedText
+                });
+
+                return {
+                    ...savedDoc,
+                    extractedText: extractionResult.extractedText,
+                    metadata: extractionResult.metadata
+                };
+            })
         );
+
         res.status(200).json(uploadedDocuments);
     } catch (error) {
         console.error('Upload API unified processing error:', error.message);
@@ -511,24 +775,6 @@ app.post('/api/upload', upload.any(), async (req, res) => {
 app.get('/api/status', (_req, res) => {
     res.json({ status: 'ok', service: 'document-search' });
 });
-
-const MIME_BY_EXT = {
-    '.pdf': 'application/pdf',
-    '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    '.doc': 'application/msword',
-    '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    '.xls': 'application/vnd.ms-excel',
-    '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-    '.csv': 'text/csv',
-    '.txt': 'text/plain',
-    '.json': 'application/json',
-    '.png': 'image/png',
-    '.jpg': 'image/jpeg',
-    '.jpeg': 'image/jpeg',
-    '.gif': 'image/gif',
-    '.bmp': 'image/bmp',
-    '.webp': 'image/webp',
-};
 
 app.get('/api/documents/:id/preview', async (req, res) => {
     try {
@@ -580,9 +826,9 @@ app.delete('/api/documents/:id', async (req, res) => {
     }
 });
 
-/* ==========================================================================
-   EMAIL & MANAGER LOGIN / REQUESTS
-   ========================================================================== */
+// ==========================================================================
+// EMAIL & MANAGER REQUEST MANAGEMENT
+// ==========================================================================
 
 app.post("/hireRadar/sendemail", async (req, res) => {
     try {
@@ -599,15 +845,12 @@ app.post("/hireRadar/sendemail", async (req, res) => {
 
         const { data, error } = await resend.emails.send({
             from: "Hirotec India <onboarding@resend.dev>",
-            to: email || "vijayanandhaj@gmail.com",
+            to: "vijayanandhaj@gmail.com",
             subject: `${candidateName}, your Test is Scheduled`,
             html: emailHtml, 
         });
-
-        if (error) {
-            console.error("Resend error:", error.message);
-        }
-
+        console.log('email sent');
+        if (error) console.error("Resend error:", error.message);
         res.status(200).json({ data });
     } catch (err) {
         console.error("sendemail error:", err);
@@ -754,15 +997,10 @@ app.put("/hireRadar/managerrequeststatus/:requestid", async (req, res) => {
     }
 });
 
+// ==========================================================================
+// HUGGING FACE AI JOB DESCRIPTION GENERATOR
+// ==========================================================================
 
-
-
-
-
-
-{/*}
-{/*}
-// --- AI Job Description Generator Route ---
 app.post("/hireRadar/generate-jd", async (req, res) => {
     const { jobTitle, department, experience, keySkills } = req.body;
 
@@ -770,88 +1008,28 @@ app.post("/hireRadar/generate-jd", async (req, res) => {
         return res.status(400).json({ error: "Job title is required." });
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
+    const token = process.env.HF_TOKEN;
 
-    try {
-        if (apiKey) {
-            const promptText = `
-                You are an expert HR Specialist. Generate a detailed Job Description (JD) in JSON format:
-                - Job Title: ${jobTitle}
-                - Department: ${department || "Engineering / Technology"}
-                - Experience Level: ${experience || "3-5 years"}
-                - Key Skills/Responsibilities: ${keySkills || "Standard domain skills"}
-
-                Return ONLY a valid raw JSON object matching this schema:
-                {
-                  "roleSummary": "Brief overview...",
-                  "keyResponsibilities": ["Responsibility 1", "Responsibility 2"],
-                  "requiredSkills": ["Skill 1", "Skill 2"],
-                  "experience": "${experience || "3-5 years"}",
-                  "suggestedSalaryRange": "₹8,00,000 - ₹12,00,000 per annum"
-                }
-            `;
-
-            const response = await fetch(
-                `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent`,
-                {
-                    method: "POST",
-                    headers: { 
-                        "Content-Type": "application/json",
-                        "x-goog-api-key": apiKey.trim()
-                    },
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: promptText }] }],
-                        generationConfig: { responseMimeType: "application/json" },
-                    }),
-                }
-            );
-
-            const data = await response.json();
-
-            if (response.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
-                let rawText = data.candidates[0].content.parts[0].text;
-                rawText = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
-                const jdData = JSON.parse(rawText);
-                return res.status(200).json(jdData);
-            }
-        }
-    } catch (err) {
-        console.error("Gemini API Request Error:", err.message);
-    }
-
-    // Fallback JD object
     const fallbackJD = {
-        roleSummary: `We are looking for an experienced ${jobTitle} to join our ${department || "Engineering"} team.`,
+        roleSummary: `We are seeking a qualified ${jobTitle} to join our ${department || "Engineering"} team. You will play a key role in delivering operational excellence and driving performance goals.`,
         keyResponsibilities: [
-            `Lead and execute day-to-day operations for ${jobTitle} tasks.`,
-            "Collaborate with cross-functional teams to achieve organizational goals.",
-            "Analyze workflows and implement continuous improvements."
+            `Design and implement standard processes for ${jobTitle}.`,
+            "Collaborate with engineering and operational teams.",
+            "Identify bottlenecks and optimize core technical workflows."
         ],
         requiredSkills: keySkills ? keySkills.split(",").map(s => s.trim()) : [
-            "Problem Solving", "Team Collaboration", "Communication Skills"
+            "Technical Problem Solving",
+            "Process Optimization",
+            "Cross-Functional Leadership",
+            "Communication"
         ],
         experience: experience || "3-5 years",
         suggestedSalaryRange: "₹8,00,000 - ₹12,00,000 per annum"
     };
 
-    return res.status(200).json(fallbackJD);
-});
-*/}
-
-
-// --- Hugging Face AI Job Description Generator Route ---
-app.post("/hireRadar/generate-jd", async (req, res) => {
-  const { jobTitle, department, experience, keySkills } = req.body;
-
-  if (!jobTitle) {
-    return res.status(400).json({ error: "Job title is required." });
-  }
-
-  const token = process.env.HF_TOKEN;
-
-  try {
-    if (token) {
-      const promptText = `
+    try {
+        if (token) {
+            const promptText = `
 You are an expert HR Specialist. Generate a detailed and professional Job Description (JD) in valid JSON format based on these parameters:
 - Job Title: ${jobTitle}
 - Department: ${department || "Engineering / Technology"}
@@ -866,67 +1044,52 @@ Respond ONLY with a raw, valid JSON object strictly matching this schema, withou
   "experience": "${experience || "3-5 years"}",
   "suggestedSalaryRange": "₹8,00,000 - ₹12,00,000 per annum"
 }
-      `;
+`;
 
-      const response = await fetch("https://router.huggingface.co/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${token.trim()}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          model: "Qwen/Qwen2.5-Coder-32B-Instruct",
-          messages: [
-            { role: "system", content: "You output only valid JSON." },
-            { role: "user", content: promptText }
-          ],
-          temperature: 0.3,
-          max_tokens: 1000
-        })
-      });
+            const response = await fetch("https://router.huggingface.co/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${token.trim()}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    model: "Qwen/Qwen2.5-Coder-32B-Instruct",
+                    messages: [
+                        { role: "system", content: "You output only valid JSON." },
+                        { role: "user", content: promptText }
+                    ],
+                    temperature: 0.3,
+                    max_tokens: 1000
+                })
+            });
 
-      const data = await response.json();
+            const data = await response.json();
 
-      if (response.ok && data.choices?.[0]?.message?.content) {
-        let rawContent = data.choices[0].message.content.trim();
-        rawContent = rawContent.replace(/```json/g, "").replace(/```/g, "").trim();
+            if (response.ok && data.choices?.[0]?.message?.content) {
+                let rawContent = data.choices[0].message.content.trim();
+                rawContent = rawContent.replace(/```json/g, "").replace(/```/g, "").trim();
 
-        const jdData = JSON.parse(rawContent);
-        return res.status(200).json(jdData);
-      } else {
-        console.warn("⚠️ Hugging Face API Response Error:", data);
-      }
-    } else {
-      console.error("❌ HF_TOKEN is missing in .env file!");
+                const jdData = JSON.parse(rawContent);
+                return res.status(200).json(jdData);
+            } else {
+                console.warn("⚠️ Hugging Face API Response Error:", data);
+            }
+        } else {
+            console.error("❌ HF_TOKEN is missing in .env file!");
+        }
+    } catch (err) {
+        console.error("⚠️ Hugging Face generation error:", err.message);
     }
-  } catch (err) {
-    console.error("⚠️ Hugging Face generation error:", err.message);
-  }
 
-  // Fallback JD
-  const fallbackJD = {
-    roleSummary: `We are seeking a qualified ${jobTitle} to join our ${department || "Engineering"} team. You will play a key role in delivering operational excellence and driving performance goals.`,
-    keyResponsibilities: [
-      `Design and implement standard processes for ${jobTitle}.`,
-      "Collaborate with engineering and operational teams.",
-      "Identify bottlenecks and optimize core technical workflows."
-    ],
-    requiredSkills: keySkills ? keySkills.split(",").map(s => s.trim()) : [
-      "Technical Problem Solving",
-      "Process Optimization",
-      "Cross-Functional Leadership",
-      "Communication"
-    ],
-    experience: experience || "3-5 years",
-    suggestedSalaryRange: "₹8,00,000 - ₹12,00,000 per annum"
-  };
-
-  return res.status(200).json(fallbackJD);
+    return res.status(200).json(fallbackJD);
 });
 
-// START THE EXPRESS SERVER (Required)
+// Attach imported sub-router for Manager Requests if used
+app.use("/hireRadar/managerrequest", managerRequestRoutes);
+
+
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`Server running on http://localhost:${PORT}`);
 });
-

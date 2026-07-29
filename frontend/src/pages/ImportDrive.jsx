@@ -5,7 +5,6 @@ import {
   Download,
   Eye,
   Trash2,
-  Sparkles,
   FileText,
   FileSpreadsheet,
   FileArchive,
@@ -18,105 +17,9 @@ import Tesseract from 'tesseract.js';
 import * as pdfjsLib from 'pdfjs-dist/build/pdf';
 import mammoth from 'mammoth';
 import * as XLSX from 'xlsx';
-import { GoogleGenAI } from '@google/genai';
-
 
 const API_BASE_URL = 'http://localhost:5000';
 const KNOWN_SPECIAL_EXTS = ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'xlsx', 'xls', 'csv', 'json'];
-
-// Helper function to safely read the environment variable at runtime
-const getGeminiApiKey = () => {
-  return (
-    (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GEMINI_API_KEY) ||
-    (typeof process !== 'undefined' && process.env?.REACT_APP_GEMINI_API_KEY) ||
-    ''
-  );
-};
-
-// Response Schema specifying all 8 required candidate fields
-const CandidateResumeSchema = {
-  type: 'OBJECT',
-  properties: {
-    name: { type: 'STRING', description: "Candidate's full name" },
-    location: { type: 'STRING', description: "Candidate's current location or city/country" },
-    role: { type: 'STRING', description: 'Designation, job title, or target role' },
-    experience: { type: 'STRING', description: "Total years of experience or summary string (e.g. '5 years')" },
-    saved_date: { type: 'STRING', description: "Date extracted or current date string (YYYY-MM-DD)" },
-    linkedin: { type: 'STRING', description: 'LinkedIn profile URL if present, otherwise empty' },
-    skills: {
-      type: 'ARRAY',
-      items: { type: 'STRING' },
-      description: 'List of technical and soft skills',
-    },
-    education: {
-      type: 'ARRAY',
-      items: { type: 'STRING' },
-      description: 'List of degrees, universities, or educational qualifications',
-    },
-  },
-  required: ['name', 'location', 'role', 'experience', 'saved_date', 'linkedin', 'skills', 'education'],
-};
-
-// Function to analyze raw text using Gemini AI
-const analyzeResumeWithGemini = async (rawText, fileName) => {
-  const currentKey = getGeminiApiKey();
-
-  if (!currentKey) {
-    console.warn(
-      `⚠️ [Gemini AI] Missing API Key. Set VITE_GEMINI_API_KEY or REACT_APP_GEMINI_API_KEY in your .env file to enable Gemini resume extraction.`
-    );
-    return {
-      name: fileName || 'Unknown',
-      location: 'N/A',
-      role: 'N/A',
-      experience: 'N/A',
-      saved_date: new Date().toISOString().split('T')[0],
-      linkedin: 'N/A',
-      skills: [],
-      education: [],
-    };
-  }
-
-  if (!rawText || !rawText.trim()) {
-    return {
-      name: fileName || 'Unknown',
-      location: 'N/A',
-      role: 'N/A',
-      experience: 'N/A',
-      saved_date: new Date().toISOString().split('T')[0],
-      linkedin: 'N/A',
-      skills: [],
-      education: [],
-    };
-  }
-
-try {
-    const ai = new GoogleGenAI({ apiKey: currentKey });
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash', // <-- Updated model identifier
-      contents: `Analyze the following document text parsed from an uploaded file (${fileName}). Extract candidate information into the requested schema structure:\n\n${rawText}`,
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: CandidateResumeSchema,
-        temperature: 0.1,
-      },
-    });
-
-    return JSON.parse(response.text);
-  } catch (error) {
-    console.error(`Gemini analysis error for ${fileName}:`, error);
-    return {
-      name: fileName,
-      location: 'N/A',
-      role: 'N/A',
-      experience: 'N/A',
-      saved_date: new Date().toISOString().split('T')[0],
-      linkedin: 'N/A',
-      skills: [],
-      education: [],
-    };
-  }
-};
 
 function ImportDrive() {
   const [documents, setDocuments] = useState([]);
@@ -135,7 +38,7 @@ function ImportDrive() {
   const [previewSrc, setPreviewSrc] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
 
-  // Safely initialize PDF.js worker without breaking module imports
+  // Initialize PDF.js worker
   useEffect(() => {
     if (pdfjsLib?.GlobalWorkerOptions) {
       try {
@@ -174,6 +77,7 @@ function ImportDrive() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(i === 0 ? 0 : 1)) + ' ' + sizes[i];
   };
 
+  // Fetch index from server backend
   const fetchBackendDocuments = async (searchQuery = '', ext = '', size = '', sortOrder = 'relevance') => {
     setIsLoading(true);
     try {
@@ -201,7 +105,7 @@ function ImportDrive() {
       }));
       setDocuments(normalizedData);
     } catch (err) {
-      console.error('Unable to fetch updated search index from server backend:', err);
+      console.error('Unable to fetch search index from server backend:', err);
     } finally {
       setIsLoading(false);
     }
@@ -280,212 +184,32 @@ function ImportDrive() {
     }
   };
 
-  const extractTextContent = async (file) => {
-    try {
-      return await file.text();
-    } catch (e) {
-      return '';
-    }
-  };
-
-  const extractImageText = async (file) => {
-    try {
-      const worker = await Tesseract.createWorker('eng', 1, { logger: () => {} });
-      const {
-        data: { text },
-      } = await worker.recognize(file);
-      await worker.terminate();
-      return text?.trim() || '';
-    } catch (error) {
-      console.error('OCR failed:', error);
-      return '';
-    }
-  };
-
-  const extractPdfText = async (file) => {
-    try {
-      const arrayBuffer = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({
-        data: arrayBuffer,
-        ignoreErrors: true,
-        verbosity: 0,
-      }).promise;
-
-      let text = '';
-      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum += 1) {
-        const page = await pdf.getPage(pageNum);
-        const content = await page.getTextContent();
-        text += content.items.map((item) => item.str).join(' ') + '\n';
-      }
-
-      if (!text.trim()) {
-        let ocrText = '';
-        const worker = await Tesseract.createWorker('eng', 1, { logger: () => {} });
-        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum += 1) {
-          const page = await pdf.getPage(pageNum);
-          const viewport = page.getViewport({ scale: 1.5 });
-          const canvas = document.createElement('canvas');
-          const context = canvas.getContext('2d');
-          canvas.height = viewport.height;
-          canvas.width = viewport.width;
-
-          await page.render({ canvasContext: context, viewport: viewport }).promise;
-          const {
-            data: { text: pageText },
-          } = await worker.recognize(canvas);
-          ocrText += pageText + '\n';
-        }
-        await worker.terminate();
-        return ocrText.trim();
-      }
-
-      return text.trim();
-    } catch (e) {
-      console.error('Failed reading PDF content:', e);
-      return '';
-    }
-  };
-
-  const extractDocxContent = async (file) => {
-    try {
-      const arrayBuffer = await file.arrayBuffer();
-      const result = await mammoth.extractRawText({ arrayBuffer });
-      return result.value.trim();
-    } catch (e) {
-      return '';
-    }
-  };
-
-  const extractXlsxText = async (file) => {
-    try {
-      const arrayBuffer = await file.arrayBuffer();
-      const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-      let text = '';
-      workbook.SheetNames.forEach((sheetName) => {
-        const sheet = workbook.Sheets[sheetName];
-        text += XLSX.utils.sheet_to_csv(sheet) + '\n';
-      });
-      return text.trim();
-    } catch (e) {
-      return '';
-    }
-  };
-
-  const extractFileContent = async (file) => {
-    const ext = normalizeExt(file.name.split('.').pop());
-    if (['txt', 'csv'].includes(ext)) return extractTextContent(file);
-    if (['docx'].includes(ext)) return extractDocxContent(file);
-    if (['pdf'].includes(ext)) return extractPdfText(file);
-    if (['xlsx', 'xls'].includes(ext)) return extractXlsxText(file);
-    if (['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'].includes(ext)) return extractImageText(file);
-    return '';
-  };
-
-  const processFilesRecursively = async (items) => {
-    const newDocuments = [];
-    for (const item of items) {
-      if (item.kind === 'file') {
-        const file = typeof item.getFile === 'function' ? await item.getFile() : item;
-        if (isValidFile(file.name)) {
-          const ext = normalizeExt(file.name.split('.').pop());
-          const content = await extractFileContent(file);
-          const blobURL = URL.createObjectURL(file);
-
-          // Extract Structured Metadata via Gemini AI
-          const parsedMetadata = await analyzeResumeWithGemini(content, file.name);
-
-          // Log the 8 required candidate profile fields to console
-          console.log(`📄 Document Log [${file.name}]:`, {
-            name: parsedMetadata.name,
-            location: parsedMetadata.location,
-            'role/designation': parsedMetadata.role,
-            experience: parsedMetadata.experience,
-            'saved date': parsedMetadata.saved_date,
-            'linkedin profile link': parsedMetadata.linkedin,
-            skills: parsedMetadata.skills,
-            education: parsedMetadata.education,
-          });
-
-          newDocuments.push({
-            id: crypto.randomUUID(),
-            fileName: file.name,
-            extension: ext,
-            size: formatFileSize(file.size),
-            sizeBytes: file.size,
-            path: file.webkitRelativePath || file.name,
-            lastModified: new Date(file.lastModified).toLocaleDateString(),
-            blobURL: blobURL,
-            content: content,
-            nlpEntities: parsedMetadata.skills || [],
-          });
-        }
-      } else if (item.kind === 'directory' || item.isDirectory) {
-        const dirReader = item.createReader();
-        const entries = await new Promise((resolve, reject) => {
-          dirReader.readEntries(resolve, reject);
-        });
-        const subFiles = await processFilesRecursively(entries);
-        newDocuments.push(...subFiles);
-      }
-    }
-    return newDocuments;
-  };
-
   const handleFolderSelect = async (event) => {
-    const items = event.dataTransfer?.items || event.target.files;
-    if (!items || items.length === 0) return;
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
 
     setIsUploading(true);
+
+    const formData = new FormData();
+    for (let i = 0; i < files.length; i++) {
+      if (isValidFile(files[i].name)) {
+        formData.append('file', files[i]);
+      }
+    }
+
     try {
-      const entries = [];
-      const filesToUpload = [];
+      const response = await fetch(`${API_BASE_URL}/api/upload`, {
+        method: 'POST',
+        body: formData,
+      });
 
-      if (event.dataTransfer?.items) {
-        for (let i = 0; i < items.length; i++) {
-          const entry = items[i].webkitGetAsEntry?.();
-          if (entry) entries.push(entry);
-        }
-      } else {
-        for (let i = 0; i < items.length; i++) {
-          const file = items[i];
-          if (isValidFile(file.name)) {
-            filesToUpload.push(file);
-            entries.push({ kind: 'file', getFile: async () => file });
-          }
-        }
+      if (response.ok) {
+        const data = await response.json();
+        console.log('📄 Documents parsed & indexed via backend server:', data);
+        fetchBackendDocuments('', '', '', 'newest');
       }
-
-      if (entries.length > 0) {
-        const newDocs = await processFilesRecursively(entries);
-        setDocuments((prev) => [...newDocs, ...prev]);
-
-        if (selectedFile) {
-          const matched = newDocs.find((d) => d.fileName === selectedFile.fileName);
-          if (matched) setSelectedFile(matched);
-        }
-      }
-
-      const targetUploadList = event.target.files || filesToUpload;
-      for (let i = 0; i < targetUploadList.length; i++) {
-        const file = targetUploadList[i];
-        if (!isValidFile(file.name)) continue;
-
-        const formData = new FormData();
-        formData.append('file', file);
-
-        try {
-          await fetch(`${API_BASE_URL}/api/upload`, {
-            method: 'POST',
-            body: formData,
-          });
-        } catch (uploadErr) {
-          console.error(`Failed uploading ${file.name} to server backend:`, uploadErr);
-        }
-      }
-
-      fetchBackendDocuments('', '', '', 'newest');
-    } catch (error) {
-      console.error('Error processing uploaded items:', error);
+    } catch (uploadErr) {
+      console.error('Failed uploading files to server backend:', uploadErr);
     } finally {
       setIsUploading(false);
       if (event.target) event.target.value = '';
