@@ -6,7 +6,10 @@ const path = require('path');
 const React = require('react');
 const { Resend } = require('resend');
 const { render } = require('@react-email/components');
-const { LlamaParseReader } = require('@llamaindex/cloud');
+
+// Local extraction tools
+const pdfParse = require('pdf-parse');
+const mammoth = require('mammoth');
 
 const pool = require('./db');
 const { TestScheduledEmail } = require('./emails/template.tsx');
@@ -32,22 +35,36 @@ app.use(express.urlencoded({ extended: true }));
 
 const resend = new Resend(process.env.resendApiKey);
 
-// Initialize DB search schema on server startup
-initializeSearchService().catch((error) =>
-    console.error('Search service startup failed:', error.message)
-);
+// Warm up Ollama model on boot so cold load latency is avoided
+async function warmOllamaModel() {
+    try {
+        const response = await fetch("http://localhost:11434/api/generate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ model: "qwen3.6", keep_alive: "30m" })
+        });
+        if (response.ok) {
+            console.log('[Ollama] Model preloaded and warm.');
+        } else {
+            console.warn('[Ollama] Preload request failed:', response.status);
+        }
+    } catch (err) {
+        console.warn('[Ollama] Preload failed — is Ollama running?', err.message);
+    }
+}
+
+// Initialize DB search schema and warm up model on server startup
+initializeSearchService()
+    .then(() => warmOllamaModel())
+    .catch((error) =>
+        console.error('Search service startup failed:', error.message)
+    );
 
 // Memory storage for incoming HTTP file uploads
 const upload = multer({ storage: multer.memoryStorage() });
 
-// Ensure temporary folder exists for LlamaParse processing
-const TEMP_UPLOADS_DIR = path.join(__dirname, 'temp_uploads');
-if (!fs.existsSync(TEMP_UPLOADS_DIR)) {
-    fs.mkdirSync(TEMP_UPLOADS_DIR, { recursive: true });
-}
-
 // ==========================================================================
-// HELPER FUNCTIONS & LLAMAPARSE / LLAMAINdex RESOLUTION
+// HELPER FUNCTIONS 
 // ==========================================================================
 
 function formatFileSize(bytes) {
@@ -88,38 +105,33 @@ const MIME_BY_EXT = {
     '.webp': 'image/webp',
 };
 
-// Safe LlamaIndex Class Resolver
-function getLlamaIndexClasses() {
-    let DocClass = null;
-    let LLMClass = null;
+// ==========================================================================
+// LOCAL TEXT EXTRACTION SERVICE 
+// ==========================================================================
 
+async function extractTextLocally(fileBuffer, originalName, mimeType) {
     try {
-        const llamaindex = require('llamaindex');
-        DocClass = llamaindex.Document || llamaindex.default?.Document;
-        LLMClass = llamaindex.OpenAI || llamaindex.default?.OpenAI;
-    } catch (e) {}
-
-    if (!LLMClass) {
-        try {
-            const openAiModule = require('@llamaindex/openai');
-            LLMClass = openAiModule.OpenAI || openAiModule.default?.OpenAI;
-        } catch (e) {}
+        const ext = path.extname(originalName).toLowerCase();
+        
+        if (ext === '.pdf' || mimeType === 'application/pdf') {
+            const data = await pdfParse(fileBuffer);
+            return data.text;
+        } else if (ext === '.docx') {
+            const result = await mammoth.extractRawText({ buffer: fileBuffer });
+            return result.value;
+        } else {
+            // Fallback for txt, csv, json
+            return fileBuffer.toString('utf-8');
+        }
+    } catch (err) {
+        console.warn(`[Local Extract] Failed for ${originalName}:`, err.message);
+        return fileBuffer.toString('utf-8'); 
     }
-
-    return { Document: DocClass, OpenAI: LLMClass };
 }
 
-// ==========================================================================
-// LLAMAPARSE EXTRACT SERVICE
-// ==========================================================================
-
-/**
- * Direct extraction via LlamaParse AI Reader
- */
-async function extractCandidateJsonWithLlamaParse(fileBuffer, originalName) {
-    const tempFilePath = path.join(TEMP_UPLOADS_DIR, `${Date.now()}_${originalName}`);
-    const fallbackMetadata = {
-        name: originalName || 'Unknown',
+async function analyzeResumeWithOllama(rawText, fileName) {
+    const fallbackData = {
+        name: 'Unknown Candidate',
         location: 'N/A',
         role: 'N/A',
         experience: 'N/A',
@@ -129,160 +141,110 @@ async function extractCandidateJsonWithLlamaParse(fileBuffer, originalName) {
         education: []
     };
 
-    try {
-        fs.writeFileSync(tempFilePath, fileBuffer);
+    if (!rawText || !rawText.trim()) {
+        console.warn(`[Warning] No text extracted. File might be a scanned image.`);
+        return fallbackData;
+    }
 
-        const parser = new LlamaParseReader({
-            resultType: 'markdown',
-            language: 'en',
-            parsingInstruction: `
-                You are an expert HR Data Extraction Specialist.
-                Parse this document and extract core text as structured Markdown.
-                Pay close attention to candidate contact details, experience, key skills, and education history.
-            `
+    const sanitizedText = rawText.replace(/[\x00-\x09\x0B-\x0C\x0E-\x1F\x7F]/g, '').trim();
+    const truncatedText = sanitizedText.slice(0, 4000);
+
+    const promptText = `You are an expert HR Data Extraction AI. 
+Extract candidate data from the resume text below. Return EXACTLY 8 data points in this strictly valid JSON structure. Do not use the file name as the candidate's name.
+
+{
+  "name": "Extract candidate full name",
+  "location": "Extract current city, state, or country",
+  "role": "Extract primary job title",
+  "experience": "Extract total years experience",
+  "saved_date": "${new Date().toISOString().split('T')[0]}",
+  "linkedin": "Extract LinkedIn URL",
+  "skills": ["List", "skills"],
+  "education": ["List", "education"]
+}
+
+Resume Text to Extract From:
+-------------------------
+${truncatedText}`;
+
+    // Extended safety timeout to 180s (3 mins) for CPU-heavy processing
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 180_000); 
+
+    try {
+        const response = await fetch("http://localhost:11434/api/generate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            signal: controller.signal,
+            body: JSON.stringify({
+                model: "qwen3.6", // Or "qwen2.5:7b"
+                prompt: promptText,
+                stream: false,
+                format: "json",
+                think: false,
+                keep_alive: "30m",
+                options: {
+                    temperature: 0.1,
+                    num_ctx: 2048,     // Reduced from 8192 to save VRAM for layers
+                    num_predict: 512   // Capped output tokens since JSON response is short
+                }
+            })
         });
 
-        const documents = await parser.loadData(tempFilePath);
-        if (!documents || documents.length === 0) {
-            throw new Error('No content returned from LlamaParse');
-        }
+        clearTimeout(timeoutId);
 
-        const extractedMarkdown = documents.map((doc) => doc.text).join('\n\n');
+        if (response.ok) {
+            const data = await response.json();
+            let rawContent = (data.response || '').trim();
 
-        // Optional post-extraction pass to format into structured JSON schema
-        const extractedMetadata = await analyzeResumeWithLlamaIndex(extractedMarkdown, originalName);
+            if (!rawContent) {
+                console.warn(`[Ollama] Model returned empty response for ${fileName}`);
+                return fallbackData;
+            }
 
-        return {
-            extractedText: extractedMarkdown,
-            metadata: extractedMetadata
-        };
-    } catch (err) {
-        console.warn(`[LlamaParse Direct Extract Fallback] ${originalName}:`, err.message);
-        return {
-            extractedText: fileBuffer.toString('utf-8'),
-            metadata: fallbackMetadata
-        };
-    } finally {
-        if (fs.existsSync(tempFilePath)) {
-            fs.unlinkSync(tempFilePath);
-        }
-    }
-}
+            try {
+                const parsedData = JSON.parse(rawContent);
 
-// ==========================================================================
-// LLAMAINdex RESUME EXTRACTION SERVICE
-// ==========================================================================
-
-async function analyzeResumeWithLlamaIndex(rawText, fileName) {
-    const fallbackData = {
-        name: fileName || 'Unknown',
-        location: 'N/A',
-        role: 'N/A',
-        experience: 'N/A',
-        saved_date: new Date().toISOString().split('T')[0],
-        linkedin: 'N/A',
-        skills: [],
-        education: []
-    };
-
-    if (!rawText || !rawText.trim()) return fallbackData;
-
-    const apiKey = process.env.OPENAI_API_KEY || process.env.OPENAI_APIKEY || process.env.GPT_API_KEY;
-
-    try {
-        const { Document: DocClass, OpenAI: LLMClass } = getLlamaIndexClasses();
-
-        if (typeof LLMClass === 'function' && typeof DocClass === 'function') {
-            const docNode = new DocClass({
-                text: rawText,
-                id_: fileName,
-                metadata: { fileName, date: new Date().toISOString() }
-            });
-
-            const llm = new LLMClass({ apiKey, model: "gpt-4o-mini", temperature: 0.1 });
-
-            const promptText = `
-You are an expert HR Data Extraction Specialist.
-Analyze the following resume document text extracted from an uploaded file (${fileName}).
-Extract candidate information into a strictly valid JSON object matching this schema structure:
-
-{
-  "name": "Candidate's full name",
-  "location": "Current location or city/country",
-  "role": "Designation, job title, or target role",
-  "experience": "Total years of experience or summary string (e.g. '5 years')",
-  "saved_date": "${new Date().toISOString().split('T')[0]}",
-  "linkedin": "LinkedIn profile URL if present, otherwise 'N/A'",
-  "skills": ["Skill 1", "Skill 2"],
-  "education": ["Degree/University 1", "Degree/University 2"]
-}
-
-Respond ONLY with a raw, valid JSON object without any extra commentary or markdown formatting.
-
-Document Content:
-${docNode.getText()}
-`;
-
-            const response = await llm.complete({ prompt: promptText });
-            let rawContent = response?.text || response?.message?.content || response?.toString() || '';
-            rawContent = rawContent.replace(/```json/gi, '').replace(/```/g, '').trim();
-
-            return JSON.parse(rawContent);
-        }
-
-        if (apiKey) {
-            const promptText = `
-You are an expert HR Data Extraction Specialist.
-Analyze the following resume document text extracted from an uploaded file (${fileName}).
-Extract candidate information into a strictly valid JSON object matching this schema structure:
-
-{
-  "name": "Candidate's full name",
-  "location": "Current location or city/country",
-  "role": "Designation, job title, or target role",
-  "experience": "Total years of experience or summary string (e.g. '5 years')",
-  "saved_date": "${new Date().toISOString().split('T')[0]}",
-  "linkedin": "LinkedIn profile URL if present, otherwise 'N/A'",
-  "skills": ["Skill 1", "Skill 2"],
-  "education": ["Degree/University 1", "Degree/University 2"]
-}
-
-Respond ONLY with a raw, valid JSON object without any extra commentary or markdown formatting.
-
-Document Content:
-${rawText}
-`;
-
-            const apiRes = await fetch("https://api.openai.com/v1/chat/completions", {
-                method: "POST",
-                headers: {
-                    "Authorization": `Bearer ${apiKey.trim()}`,
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    model: "gpt-4o-mini",
-                    temperature: 0.1,
-                    messages: [
-                        { role: "system", content: "You output only valid raw JSON." },
-                        { role: "user", content: promptText }
-                    ]
-                })
-            });
-
-            if (apiRes.ok) {
-                const apiData = await apiRes.json();
-                let rawContent = apiData.choices?.[0]?.message?.content || '';
-                rawContent = rawContent.replace(/```json/gi, '').replace(/```/g, '').trim();
-                return JSON.parse(rawContent);
+                return {
+                    name: parsedData.name && !parsedData.name.includes("Extract") ? parsedData.name : fallbackData.name,
+                    location: parsedData.location || fallbackData.location,
+                    role: parsedData.role || fallbackData.role,
+                    experience: parsedData.experience || fallbackData.experience,
+                    saved_date: parsedData.saved_date || fallbackData.saved_date,
+                    linkedin: parsedData.linkedin || fallbackData.linkedin,
+                    skills: Array.isArray(parsedData.skills) ? parsedData.skills : fallbackData.skills,
+                    education: Array.isArray(parsedData.education) ? parsedData.education : fallbackData.education
+                };
+            } catch (parseErr) {
+                console.error(`[Ollama JSON Parse Error] ${fileName}:`, parseErr.message);
+                return fallbackData;
             }
         }
-
-        return fallbackData;
     } catch (error) {
-        console.error(`[LlamaIndex Backend] Extraction error for ${fileName}:`, error.message);
-        return fallbackData;
+        clearTimeout(timeoutId);
+        if (error.name === 'AbortError') {
+            console.error(`[Ollama Backend] Request timed out after 180s for ${fileName}`);
+        } else {
+            console.error(`[Ollama Backend] Network/Extraction error for ${fileName}:`, error.message);
+        }
     }
+
+    return fallbackData;
 }
+
+// Warm-up endpoint to allow clients to trigger preloading before batch uploads
+app.post('/api/warm-ollama', async (req, res) => {
+    try {
+        const response = await fetch("http://localhost:11434/api/generate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ model: "qwen3.6", keep_alive: "30m" })
+        });
+        res.json({ warmed: response.ok });
+    } catch (err) {
+        res.status(500).json({ warmed: false, error: err.message });
+    }
+});
 
 app.put("/hireRadar/updateCandidateStatus/:cndid", async (req, res) => {
   try {
@@ -746,29 +708,109 @@ app.post('/api/upload', upload.any(), async (req, res) => {
             return res.status(400).json({ error: 'No files were detected inside payload arrays.' });
         }
 
-        const uploadedDocuments = await Promise.all(
-            filesCollection.map(async (file) => {
-                // Execute direct extraction via LlamaParse
-                const extractionResult = await extractCandidateJsonWithLlamaParse(file.buffer, file.originalname);
+        const uploadedDocuments = [];
+        const skippedDuplicates = [];
 
-                // Save to PostgreSQL search index
-                const savedDoc = await saveUploadedFile({
-                    ...file,
-                    extractedText: extractionResult.extractedText
-                });
+        for (const file of filesCollection) {
+            // Check database for existing file with matching name and size
+            const checkDuplicate = await pool.query(
+                'SELECT id, file_name FROM document_search_index WHERE file_name = $1 AND file_size = $2',
+                [file.originalname, file.size]
+            );
 
-                return {
-                    ...savedDoc,
-                    extractedText: extractionResult.extractedText,
-                    metadata: extractionResult.metadata
-                };
-            })
-        );
+            if (checkDuplicate.rows.length > 0) {
+                console.warn(`[Upload Skip] Duplicate detected: ${file.originalname} (${file.size} bytes)`);
+                skippedDuplicates.push(file.originalname);
+                continue; // Skip processing duplicate
+            }
+
+            // Extract text locally
+            const extractedText = await extractTextLocally(file.buffer, file.originalname, file.mimetype);
+
+            // Save to PostgreSQL document_search_index
+            const savedDoc = await saveUploadedFile({
+                ...file,
+                extractedText: extractedText
+            });
+
+            uploadedDocuments.push({
+                ...savedDoc,
+                fileName: file.originalname,
+                extractedText: extractedText
+            });
+        }
+
+        if (uploadedDocuments.length === 0 && skippedDuplicates.length > 0) {
+            return res.status(409).json({
+                message: 'All uploaded files were identified as duplicates and skipped.',
+                skipped: skippedDuplicates
+            });
+        }
 
         res.status(200).json(uploadedDocuments);
     } catch (error) {
         console.error('Upload API unified processing error:', error.message);
         res.status(500).json({ error: 'Unable to complete uploading files stream.' });
+    }
+});
+
+app.post('/api/analyze-resume', async (req, res) => {
+    try {
+        const { rawText, fileName } = req.body;
+        const metadata = await analyzeResumeWithOllama(rawText, fileName);
+
+        // Map extracted metadata to cndpermsave schema
+        const candidateName = metadata.name && metadata.name !== 'Unknown Candidate' 
+            ? metadata.name 
+            : fileName.replace(/\.[^/.]+$/, ""); // Fallback to filename without extension
+        
+        const candidateEmail = metadata.email || `${candidateName.toLowerCase().replace(/[^a-z0-9]/g, '')}@noemail.com`;
+        const skillsString = Array.isArray(metadata.skills) ? metadata.skills.join(', ') : (metadata.skills || 'N/A');
+        
+        // Extract numeric years of experience for the integer column 'cndexperience'
+        const expMatch = String(metadata.experience || '').match(/\d+/);
+        const parsedExp = expMatch ? parseInt(expMatch[0], 10) : 0;
+
+        // Insert record into cndpermsave
+        const insertQuery = `
+            INSERT INTO cndpermsave (
+                searchdate,
+                cndname,
+                cndemail,
+                cndrole,
+                cndskills,
+                cndtotalexperience,
+                cndexperience,
+                cndlocation,
+                teststatus,
+                interviewstatus
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            RETURNING *;
+        `;
+
+        const queryValues = [
+            metadata.saved_date || new Date().toISOString().split('T')[0],
+            candidateName,
+            candidateEmail,
+            metadata.role || 'N/A',
+            skillsString,
+            metadata.experience || 'N/A',
+            parsedExp,
+            metadata.location || 'N/A',
+            'NA',
+            'NA'
+        ];
+
+        const insertedCandidate = await pool.query(insertQuery, queryValues);
+        console.log(`✅ Candidate inserted into cndpermsave: ${candidateName} (ID: ${insertedCandidate.rows[0].cndid})`);
+
+        res.status(200).json({
+            metadata,
+            savedCandidate: insertedCandidate.rows[0]
+        });
+    } catch (error) {
+        console.error('Analyze & Insert API error:', error.message);
+        res.status(500).json({ error: 'Unable to analyze document text or save candidate record.' });
     }
 });
 
@@ -998,7 +1040,7 @@ app.put("/hireRadar/managerrequeststatus/:requestid", async (req, res) => {
 });
 
 // ==========================================================================
-// HUGGING FACE AI JOB DESCRIPTION GENERATOR
+// LOCAL OLLAMA JOB DESCRIPTION GENERATOR
 // ==========================================================================
 
 app.post("/hireRadar/generate-jd", async (req, res) => {
@@ -1007,8 +1049,6 @@ app.post("/hireRadar/generate-jd", async (req, res) => {
     if (!jobTitle) {
         return res.status(400).json({ error: "Job title is required." });
     }
-
-    const token = process.env.HF_TOKEN;
 
     const fallbackJD = {
         roleSummary: `We are seeking a qualified ${jobTitle} to join our ${department || "Engineering"} team. You will play a key role in delivering operational excellence and driving performance goals.`,
@@ -1028,8 +1068,7 @@ app.post("/hireRadar/generate-jd", async (req, res) => {
     };
 
     try {
-        if (token) {
-            const promptText = `
+        const promptText = `
 You are an expert HR Specialist. Generate a detailed and professional Job Description (JD) in valid JSON format based on these parameters:
 - Job Title: ${jobTitle}
 - Department: ${department || "Engineering / Technology"}
@@ -1046,48 +1085,37 @@ Respond ONLY with a raw, valid JSON object strictly matching this schema, withou
 }
 `;
 
-            const response = await fetch("https://router.huggingface.co/v1/chat/completions", {
-                method: "POST",
-                headers: {
-                    "Authorization": `Bearer ${token.trim()}`,
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    model: "Qwen/Qwen2.5-Coder-32B-Instruct",
-                    messages: [
-                        { role: "system", content: "You output only valid JSON." },
-                        { role: "user", content: promptText }
-                    ],
-                    temperature: 0.3,
-                    max_tokens: 1000
-                })
-            });
+        const response = await fetch("http://localhost:11434/api/generate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                model: "qwen3.6", 
+                prompt: promptText,
+                stream: false,
+                format: "json",
+                keep_alive: "30m",
+                options: { temperature: 0.3 }
+            })
+        });
 
+        if (response.ok) {
             const data = await response.json();
+            let rawContent = data.response || "";
+            rawContent = rawContent.replace(/```json/g, "").replace(/```/g, "").trim();
 
-            if (response.ok && data.choices?.[0]?.message?.content) {
-                let rawContent = data.choices[0].message.content.trim();
-                rawContent = rawContent.replace(/```json/g, "").replace(/```/g, "").trim();
-
-                const jdData = JSON.parse(rawContent);
-                return res.status(200).json(jdData);
-            } else {
-                console.warn("⚠️ Hugging Face API Response Error:", data);
-            }
+            const jdData = JSON.parse(rawContent);
+            return res.status(200).json(jdData);
         } else {
-            console.error("❌ HF_TOKEN is missing in .env file!");
+            console.warn("⚠️ Ollama Local API Response Error:", response.statusText);
         }
     } catch (err) {
-        console.error("⚠️ Hugging Face generation error:", err.message);
+        console.error("⚠️ Ollama Local JD generation error:", err.message);
     }
 
     return res.status(200).json(fallbackJD);
 });
 
-// Attach imported sub-router for Manager Requests if used
 app.use("/hireRadar/managerrequest", managerRequestRoutes);
-
-
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
