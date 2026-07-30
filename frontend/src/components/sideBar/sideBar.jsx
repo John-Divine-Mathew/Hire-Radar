@@ -34,7 +34,9 @@ function Sidebar(){
     const navigateInterviewScheduler = ()=>{
         nav('/interview-scheduler');
     }
-
+    const navigateFilterCandidates = ()=>{
+        nav('/filterCandidates');
+    }
 
 
 
@@ -52,6 +54,7 @@ function Sidebar(){
                     <li><button className='listitem' onClick={navigateReport} title="Report" aria-label="Report"><ChartSpline size={iconSize} /><p className='buttonP'>Report</p></button></li>
                     <li><button className='listitem' onClick={navigateManagerRequest} title="Manager Request" aria-label="Manager Request"><ClipboardPen size={iconSize} /><p className='buttonP'>Manager Request</p></button></li>
                     <li><button className='listitem' onClick={navigateInterviewScheduler} title="Interview Scheduler" aria-label="Interview Scheduler"><Calendar size={iconSize} /><p className='buttonP'>Interview Scheduler</p></button></li>
+                    <li><button className='listitem' onClick={navigateFilterCandidates} title="Filter Candidates" aria-label="Filter Candidates"><Search size={iconSize} /><p className='buttonP'>Filter Candidates</p></button></li>
                      </ul>
                   
             </div>
