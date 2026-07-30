@@ -87,7 +87,6 @@ function AdminAssessment() {
 
   const departmentsList = [
     "Software Development",
-    "Design Engineering",
     "Automation",
     "Quality Assurance",
     "Mechanical",
