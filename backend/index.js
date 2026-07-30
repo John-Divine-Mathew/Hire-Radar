@@ -75,15 +75,17 @@ function formatFileSize(bytes) {
 
 function normalizeDocument(row) {
     return {
-        id: row.id,
-        cndid: row.cndid, // Include relational Candidate ID
+        id: row.id || row.cndid,
+        cndid: row.cndid,
         fileName: row.file_name || row.fileName,
         extension: row.extension,
         file_size: row.file_size || row.fileSize,
         uploadedAt: row.uploaded_at || row.uploadedAt,
         extractedText: row.extracted_text || row.extractedText,
         fileSizeLabel: formatFileSize(row.file_size || row.fileSize),
-        nlpEntities: row.nlp_entities || []
+        nlpEntities: row.nlp_entities || [],
+        username: row.username,
+        documentStatus: row.document_status // Added new field
     };
 }
 
@@ -335,9 +337,10 @@ app.post('/api/upload', upload.any(), async (req, res) => {
                     mime_type, 
                     file_data,
                     username,
+                    document_status,
                     search_vector
                 ) VALUES (
-                    $1, $2, $3, $4, NOW(), $5, $6, $7, $8, 
+                    $1, $2, $3, $4, NOW(), $5, $6, $7, $8, $9, 
                     to_tsvector('simple', COALESCE($2, '') || ' ' || COALESCE($5, ''))
                 )
                 RETURNING cndid;
@@ -350,7 +353,8 @@ app.post('/api/upload', upload.any(), async (req, res) => {
                 extractedText, 
                 file.mimetype, 
                 file.buffer,
-                username
+                username,
+                'Indexed' // Setting default document_status here
             ];
 
             const docRes = await pool.query(insertDocQuery, docValues);
@@ -793,13 +797,12 @@ app.get("/hireRadar/adminlogin", async (req, res) => {
     }
 });
 
-// DOCUMENT SEARCH, PREVIEW, DOWNLOAD ENDPOINTS
 app.get('/api/search', async (req, res) => {
     try {
         const q = `%${String(req.query.q || '').trim().toLowerCase()}%`;
         
         const queryText = `
-            SELECT cndid, file_name, extension, file_size, uploaded_at, extracted_text 
+            SELECT cndid, file_name, extension, file_size, uploaded_at, extracted_text, username, document_status 
             FROM document_search_index 
             WHERE LOWER(file_name) LIKE $1 OR LOWER(extracted_text) LIKE $1
             ORDER BY uploaded_at DESC
@@ -814,7 +817,9 @@ app.get('/api/search', async (req, res) => {
             extension: row.extension,
             sizeBytes: row.file_size,
             uploadedAt: row.uploaded_at,
-            extractedText: row.extracted_text
+            extractedText: row.extracted_text,
+            username: row.username,
+            documentStatus: row.document_status
         }));
         
         res.json(docs);
@@ -824,9 +829,11 @@ app.get('/api/search', async (req, res) => {
     }
 });
 
+
 app.get('/api/documents', async (req, res) => {
     try {
-        let queryText = 'SELECT cndid, file_name, extension, file_size, uploaded_at, extracted_text FROM document_search_index WHERE 1=1';
+        // Updated SELECT string to include username and document_status
+        let queryText = 'SELECT cndid, file_name, extension, file_size, uploaded_at, extracted_text, username, document_status FROM document_search_index WHERE 1=1';
         let queryParams = [];
         let paramCounter = 1;
 
@@ -857,22 +864,24 @@ app.get('/api/documents', async (req, res) => {
 
         // Map database columns to the exact keys the React frontend expects
         const docs = result.rows.map(row => ({
-            id: row.cndid, // React uses 'id' for array keys
+            id: row.cndid, 
             cndid: row.cndid,
             fileName: row.file_name,
             extension: row.extension,
             sizeBytes: row.file_size,
             uploadedAt: row.uploaded_at,
-            extractedText: row.extracted_text
+            extractedText: row.extracted_text,
+            username: row.username,
+            documentStatus: row.document_status
         }));
 
         res.json(docs);
     } catch (error) {
         console.error('Document listing crash:', error);
-        // This will expose the exact SQL error to your network tab
         res.status(500).json({ error: `Backend DB Error: ${error.message}` });
     }
 });
+
 
 app.get('/api/documents/:id/preview', async (req, res) => {
     try {
@@ -1093,6 +1102,75 @@ app.put("/hireRadar/managerrequeststatus/:requestid", async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+
+
+// Add this near your other API routes in server.js/index.js
+
+app.get('/api/dashboard-stats', async (req, res) => {
+    try {
+        // 1. Manifest Totals
+        const manifestQuery = `
+            SELECT
+                COUNT(*) as total,
+                COUNT(*) FILTER (WHERE document_status = 'Indexed' OR (extracted_text IS NOT NULL AND extracted_text != '')) as parsed,
+                COUNT(*) FILTER (WHERE document_status = 'Failed' OR document_status = 'Error') as failed,
+                COUNT(*) FILTER (WHERE DATE(uploaded_at) = CURRENT_DATE) as today
+            FROM document_search_index;
+        `;
+
+        // 2. Trend (Uploads over the last 6 months)
+        const trendQuery = `
+            SELECT
+                TO_CHAR(DATE_TRUNC('month', uploaded_at), 'Mon') as month,
+                COUNT(*) as value
+            FROM document_search_index
+            WHERE uploaded_at >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '5 months'
+            GROUP BY DATE_TRUNC('month', uploaded_at)
+            ORDER BY DATE_TRUNC('month', uploaded_at) ASC;
+        `;
+
+        // 3. File Types Distribution
+        const fileTypesQuery = `
+            SELECT
+                UPPER(extension) as label,
+                COUNT(*) as count
+            FROM document_search_index
+            GROUP BY UPPER(extension)
+            ORDER BY count DESC
+            LIMIT 5;
+        `;
+
+        // 4. Recent Activities (Logs)
+        const logsQuery = `
+            SELECT
+                file_name,
+                username,
+                uploaded_at,
+                document_status
+            FROM document_search_index
+            ORDER BY uploaded_at DESC
+            LIMIT 5;
+        `;
+
+        const [manifestRes, trendRes, fileTypesRes, logsRes] = await Promise.all([
+            pool.query(manifestQuery),
+            pool.query(trendQuery),
+            pool.query(fileTypesQuery),
+            pool.query(logsQuery)
+        ]);
+
+        res.json({
+            manifest: manifestRes.rows[0],
+            trend: trendRes.rows,
+            fileTypes: fileTypesRes.rows,
+            logs: logsRes.rows
+        });
+    } catch (err) {
+        console.error("Dashboard stats error:", err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 
 // LOCAL OLLAMA JOB DESCRIPTION GENERATOR
 app.post("/hireRadar/generate-jd", async (req, res) => {

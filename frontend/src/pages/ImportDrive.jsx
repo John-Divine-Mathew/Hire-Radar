@@ -81,7 +81,7 @@ function ImportDrive() {
       
       const normalizedData = data.map((doc) => ({
         id: doc.id,
-        cndid: doc.cndid, // Link to cndpermsave
+        cndid: doc.cndid, 
         fileName: doc.fileName,
         extension: normalizeExt(doc.extension) || normalizeExt(doc.fileName?.split('.').pop()),
         size: doc.fileSizeLabel || formatFileSize(doc.file_size || doc.sizeBytes),
@@ -91,7 +91,10 @@ function ImportDrive() {
         downloadURL: `${API_BASE_URL}/api/documents/${doc.id}/download`,
         content: doc.extractedText || '',
         nlpEntities: doc.nlpEntities || [],
+        username: doc.username,
+        documentStatus: doc.documentStatus
       }));
+      
       setDocuments(normalizedData);
     } catch (err) {
       console.error('Unable to fetch search index from server backend:', err);
@@ -676,7 +679,7 @@ const handleFolderSelect = async (event) => {
                       <th className="pb-3 font-semibold">File Name & Content Matches</th>
                       <th className="pb-3 font-semibold">Type</th>
                       <th className="pb-3 font-semibold">Size</th>
-                      <th className="pb-3 font-semibold text-center">Linked DB ID</th>
+                      <th className="pb-3 font-semibold text-center">Uploaded By</th>
                       <th className="pb-3 text-center font-semibold">Actions</th>
                     </tr>
                   </thead>
@@ -703,7 +706,7 @@ const handleFolderSelect = async (event) => {
                         </td>
                         <td className="py-3 text-gray-500 text-xs">{doc.size}</td>
                         <td className="py-3 text-center">
-                          <span className="text-slate-400 font-mono font-medium text-xs">#{doc.cndid || 'N/A'}</span>
+                          <span className="text-slate-400 font-mono font-medium text-xs">{doc.username || 'HR Admin'}</span>
                         </td>
                         <td className="py-3 text-center">
                           <div className="inline-flex gap-2 justify-center">
