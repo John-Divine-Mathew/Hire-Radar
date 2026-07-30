@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { getAuthUser, logoutUser } from "../../utils/auth";
 import {
@@ -22,26 +22,27 @@ import {
   Info,
   Save,
   CheckCircle2,
-  Upload,
-  Download
 } from "lucide-react";
 
 const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // 1. Safely extract user details passed from router location state
   const { name, email } = location.state || {};
 
   // Component States
   const [searchQuery, setSearchQuery] = useState("");
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [showSettings, setShowSettings] = useState(false); // Controls Settings Modal
+  const [showSettings, setShowSettings] = useState(false);
   const [activeTab, setActiveTab] = useState("company");
   const [savedSuccess, setSavedSuccess] = useState(false);
 
-  // User details resolution
+  // 2. Fetch authenticated user from auth utility
   const authUser = getAuthUser();
+
+  // 3. Fallback reader for persisted user data in localStorage
   const fallbackUser = (() => {
     try {
       return JSON.parse(localStorage.getItem("user"));
@@ -50,9 +51,36 @@ const Navbar = () => {
     }
   })();
 
-  const displayName = name || authUser?.name || fallbackUser?.name || email || authUser?.email || fallbackUser?.email || "HR Admin";
-  const displayEmail = email || authUser?.email || fallbackUser?.email || "admin@hireradar.com";
+  // 4. Resolve display name & email across all possible sources
+  const displayName =
+    name ||
+    authUser?.name ||
+    fallbackUser?.name ||
+    email ||
+    authUser?.email ||
+    fallbackUser?.email ||
+    "HR Admin";
+
+  const displayEmail =
+    email ||
+    authUser?.email ||
+    fallbackUser?.email ||
+    "admin@hireradar.com";
+
   const initial = displayName?.[0]?.toUpperCase() || "H";
+
+  // 5. Save incoming location.state user data to localStorage so it stays accessible on all subsequent page navigations
+  useEffect(() => {
+    if (name || email) {
+      const existingUser = fallbackUser || {};
+      const updatedUser = {
+        ...existingUser,
+        ...(name && { name }),
+        ...(email && { email }),
+      };
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+    }
+  }, [name, email]);
 
   // Dummy Settings Form States
   const [companySettings, setCompanySettings] = useState({
@@ -71,8 +99,21 @@ const Navbar = () => {
     designation: "Senior HR Manager",
   });
 
+  // Keep user profile settings inputs in sync if displayName resolves
+  useEffect(() => {
+    setUserProfile((prev) => ({
+      ...prev,
+      name: displayName,
+      email: displayEmail,
+    }));
+  }, [displayName, displayEmail]);
+
   const handleSaveSettings = (e) => {
     e.preventDefault();
+    // Persist updated profile name to localStorage as well
+    const updatedUser = { ...(fallbackUser || {}), name: userProfile.name, email: userProfile.email };
+    localStorage.setItem("user", JSON.stringify(updatedUser));
+    
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 3000);
   };
@@ -182,9 +223,7 @@ const Navbar = () => {
         </div>
       </nav>
 
-      {/* ==========================================
-          SETTINGS MODAL OVERLAY (Triggered by Button)
-         ========================================== */}
+      {/* SETTINGS MODAL OVERLAY */}
       {showSettings && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-6 animate-in fade-in">
           <div className="bg-white w-full max-w-5xl h-[85vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-slate-200">
@@ -361,6 +400,7 @@ const Navbar = () => {
               <button
                 onClick={() => {
                   logoutUser();
+                  localStorage.clear(); // Flushes cached localStorage user data on logout
                   setShowLogoutConfirm(false);
                   navigate("/");
                 }}

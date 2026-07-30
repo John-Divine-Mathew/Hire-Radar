@@ -13,10 +13,6 @@ import {
 } from 'lucide-react';
 import Sidebar from '../components/sideBar/sideBar.jsx';
 import Navbar from '../components/navBar/navBar.jsx';
-import Tesseract from 'tesseract.js';
-import * as pdfjsLib from 'pdfjs-dist/build/pdf';
-import mammoth from 'mammoth';
-import * as XLSX from 'xlsx';
 
 const API_BASE_URL = 'http://localhost:5000';
 const KNOWN_SPECIAL_EXTS = ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'xlsx', 'xls', 'csv', 'json'];
@@ -26,7 +22,11 @@ function ImportDrive() {
   const [filteredDocuments, setFilteredDocuments] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Updated Upload States (Removed pendingAnalysis queue)
   const [isUploading, setIsUploading] = useState(false);
+  const [extractionStatus, setExtractionStatus] = useState(''); 
+  
   const [selectedExtension, setSelectedExtension] = useState('');
   const [selectedSize, setSelectedSize] = useState('');
   const [selectedSort, setSelectedSort] = useState('relevance');
@@ -37,22 +37,6 @@ function ImportDrive() {
   const [viewMode, setViewMode] = useState('native');
   const [previewSrc, setPreviewSrc] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
-
-  // Initialize PDF.js worker
-  useEffect(() => {
-    if (pdfjsLib?.GlobalWorkerOptions) {
-      try {
-        pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-          'pdfjs-dist/build/pdf.worker.min.mjs',
-          import.meta.url
-        ).toString();
-      } catch (e) {
-        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${
-          pdfjsLib.version || '3.4.120'
-        }/build/pdf.worker.min.js`;
-      }
-    }
-  }, []);
 
   const supportedExtensions = useMemo(
     () => ['pdf', 'doc', 'docx', 'txt', 'csv', 'png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp', 'ppt', 'pptx', 'xls', 'xlsx'],
@@ -77,7 +61,9 @@ function ImportDrive() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(i === 0 ? 0 : 1)) + ' ' + sizes[i];
   };
 
-  // Fetch index from server backend
+  // ==========================================================================
+  // FETCH FROM BACKEND DATABASE
+  // ==========================================================================
   const fetchBackendDocuments = async (searchQuery = '', ext = '', size = '', sortOrder = 'relevance') => {
     setIsLoading(true);
     try {
@@ -92,17 +78,23 @@ function ImportDrive() {
       if (!response.ok) throw new Error('Network failed to fetch documents');
 
       const data = await response.json();
+      
       const normalizedData = data.map((doc) => ({
         id: doc.id,
+        cndid: doc.cndid, 
         fileName: doc.fileName,
         extension: normalizeExt(doc.extension) || normalizeExt(doc.fileName?.split('.').pop()),
-        size: doc.fileSizeLabel || formatFileSize(doc.file_size),
-        sizeBytes: doc.file_size || 0,
+        size: doc.fileSizeLabel || formatFileSize(doc.file_size || doc.sizeBytes),
+        sizeBytes: doc.file_size || doc.sizeBytes || 0,
         lastModified: doc.uploadedAt ? new Date(doc.uploadedAt).toLocaleDateString() : new Date().toLocaleDateString(),
-        blobURL: `${API_BASE_URL}/api/documents/${doc.id}/download`,
+        blobURL: `${API_BASE_URL}/api/documents/${doc.id}/preview`,
+        downloadURL: `${API_BASE_URL}/api/documents/${doc.id}/download`,
         content: doc.extractedText || '',
         nlpEntities: doc.nlpEntities || [],
+        username: doc.username,
+        documentStatus: doc.documentStatus
       }));
+      
       setDocuments(normalizedData);
     } catch (err) {
       console.error('Unable to fetch search index from server backend:', err);
@@ -113,15 +105,9 @@ function ImportDrive() {
 
   useEffect(() => {
     fetchBackendDocuments('', '', '', 'newest');
-    return () => {
-      documents.forEach((doc) => {
-        if (doc.blobURL && doc.blobURL.startsWith('blob:')) {
-          URL.revokeObjectURL(doc.blobURL);
-        }
-      });
-    };
   }, []);
 
+  // Handle Filtering & Sorting
   useEffect(() => {
     setIsLoading(true);
     let result = [...documents];
@@ -150,9 +136,9 @@ function ImportDrive() {
     }
 
     if (selectedSort === 'newest') {
-      result.sort((a, b) => String(b.id).localeCompare(String(a.id)));
+      result.sort((a, b) => b.id - a.id);
     } else if (selectedSort === 'oldest') {
-      result.sort((a, b) => String(a.id).localeCompare(String(b.id)));
+      result.sort((a, b) => a.id - b.id);
     } else if (selectedSort === 'relevance' && searchTerm.trim() !== '') {
       const lowerSearch = searchTerm.toLowerCase();
       result.sort((a, b) => {
@@ -184,13 +170,32 @@ function ImportDrive() {
     }
   };
 
-  const handleFolderSelect = async (event) => {
+  // ==========================================================================
+  // UPDATED SYNCHRONOUS BACKEND UPLOAD WORKFLOW 
+  // ==========================================================================
+const handleFolderSelect = async (event) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
 
     setIsUploading(true);
+    setExtractionStatus('Extracting text & running AI Analysis. Saving to database...');
+
+    // Asynchronously warm up Ollama model
+    fetch(`${API_BASE_URL}/api/warm-ollama`, { method: 'POST' }).catch(() => {});
+
+    // Resolve logged in user to send with upload payload
+    const currentUser = (() => {
+      try {
+        return JSON.parse(localStorage.getItem('user'));
+      } catch (e) {
+        return null;
+      }
+    })();
+    const username = currentUser?.name || currentUser?.email || 'HR Admin';
 
     const formData = new FormData();
+    formData.append('username', username);
+
     for (let i = 0; i < files.length; i++) {
       if (isValidFile(files[i].name)) {
         formData.append('file', files[i]);
@@ -204,22 +209,30 @@ function ImportDrive() {
       });
 
       if (response.ok) {
-        const data = await response.json();
-        console.log('📄 Documents parsed & indexed via backend server:', data);
-        fetchBackendDocuments('', '', '', 'newest');
+        setExtractionStatus('Upload & Database Sync Complete!');
+        await fetchBackendDocuments('', '', '', 'newest'); 
+      } else {
+        const errorData = await response.json();
+        alert(errorData.message || 'Upload failed.');
       }
     } catch (uploadErr) {
       console.error('Failed uploading files to server backend:', uploadErr);
     } finally {
-      setIsUploading(false);
+      setTimeout(() => {
+        setIsUploading(false);
+        setExtractionStatus('');
+      }, 2000);
       if (event.target) event.target.value = '';
     }
   };
 
+  // ==========================================================================
+  // UI HANDLERS
+  // ==========================================================================
   const handleDragOver = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    e.currentTarget.classList.add('bg-purple-50', 'border-purple-500', 'scale-[1.01]');
+    if (!isUploading) e.currentTarget.classList.add('bg-purple-50', 'border-purple-500', 'scale-[1.01]');
   };
 
   const handleDragLeave = (e) => {
@@ -232,90 +245,47 @@ function ImportDrive() {
     e.preventDefault();
     e.stopPropagation();
     e.currentTarget.classList.remove('bg-purple-50', 'border-purple-500', 'scale-[1.01]');
-    await handleFolderSelect(e);
+    if (!isUploading) await handleFolderSelect(e);
   };
 
   const openPreview = async (file) => {
-    if (previewSrc && previewSrc.startsWith('blob:')) {
-      URL.revokeObjectURL(previewSrc);
-    }
-    setPreviewSrc(null);
     setSelectedFile(file);
     setPreviewOpen(true);
     setViewMode('native');
-
-    if (file.blobURL && file.blobURL.startsWith('blob:')) {
-      setPreviewSrc(file.blobURL);
-      return;
-    }
-
-    setPreviewSrc(null);
-    setPreviewLoading(true);
-    try {
-      const response = await fetch(file.blobURL);
-      if (!response.ok) throw new Error('Failed to fetch file for preview');
-      const blob = await response.blob();
-      const objectUrl = URL.createObjectURL(blob);
-      setPreviewSrc(objectUrl);
-    } catch (err) {
-      console.error('Unable to load inline preview:', err);
-      setPreviewSrc(null);
-    } finally {
-      setPreviewLoading(false);
-    }
+    setPreviewSrc(file.blobURL);
   };
 
   const closePreview = () => {
     setPreviewOpen(false);
     setSelectedFile(null);
     setViewMode('native');
-    if (previewSrc && previewSrc.startsWith('blob:')) {
-      URL.revokeObjectURL(previewSrc);
-    }
     setPreviewSrc(null);
     setPreviewLoading(false);
   };
 
   const downloadFile = (file) => {
     if (!file) return;
-    if (file.blobURL && file.blobURL.startsWith('blob:')) {
-      const link = document.createElement('a');
-      link.href = file.blobURL;
-      link.download = file.fileName;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } else {
-      window.open(`${API_BASE_URL}/api/documents/${file.id}/download`, '_blank');
-    }
+    window.open(file.downloadURL || `${API_BASE_URL}/api/documents/${file.id}/download`, '_blank');
   };
 
   const deleteFile = async (id) => {
+    if(!window.confirm("Delete this document? (Note: To delete the candidate completely, use the Candidates Dashboard)")) return;
     try {
       await fetch(`${API_BASE_URL}/api/documents/${id}`, { method: 'DELETE' });
     } catch (err) {
-      console.error('Server cleanup omitted, discarding records locally:', err);
+      console.error('Delete API request failed:', err);
     }
-
-    const fileToDelete = documents.find((doc) => doc.id === id);
-    if (fileToDelete?.blobURL && fileToDelete.blobURL.startsWith('blob:')) {
-      URL.revokeObjectURL(fileToDelete.blobURL);
-    }
-
     setDocuments((prev) => prev.filter((doc) => doc.id !== id));
     if (selectedFile?.id === id) closePreview();
   };
 
   const highlightSnippet = (text = '', searchKeyword = '') => {
     if (!searchKeyword.trim() || !text) return text.slice(0, 140) + '...';
-
     const index = text.toLowerCase().indexOf(searchKeyword.toLowerCase());
     if (index === -1) return text.slice(0, 140) + '...';
-
     const start = Math.max(0, index - 40);
     const end = Math.min(text.length, index + searchKeyword.length + 80);
     const snippet = text.slice(start, end);
-
     return (
       <span>
         ...{snippet.replace(new RegExp(`(${searchKeyword})`, 'gi'), '⭐$1⭐')}...
@@ -346,9 +316,7 @@ function ImportDrive() {
               <button
                 onClick={() => setViewMode('native')}
                 className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
-                  viewMode === 'native'
-                    ? 'bg-white text-purple-700 shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
+                  viewMode === 'native' ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 Native Image View
@@ -356,16 +324,13 @@ function ImportDrive() {
               <button
                 onClick={() => setViewMode('extracted')}
                 className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
-                  viewMode === 'extracted'
-                    ? 'bg-white text-purple-700 shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
+                  viewMode === 'extracted' ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                Extracted OCR Text
+                Extracted Text (DB)
               </button>
             </div>
           </div>
-
           <div className="flex-1 min-h-0 bg-slate-200/50 overflow-y-auto p-4 flex items-center justify-center">
             {viewMode === 'native' ? (
               previewLoading ? (
@@ -373,11 +338,7 @@ function ImportDrive() {
                   <LoaderCircle size={18} className="animate-spin" /> Loading preview…
                 </div>
               ) : previewSrc ? (
-                <img
-                  src={previewSrc}
-                  alt={selectedFile.fileName}
-                  className="max-w-full max-h-[58vh] object-contain rounded-lg shadow-sm select-none"
-                />
+                <img src={previewSrc} alt={selectedFile.fileName} className="max-w-full max-h-[58vh] object-contain rounded-lg shadow-sm select-none" />
               ) : (
                 <div className="flex flex-col items-center justify-center py-24 text-slate-400">
                   <p className="italic font-sans">Unable to load an inline preview for this image.</p>
@@ -386,9 +347,7 @@ function ImportDrive() {
             ) : (
               <div className="w-full h-fit min-h-full bg-white p-8 md:p-12 font-sans text-slate-800 text-sm max-w-2xl shadow-md border border-slate-200/80 rounded-lg">
                 {content ? (
-                  <div className="whitespace-pre-wrap break-words leading-relaxed text-left font-mono text-[13px] text-slate-700">
-                    {content}
-                  </div>
+                  <div className="whitespace-pre-wrap break-words leading-relaxed text-left font-mono text-[13px] text-slate-700">{content}</div>
                 ) : (
                   <div className="flex flex-col items-center justify-center py-24 text-slate-400">
                     <p className="italic font-sans">No text found inside this image layer.</p>
@@ -410,9 +369,7 @@ function ImportDrive() {
               <button
                 onClick={() => setViewMode('native')}
                 className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
-                  viewMode === 'native'
-                    ? 'bg-white text-purple-700 shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
+                  viewMode === 'native' ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 Native Document View
@@ -420,16 +377,13 @@ function ImportDrive() {
               <button
                 onClick={() => setViewMode('extracted')}
                 className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
-                  viewMode === 'extracted'
-                    ? 'bg-white text-purple-700 shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
+                  viewMode === 'extracted' ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 Extracted Text Layer
               </button>
             </div>
           </div>
-
           <div className="flex-1 min-h-0 bg-slate-200/50 overflow-y-auto p-4 flex justify-center">
             {viewMode === 'native' ? (
               previewLoading ? (
@@ -437,11 +391,7 @@ function ImportDrive() {
                   <LoaderCircle size={18} className="animate-spin" /> Loading document…
                 </div>
               ) : previewSrc ? (
-                <iframe
-                  src={`${previewSrc}#toolbar=1&navpanes=0`}
-                  title={selectedFile.fileName}
-                  className="w-full h-full border-none bg-slate-500 rounded-lg shadow-sm"
-                />
+                <iframe src={`${previewSrc}#toolbar=1&navpanes=0`} title={selectedFile.fileName} className="w-full h-full border-none bg-slate-500 rounded-lg shadow-sm" />
               ) : (
                 <div className="flex flex-col items-center justify-center py-24 text-slate-400 self-center">
                   <p className="italic font-sans">Unable to load an inline preview for this document.</p>
@@ -450,9 +400,7 @@ function ImportDrive() {
             ) : (
               <div className="w-full h-fit min-h-full bg-white p-8 md:p-12 font-sans text-slate-800 text-sm max-w-2xl shadow-md border border-slate-200/80 rounded-lg">
                 {content ? (
-                  <div className="whitespace-pre-wrap break-words leading-relaxed text-left font-mono text-[13px] text-slate-700">
-                    {content}
-                  </div>
+                  <div className="whitespace-pre-wrap break-words leading-relaxed text-left font-mono text-[13px] text-slate-700">{content}</div>
                 ) : (
                   <div className="flex flex-col items-center justify-center py-24 text-slate-400">
                     <p className="italic font-sans">No text found inside this PDF layer.</p>
@@ -468,7 +416,6 @@ function ImportDrive() {
     if (['xlsx', 'xls', 'csv'].includes(ext)) {
       const rows = content.split('\n').filter((row) => row.trim());
       const getExcelColLabel = (index) => String.fromCharCode(65 + (index % 26));
-
       return (
         <div className="w-full max-h-[66vh] overflow-auto bg-slate-50 rounded-xl border border-slate-200 shadow-inner flex flex-col">
           <div className="overflow-x-auto overflow-y-auto w-full">
@@ -477,13 +424,8 @@ function ImportDrive() {
                 <tr className="bg-slate-100 border-b border-slate-300 sticky top-0 z-20 shadow-[0_1px_0_rgba(0,0,0,0.05)]">
                   <th className="w-10 bg-slate-200 text-center border-r border-slate-300 p-1.5 text-[10px] font-bold text-slate-500 font-mono sticky left-0 z-30"></th>
                   {rows[0] &&
-                    rows[0]
-                      .split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/)
-                      .map((_, idx) => (
-                        <th
-                          key={idx}
-                          className="w-[160px] p-2 bg-slate-100 text-slate-600 font-semibold font-mono border-r border-slate-300 text-center tracking-wider text-[11px]"
-                        >
+                    rows[0].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map((_, idx) => (
+                        <th key={idx} className="w-[160px] p-2 bg-slate-100 text-slate-600 font-semibold font-mono border-r border-slate-300 text-center tracking-wider text-[11px]">
                           {getExcelColLabel(idx)}
                         </th>
                       ))}
@@ -500,13 +442,7 @@ function ImportDrive() {
                       {cells.map((cell, cIdx) => {
                         const formattedValue = cell.replace(/^"|font="/g, '').replace(/"$/g, '').trim();
                         return (
-                          <td
-                            key={cIdx}
-                            title={formattedValue}
-                            className={`p-2.5 border-r border-slate-200 truncate font-normal text-slate-700 tracking-wide ${
-                              rIdx === 0 ? 'bg-slate-50/80 font-medium text-slate-900' : ''
-                            }`}
-                          >
+                          <td key={cIdx} title={formattedValue} className={`p-2.5 border-r border-slate-200 truncate font-normal text-slate-700 tracking-wide ${rIdx === 0 ? 'bg-slate-50/80 font-medium text-slate-900' : ''}`}>
                             {formattedValue || <span className="text-slate-300 font-serif">-</span>}
                           </td>
                         );
@@ -525,7 +461,6 @@ function ImportDrive() {
       try {
         const parsed = typeof content === 'object' ? content : JSON.parse(content);
         const jsonStr = JSON.stringify(parsed, null, 2);
-
         return (
           <div className="w-full max-h-[65vh] overflow-auto bg-slate-950 p-6 rounded-xl font-mono text-xs shadow-xl leading-relaxed border border-slate-800">
             <pre className="text-slate-300 whitespace-pre-wrap break-all">
@@ -541,11 +476,7 @@ function ImportDrive() {
                     </span>
                   );
                 }
-                return (
-                  <div key={lIdx} className="hover:bg-slate-900/40 px-2 py-0.5 rounded transition-colors">
-                    {styledLine}
-                  </div>
-                );
+                return <div key={lIdx} className="hover:bg-slate-900/40 px-2 py-0.5 rounded transition-colors">{styledLine}</div>;
               })}
             </pre>
           </div>
@@ -560,19 +491,10 @@ function ImportDrive() {
           {paragraphs.map((para, idx) => {
             const trimmed = para.trim();
             if (!trimmed) return <div key={idx} className="h-3" />;
-
             if (trimmed.length < 75 && (trimmed.toUpperCase() === trimmed || trimmed.endsWith(':') || trimmed.startsWith('##'))) {
-              return (
-                <h4 key={idx} className="font-sans font-bold text-base text-slate-900 pt-4 tracking-tight border-b border-slate-100 pb-1">
-                  {trimmed.replace(/^##\s*/, '')}
-                </h4>
-              );
+              return <h4 key={idx} className="font-sans font-bold text-base text-slate-900 pt-4 tracking-tight border-b border-slate-100 pb-1">{trimmed.replace(/^##\s*/, '')}</h4>;
             }
-            return (
-              <p key={idx} className="text-slate-700 indent-2 tracking-wide font-normal">
-                {trimmed}
-              </p>
-            );
+            return <p key={idx} className="text-slate-700 indent-2 tracking-wide font-normal">{trimmed}</p>;
           })}
         </div>
       );
@@ -581,9 +503,7 @@ function ImportDrive() {
     return (
       <div className="text-center p-12 bg-white rounded-xl border border-slate-200 shadow-sm max-w-sm mx-auto">
         <p className="font-bold text-slate-800 text-base">Preview Not Supported</p>
-        <p className="text-xs text-slate-400 mt-1 mb-6">
-          This file node cannot be displayed inline inside your web app workspace window view.
-        </p>
+        <p className="text-xs text-slate-400 mt-1 mb-6">This file node cannot be displayed inline inside your web app workspace window view.</p>
         <button
           onClick={() => downloadFile(selectedFile)}
           className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2.5 rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 transition active:scale-95 shadow-sm"
@@ -606,7 +526,7 @@ function ImportDrive() {
             <div>
               <h1 className="text-2xl font-bold">Import Workspace</h1>
               <p className="text-sm text-gray-500">
-                Upload directory document roots to index and search file content keywords instantly.
+                Upload directory document roots to index and search file content via PostgreSQL.
               </p>
             </div>
           </div>
@@ -615,7 +535,7 @@ function ImportDrive() {
             <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Total documents</p>
               <h3 className="text-2xl font-bold mt-1">{documents.length}</h3>
-              <p className="text-xs text-gray-400 mt-1">Indexed workspace files</p>
+              <p className="text-xs text-gray-400 mt-1">Files tracked in database</p>
             </div>
             <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Filter status</p>
@@ -632,16 +552,24 @@ function ImportDrive() {
           </div>
 
           <div
-            className="bg-white border-gray-200 border-dashed border-2 rounded-xl p-8 md:p-12 text-center transition-all duration-300 relative shadow-sm hover:border-purple-500 hover:shadow-md cursor-pointer"
+            className="bg-white border-gray-200 border-dashed border-2 rounded-xl p-8 md:p-12 text-center transition-all duration-300 relative shadow-sm hover:border-purple-500 hover:shadow-md cursor-pointer flex flex-col items-center justify-center"
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => !isUploading && fileInputRef.current?.click()}
           >
+            {isUploading && (
+               <div className="absolute inset-0 bg-white/90 backdrop-blur-sm z-10 flex flex-col items-center justify-center rounded-xl">
+                   <LoaderCircle size={40} className="text-purple-600 animate-spin mb-4" />
+                   <h3 className="font-bold text-lg text-slate-800 animate-pulse">{extractionStatus}</h3>
+                   <p className="text-sm text-slate-500 mt-2">Uploading and AI extraction in progress...</p>
+               </div>
+            )}
+            
             <CloudUpload size={44} className="text-purple-600 mx-auto mb-4 animate-[bounce_3s_infinite]" />
-            <h2 className="text-xl font-bold mb-1">Import Entire Drive Directory</h2>
+            <h2 className="text-xl font-bold mb-1">Import Server Database</h2>
             <p className="text-sm text-gray-500 mb-5">
-              Drag and drop files or folders to start indexing items immediately
+              Drag and drop files to automatically run AI extraction and sync to database.
             </p>
 
             <button
@@ -651,8 +579,9 @@ function ImportDrive() {
                 fileInputRef.current?.click();
               }}
             >
-              {isUploading ? 'Processing File Trees...' : 'Browse Drive Folder'}
+              Browse Local Folder
             </button>
+
             <input
               ref={fileInputRef}
               type="file"
@@ -669,7 +598,7 @@ function ImportDrive() {
               <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search matching content metrics inside database..."
+                placeholder="Search matching content metrics..."
                 value={searchTerm}
                 onChange={(e) => handleSearchChange(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && executeSearch(searchTerm)}
@@ -741,7 +670,7 @@ function ImportDrive() {
 
           {filteredDocuments.length > 0 ? (
             <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm overflow-hidden flex flex-col">
-              <h3 className="text-lg font-bold mb-4">Imported Directory Documents ({filteredDocuments.length})</h3>
+              <h3 className="text-lg font-bold mb-4">PostgreSQL Document Records ({filteredDocuments.length})</h3>
 
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse text-sm text-left">
@@ -750,6 +679,7 @@ function ImportDrive() {
                       <th className="pb-3 font-semibold">File Name & Content Matches</th>
                       <th className="pb-3 font-semibold">Type</th>
                       <th className="pb-3 font-semibold">Size</th>
+                      <th className="pb-3 font-semibold text-center">Uploaded By</th>
                       <th className="pb-3 text-center font-semibold">Actions</th>
                     </tr>
                   </thead>
@@ -775,6 +705,9 @@ function ImportDrive() {
                           </span>
                         </td>
                         <td className="py-3 text-gray-500 text-xs">{doc.size}</td>
+                        <td className="py-3 text-center">
+                          <span className="text-slate-400 font-mono font-medium text-xs">{doc.username || 'HR Admin'}</span>
+                        </td>
                         <td className="py-3 text-center">
                           <div className="inline-flex gap-2 justify-center">
                             <button
@@ -808,7 +741,7 @@ function ImportDrive() {
             </div>
           ) : documents.length === 0 ? (
             <div className="text-center px-6 py-12 bg-white rounded-xl border border-gray-200 shadow-sm text-gray-400 text-sm">
-              <p>No documents imported yet. Choose a workspace or folder root hierarchy above to begin parsing.</p>
+              <p>No documents found in database. Upload a file above to begin.</p>
             </div>
           ) : (
             <div className="text-center px-6 py-12 bg-white rounded-xl border border-gray-200 shadow-sm text-gray-400 text-sm">
