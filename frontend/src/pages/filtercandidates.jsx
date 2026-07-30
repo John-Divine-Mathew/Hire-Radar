@@ -346,20 +346,9 @@ export default function FilterCandidate() {
                                     : "cursor-default"
                                 }`}
                                 onClick={() => {
+                                  // Direct timeline clicks only update temporary draft stage during active editing
                                   if (isEditingStage) {
                                     setDraftStep(index + 1);
-                                  } else {
-                                    setCandidates((prev) =>
-                                      prev.map((c) =>
-                                        c.id === candidate.id
-                                          ? {
-                                              ...c,
-                                              step: index + 1,
-                                              status: dynamicStages[index],
-                                            }
-                                          : c
-                                      )
-                                    );
                                   }
                                 }}
                               >
