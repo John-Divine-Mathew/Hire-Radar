@@ -41,7 +41,7 @@ async function warmOllamaModel() {
         const response = await fetch("http://localhost:11434/api/generate", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ model: "qwen3.6", keep_alive: "30m" })
+            body: JSON.stringify({ model: "qwen2.5:7b-instruct-q4_K_M", keep_alive: "30m" })
         });
         if (response.ok) {
             console.log('[Ollama] Model preloaded and warm.');
@@ -150,22 +150,28 @@ async function analyzeResumeWithOllama(rawText, fileName) {
     const truncatedText = sanitizedText.slice(0, 4000);
 
     const promptText = `You are an expert HR Data Extraction AI. 
-Extract candidate data from the resume text below. Return EXACTLY 8 data points in this strictly valid JSON structure. Do not use the file name as the candidate's name.
+    Extract candidate data from the resume text below. Return EXACTLY 8 data points in this strictly valid JSON structure. Do not use the file name as the candidate's name.
 
-{
-  "name": "Extract candidate full name",
-  "location": "Extract current city, state, or country",
-  "role": "Extract primary job title",
-  "experience": "Extract total years experience",
-  "saved_date": "${new Date().toISOString().split('T')[0]}",
-  "linkedin": "Extract LinkedIn URL",
-  "skills": ["List", "skills"],
-  "education": ["List", "education"]
-}
+    STRICT FIELD RULES:
+    1. "location": Extract ONLY the city, state, or country name (e.g., "India" or "Trichy, India"). Do NOT include explanations, inferences, or phrases like "Not explicitly stated". If not found, use "N/A".
+    2. "linkedin": Extract ONLY the raw LinkedIn URL (e.g., "https://www.linkedin.com/in/username"). If not found, output "N/A". Do NOT write "Not provided in the resume text".
+    3. Do not add conversational text or markdown around the JSON response.
 
-Resume Text to Extract From:
--------------------------
-${truncatedText}`;
+    JSON Schema:
+    {
+    "name": "Extract candidate full name",
+    "location": "Extract city/state/country or N/A",
+    "role": "Extract primary job title",
+    "experience": "Extract total years experience",
+    "saved_date": "${new Date().toISOString().split('T')[0]}",
+    "linkedin": "Extract LinkedIn URL or N/A",
+    "skills": ["List", "skills"],
+    "education": ["List", "education"]
+    }
+
+    Resume Text to Extract From:
+    -------------------------
+    ${truncatedText}`;
 
     // Extended safety timeout to 180s (3 mins) for CPU-heavy processing
     const controller = new AbortController();
@@ -177,20 +183,18 @@ ${truncatedText}`;
             headers: { "Content-Type": "application/json" },
             signal: controller.signal,
             body: JSON.stringify({
-                model: "qwen3.6", // Or "qwen2.5:7b"
+                model: "qwen2.5:7b-instruct-q4_K_M",
                 prompt: promptText,
                 stream: false,
                 format: "json",
-                think: false,
                 keep_alive: "30m",
                 options: {
                     temperature: 0.1,
-                    num_ctx: 2048,     // Reduced from 8192 to save VRAM for layers
-                    num_predict: 512   // Capped output tokens since JSON response is short
+                    num_ctx: 2048,
+                    num_predict: 512
                 }
             })
         });
-
         clearTimeout(timeoutId);
 
         if (response.ok) {
@@ -232,13 +236,13 @@ ${truncatedText}`;
     return fallbackData;
 }
 
-// Warm-up endpoint to allow clients to trigger preloading before batch uploads
+
 app.post('/api/warm-ollama', async (req, res) => {
     try {
         const response = await fetch("http://localhost:11434/api/generate", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ model: "qwen3.6", keep_alive: "30m" })
+            body: JSON.stringify({ model: "qwen2.5:7b-instruct-q4_K_M", keep_alive: "30m" })
         });
         res.json({ warmed: response.ok });
     } catch (err) {
@@ -1069,27 +1073,27 @@ app.post("/hireRadar/generate-jd", async (req, res) => {
 
     try {
         const promptText = `
-You are an expert HR Specialist. Generate a detailed and professional Job Description (JD) in valid JSON format based on these parameters:
-- Job Title: ${jobTitle}
-- Department: ${department || "Engineering / Technology"}
-- Experience Level: ${experience || "3-5 years"}
-- Key Skills/Responsibilities: ${keySkills || "Standard domain skills"}
+            You are an expert HR Specialist. Generate a detailed and professional Job Description (JD) in valid JSON format based on these parameters:
+            - Job Title: ${jobTitle}
+            - Department: ${department || "Engineering / Technology"}
+            - Experience Level: ${experience || "3-5 years"}
+            - Key Skills/Responsibilities: ${keySkills || "Standard domain skills"}
 
-Respond ONLY with a raw, valid JSON object strictly matching this schema, without any extra text or commentary:
-{
-  "roleSummary": "Brief overview of the role...",
-  "keyResponsibilities": ["Responsibility 1", "Responsibility 2", "Responsibility 3"],
-  "requiredSkills": ["Skill 1", "Skill 2", "Skill 3"],
-  "experience": "${experience || "3-5 years"}",
-  "suggestedSalaryRange": "₹8,00,000 - ₹12,00,000 per annum"
-}
-`;
+            Respond ONLY with a raw, valid JSON object strictly matching this schema, without any extra text or commentary:
+            {
+            "roleSummary": "Brief overview of the role...",
+            "keyResponsibilities": ["Responsibility 1", "Responsibility 2", "Responsibility 3"],
+            "requiredSkills": ["Skill 1", "Skill 2", "Skill 3"],
+            "experience": "${experience || "3-5 years"}",
+            "suggestedSalaryRange": "₹8,00,000 - ₹12,00,000 per annum"
+            }
+            `;
 
         const response = await fetch("http://localhost:11434/api/generate", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                model: "qwen3.6", 
+                model: "qwen2.5:7b-instruct-q4_K_M", 
                 prompt: promptText,
                 stream: false,
                 format: "json",
