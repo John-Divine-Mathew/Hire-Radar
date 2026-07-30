@@ -19,7 +19,6 @@ const {
     initializeSearchService,
     searchDocuments,
     listDocuments,
-    saveUploadedFile,
     deleteDocument
 } = require('./searchService');
 
@@ -77,6 +76,7 @@ function formatFileSize(bytes) {
 function normalizeDocument(row) {
     return {
         id: row.id,
+        cndid: row.cndid, // Include relational Candidate ID
         fileName: row.file_name || row.fileName,
         extension: row.extension,
         file_size: row.file_size || row.fileSize,
@@ -106,7 +106,7 @@ const MIME_BY_EXT = {
 };
 
 // ==========================================================================
-// LOCAL TEXT EXTRACTION SERVICE 
+// LOCAL TEXT EXTRACTION & OLLAMA INFERENCE 
 // ==========================================================================
 
 async function extractTextLocally(fileBuffer, originalName, mimeType) {
@@ -130,52 +130,53 @@ async function extractTextLocally(fileBuffer, originalName, mimeType) {
 }
 
 async function analyzeResumeWithOllama(rawText, fileName) {
+    // UPDATED FALLBACK: Strictly mapped to cndpermsave columns
+    const safeFilename = fileName.replace(/\.[^/.]+$/, "");
     const fallbackData = {
-        name: 'Unknown Candidate',
-        location: 'N/A',
-        role: 'N/A',
-        experience: 'N/A',
-        saved_date: new Date().toISOString().split('T')[0],
-        linkedin: 'N/A',
-        skills: [],
-        education: []
+        cndname: `Unknown Candidate - ${safeFilename}`,
+        cndemail: `unknown@candidate.com`, // Required not-null by DB
+        cndphone: null,
+        cndage: null,
+        cndgender: 'N/A',
+        cndrole: 'N/A',
+        cndskills: 'N/A',
+        cndtotalexperience: 'N/A',
+        cndexperience: 0,
+        cndlocation: 'N/A'
     };
 
     if (!rawText || !rawText.trim()) {
-        console.warn(`[Warning] No text extracted. File might be a scanned image.`);
+        console.warn(`[Warning] No text extracted. Using fallback.`);
         return fallbackData;
     }
 
     const sanitizedText = rawText.replace(/[\x00-\x09\x0B-\x0C\x0E-\x1F\x7F]/g, '').trim();
     const truncatedText = sanitizedText.slice(0, 4000);
 
-    const promptText = `You are an expert HR Data Extraction AI. 
-    Extract candidate data from the resume text below. Return EXACTLY 8 data points in this strictly valid JSON structure. Do not use the file name as the candidate's name.
-
-    STRICT FIELD RULES:
-    1. "location": Extract ONLY the city, state, or country name (e.g., "India" or "Trichy, India"). Do NOT include explanations, inferences, or phrases like "Not explicitly stated". If not found, use "N/A".
-    2. "linkedin": Extract ONLY the raw LinkedIn URL (e.g., "https://www.linkedin.com/in/username"). If not found, output "N/A". Do NOT write "Not provided in the resume text".
-    3. Do not add conversational text or markdown around the JSON response.
-
-    JSON Schema:
+    // UPDATED PROMPT: Requesting exact DB schema variables directly
+    const promptText = `You are an expert HR Data Extraction AI. Extract candidate data from the resume below.
+    Return EXACTLY 10 data points in this strictly valid JSON structure. Do NOT use markdown or explain.
+    
+    STRICT JSON SCHEMA:
     {
-    "name": "Extract candidate full name",
-    "location": "Extract city/state/country or N/A",
-    "role": "Extract primary job title",
-    "experience": "Extract total years experience",
-    "saved_date": "${new Date().toISOString().split('T')[0]}",
-    "linkedin": "Extract LinkedIn URL or N/A",
-    "skills": ["List", "skills"],
-    "education": ["List", "education"]
+      "cndname": "Extract candidate full name. If none found, write 'Unknown Candidate'",
+      "cndemail": "Extract email. If none, write 'unknown@candidate.com'",
+      "cndphone": "Extract purely numeric phone number without symbols, spaces or country codes. If none, write 'N/A'",
+      "cndage": "Extract numeric age if present, else write 'N/A'",
+      "cndgender": "Extract Male, Female, or N/A",
+      "cndrole": "Extract primary job title or N/A",
+      "cndskills": "Extract technical skills as a single comma-separated string, e.g. 'Java, React, SQL'",
+      "cndtotalexperience": "Extract total experience as a string, e.g. '5 years, 2 months' or 'N/A'",
+      "cndexperience": "Extract ONLY the integer value of total years of experience (e.g., 5). If none, output 0",
+      "cndlocation": "Extract city, state, or country or N/A"
     }
 
     Resume Text to Extract From:
     -------------------------
     ${truncatedText}`;
 
-    // Extended safety timeout to 180s (3 mins) for CPU-heavy processing
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 180_000); 
+    const timeoutId = setTimeout(() => controller.abort(), 120_000); // Wait up to 120 seconds
 
     try {
         const response = await fetch("http://localhost:11434/api/generate", {
@@ -209,15 +210,24 @@ async function analyzeResumeWithOllama(rawText, fileName) {
             try {
                 const parsedData = JSON.parse(rawContent);
 
+                // Phone numbers must be clean bigints for Postgres
+                let safePhone = null;
+                if (parsedData.cndphone && parsedData.cndphone !== 'N/A') {
+                    const onlyNums = String(parsedData.cndphone).replace(/\D/g, '');
+                    if (onlyNums.length > 0) safePhone = onlyNums.slice(0, 15); // prevent bigint overflow
+                }
+
                 return {
-                    name: parsedData.name && !parsedData.name.includes("Extract") ? parsedData.name : fallbackData.name,
-                    location: parsedData.location || fallbackData.location,
-                    role: parsedData.role || fallbackData.role,
-                    experience: parsedData.experience || fallbackData.experience,
-                    saved_date: parsedData.saved_date || fallbackData.saved_date,
-                    linkedin: parsedData.linkedin || fallbackData.linkedin,
-                    skills: Array.isArray(parsedData.skills) ? parsedData.skills : fallbackData.skills,
-                    education: Array.isArray(parsedData.education) ? parsedData.education : fallbackData.education
+                    cndname: (parsedData.cndname && !parsedData.cndname.includes("Extract")) ? parsedData.cndname : fallbackData.cndname,
+                    cndemail: parsedData.cndemail || fallbackData.cndemail,
+                    cndphone: safePhone,
+                    cndage: !isNaN(parseInt(parsedData.cndage)) ? parseInt(parsedData.cndage) : null,
+                    cndgender: parsedData.cndgender || 'N/A',
+                    cndrole: parsedData.cndrole || 'N/A',
+                    cndskills: Array.isArray(parsedData.cndskills) ? parsedData.cndskills.join(", ") : (parsedData.cndskills || 'N/A'),
+                    cndtotalexperience: parsedData.cndtotalexperience || 'N/A',
+                    cndexperience: !isNaN(parseInt(parsedData.cndexperience)) ? parseInt(parsedData.cndexperience) : 0,
+                    cndlocation: parsedData.cndlocation || 'N/A'
                 };
             } catch (parseErr) {
                 console.error(`[Ollama JSON Parse Error] ${fileName}:`, parseErr.message);
@@ -227,9 +237,9 @@ async function analyzeResumeWithOllama(rawText, fileName) {
     } catch (error) {
         clearTimeout(timeoutId);
         if (error.name === 'AbortError') {
-            console.error(`[Ollama Backend] Request timed out after 180s for ${fileName}`);
+            console.error(`[Ollama] Request timed out after 120s for ${fileName}`);
         } else {
-            console.error(`[Ollama Backend] Network/Extraction error for ${fileName}:`, error.message);
+            console.error(`[Ollama] Network/Extraction error for ${fileName}:`, error.message);
         }
     }
 
@@ -247,6 +257,125 @@ app.post('/api/warm-ollama', async (req, res) => {
         res.json({ warmed: response.ok });
     } catch (err) {
         res.status(500).json({ warmed: false, error: err.message });
+    }
+});
+
+
+app.post('/api/upload', upload.any(), async (req, res) => {
+    try {
+        const filesCollection = req.files || (req.file ? [req.file] : []);
+
+        if (filesCollection.length === 0) {
+            return res.status(400).json({ error: 'No files were detected inside payload arrays.' });
+        }
+
+        // Extract uploaded username from request body (or fallback)
+        const username = req.body.username || 'HR Admin';
+
+        const uploadedDocuments = [];
+        const skippedDuplicates = [];
+
+        for (const file of filesCollection) {
+            // Check for duplicate files based on filename and size
+            const checkDuplicate = await pool.query(
+                'SELECT cndid, file_name FROM document_search_index WHERE file_name = $1 AND file_size = $2',
+                [file.originalname, file.size]
+            );
+
+            if (checkDuplicate.rows.length > 0) {
+                console.warn(`[Skip] Duplicate detected: ${file.originalname} (${file.size} bytes)`);
+                skippedDuplicates.push(file.originalname);
+                continue; 
+            }
+
+            // 1. Local Text Extraction
+            const extractedText = await extractTextLocally(file.buffer, file.originalname, file.mimetype);
+
+            // 2. Run AI Parsing with Ollama
+            console.log(`[AI] Processing ${file.originalname}...`);
+            const aiData = await analyzeResumeWithOllama(extractedText, file.originalname);
+
+            // 3. Insert Candidate Record into 'cndpermsave'
+            const insertCandidateQuery = `
+                INSERT INTO cndpermsave (
+                    searchdate, cndname, cndemail, cndphone, cndage, cndgender,
+                    cndrole, cndskills, cndtotalexperience, cndexperience, cndlocation,
+                    teststatus, interviewstatus
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'NA', 'NA')
+                RETURNING cndid;
+            `;
+            const cndValues = [
+                new Date(), 
+                aiData.cndname, 
+                aiData.cndemail, 
+                aiData.cndphone, 
+                aiData.cndage,
+                aiData.cndgender, 
+                aiData.cndrole, 
+                aiData.cndskills, 
+                aiData.cndtotalexperience,
+                aiData.cndexperience, 
+                aiData.cndlocation
+            ];
+            
+            const candidateRes = await pool.query(insertCandidateQuery, cndValues);
+            const newCndId = candidateRes.rows[0].cndid;
+            console.log(`✅ Candidate Created -> ID: ${newCndId}`);
+
+            // 4. Insert Document into 'document_search_index'
+            const ext = path.extname(file.originalname).toLowerCase().replace('.', '');
+            const insertDocQuery = `
+                INSERT INTO document_search_index (
+                    cndid, 
+                    file_name, 
+                    extension, 
+                    file_size, 
+                    uploaded_at, 
+                    extracted_text, 
+                    mime_type, 
+                    file_data,
+                    username,
+                    search_vector
+                ) VALUES (
+                    $1, $2, $3, $4, NOW(), $5, $6, $7, $8, 
+                    to_tsvector('simple', COALESCE($2, '') || ' ' || COALESCE($5, ''))
+                )
+                RETURNING cndid;
+            `;
+            const docValues = [
+                newCndId, 
+                file.originalname, 
+                ext,
+                file.size, 
+                extractedText, 
+                file.mimetype, 
+                file.buffer,
+                username
+            ];
+
+            const docRes = await pool.query(insertDocQuery, docValues);
+            console.log(`✅ Document Stored in DB -> cndid: ${docRes.rows[0].cndid}`);
+
+            uploadedDocuments.push({
+                id: docRes.rows[0].cndid,
+                cndid: newCndId,
+                fileName: file.originalname,
+                extractedText: extractedText,
+                username: username
+            });
+        }
+
+        if (uploadedDocuments.length === 0 && skippedDuplicates.length > 0) {
+            return res.status(409).json({
+                message: 'All uploaded files were identified as duplicates and skipped.',
+                skipped: skippedDuplicates
+            });
+        }
+
+        res.status(200).json(uploadedDocuments);
+    } catch (error) {
+        console.error('Upload API database insertion error:', error.message);
+        res.status(500).json({ error: 'Unable to complete uploading files stream.' });
     }
 });
 
@@ -370,10 +499,7 @@ app.get("/hireRadar/cndtempsave/:cndid", async (req, res) => {
     }
 });
 
-// ==========================================================================
 // CANDIDATE PERMANENT DATABASE ROUTES
-// ==========================================================================
-
 app.get("/hireRadar/cndpermsave", async (req, res) => {
     try {
         const allData = await pool.query("SELECT * FROM cndpermsave ORDER BY cndid ASC");
@@ -545,10 +671,7 @@ app.delete("/hireRadar/deleteCandidate/:cndid", async (req, res) => {
     }
 });
 
-// ==========================================================================
 // TESTS & ASSESSMENT ROUTES
-// ==========================================================================
-
 app.post("/hireRadar/insertTestDetails", async (req, res) => {
     try {
         const { cndid, username, password, starttime, endtime, email, name } = req.body;
@@ -670,212 +793,140 @@ app.get("/hireRadar/adminlogin", async (req, res) => {
     }
 });
 
-// ==========================================================================
-// DOCUMENT SEARCH, PREVIEW, DOWNLOAD & UPLOAD ENDPOINTS
-// ==========================================================================
-
+// DOCUMENT SEARCH, PREVIEW, DOWNLOAD ENDPOINTS
 app.get('/api/search', async (req, res) => {
     try {
-        const q = String(req.query.q || '').trim();
-        const options = {
-            extension: req.query.extension || '',
-            sort: req.query.sort || 'relevance',
-            sizeFilter: req.query.sizeFilter || '',
-        };
-        const rows = await searchDocuments(q, options);
-        res.json(rows.map(normalizeDocument));
+        const q = `%${String(req.query.q || '').trim().toLowerCase()}%`;
+        
+        const queryText = `
+            SELECT cndid, file_name, extension, file_size, uploaded_at, extracted_text 
+            FROM document_search_index 
+            WHERE LOWER(file_name) LIKE $1 OR LOWER(extracted_text) LIKE $1
+            ORDER BY uploaded_at DESC
+        `;
+        
+        const result = await pool.query(queryText, [q]);
+        
+        const docs = result.rows.map(row => ({
+            id: row.cndid,
+            cndid: row.cndid,
+            fileName: row.file_name,
+            extension: row.extension,
+            sizeBytes: row.file_size,
+            uploadedAt: row.uploaded_at,
+            extractedText: row.extracted_text
+        }));
+        
+        res.json(docs);
     } catch (error) {
-        console.error('Search API error:', error.message);
-        res.status(500).json({ error: 'Unable to search documents.' });
+        console.error('Search API error:', error);
+        res.status(500).json({ error: `Backend DB Error: ${error.message}` });
     }
 });
 
 app.get('/api/documents', async (req, res) => {
     try {
-        const rows = await listDocuments({
-            extension: req.query.extension || '',
-            sort: req.query.sort || 'newest',
-            sizeFilter: req.query.sizeFilter || '',
-        });
-        res.json(rows.map(normalizeDocument));
-    } catch (error) {
-        console.error('Document listing error:', error.message);
-        res.status(500).json({ error: 'Unable to load documents.' });
-    }
-});
+        let queryText = 'SELECT cndid, file_name, extension, file_size, uploaded_at, extracted_text FROM document_search_index WHERE 1=1';
+        let queryParams = [];
+        let paramCounter = 1;
 
-app.post('/api/upload', upload.any(), async (req, res) => {
-    try {
-        const filesCollection = req.files || (req.file ? [req.file] : []);
-
-        if (filesCollection.length === 0) {
-            return res.status(400).json({ error: 'No files were detected inside payload arrays.' });
+        // Apply Extension Filter
+        if (req.query.extension) {
+            queryText += ` AND LOWER(extension) = $${paramCounter}`;
+            queryParams.push(req.query.extension.toLowerCase());
+            paramCounter++;
         }
 
-        const uploadedDocuments = [];
-        const skippedDuplicates = [];
-
-        for (const file of filesCollection) {
-            // Check database for existing file with matching name and size
-            const checkDuplicate = await pool.query(
-                'SELECT id, file_name FROM document_search_index WHERE file_name = $1 AND file_size = $2',
-                [file.originalname, file.size]
-            );
-
-            if (checkDuplicate.rows.length > 0) {
-                console.warn(`[Upload Skip] Duplicate detected: ${file.originalname} (${file.size} bytes)`);
-                skippedDuplicates.push(file.originalname);
-                continue; // Skip processing duplicate
-            }
-
-            // Extract text locally
-            const extractedText = await extractTextLocally(file.buffer, file.originalname, file.mimetype);
-
-            // Save to PostgreSQL document_search_index
-            const savedDoc = await saveUploadedFile({
-                ...file,
-                extractedText: extractedText
-            });
-
-            uploadedDocuments.push({
-                ...savedDoc,
-                fileName: file.originalname,
-                extractedText: extractedText
-            });
+        // Apply Size Filter
+        if (req.query.sizeFilter === 'small') {
+            queryText += ` AND file_size < 1048576`; // < 1MB
+        } else if (req.query.sizeFilter === 'medium') {
+            queryText += ` AND file_size >= 1048576 AND file_size <= 10485760`; // 1MB - 10MB
+        } else if (req.query.sizeFilter === 'large') {
+            queryText += ` AND file_size > 10485760`; // > 10MB
         }
 
-        if (uploadedDocuments.length === 0 && skippedDuplicates.length > 0) {
-            return res.status(409).json({
-                message: 'All uploaded files were identified as duplicates and skipped.',
-                skipped: skippedDuplicates
-            });
+        // Apply Sorting
+        if (req.query.sort === 'oldest') {
+            queryText += ' ORDER BY uploaded_at ASC';
+        } else {
+            queryText += ' ORDER BY uploaded_at DESC'; // 'newest' default
         }
 
-        res.status(200).json(uploadedDocuments);
+        const result = await pool.query(queryText, queryParams);
+
+        // Map database columns to the exact keys the React frontend expects
+        const docs = result.rows.map(row => ({
+            id: row.cndid, // React uses 'id' for array keys
+            cndid: row.cndid,
+            fileName: row.file_name,
+            extension: row.extension,
+            sizeBytes: row.file_size,
+            uploadedAt: row.uploaded_at,
+            extractedText: row.extracted_text
+        }));
+
+        res.json(docs);
     } catch (error) {
-        console.error('Upload API unified processing error:', error.message);
-        res.status(500).json({ error: 'Unable to complete uploading files stream.' });
+        console.error('Document listing crash:', error);
+        // This will expose the exact SQL error to your network tab
+        res.status(500).json({ error: `Backend DB Error: ${error.message}` });
     }
-});
-
-app.post('/api/analyze-resume', async (req, res) => {
-    try {
-        const { rawText, fileName } = req.body;
-        const metadata = await analyzeResumeWithOllama(rawText, fileName);
-
-        // Map extracted metadata to cndpermsave schema
-        const candidateName = metadata.name && metadata.name !== 'Unknown Candidate' 
-            ? metadata.name 
-            : fileName.replace(/\.[^/.]+$/, ""); // Fallback to filename without extension
-        
-        const candidateEmail = metadata.email || `${candidateName.toLowerCase().replace(/[^a-z0-9]/g, '')}@noemail.com`;
-        const skillsString = Array.isArray(metadata.skills) ? metadata.skills.join(', ') : (metadata.skills || 'N/A');
-        
-        // Extract numeric years of experience for the integer column 'cndexperience'
-        const expMatch = String(metadata.experience || '').match(/\d+/);
-        const parsedExp = expMatch ? parseInt(expMatch[0], 10) : 0;
-
-        // Insert record into cndpermsave
-        const insertQuery = `
-            INSERT INTO cndpermsave (
-                searchdate,
-                cndname,
-                cndemail,
-                cndrole,
-                cndskills,
-                cndtotalexperience,
-                cndexperience,
-                cndlocation,
-                teststatus,
-                interviewstatus
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-            RETURNING *;
-        `;
-
-        const queryValues = [
-            metadata.saved_date || new Date().toISOString().split('T')[0],
-            candidateName,
-            candidateEmail,
-            metadata.role || 'N/A',
-            skillsString,
-            metadata.experience || 'N/A',
-            parsedExp,
-            metadata.location || 'N/A',
-            'NA',
-            'NA'
-        ];
-
-        const insertedCandidate = await pool.query(insertQuery, queryValues);
-        console.log(`✅ Candidate inserted into cndpermsave: ${candidateName} (ID: ${insertedCandidate.rows[0].cndid})`);
-
-        res.status(200).json({
-            metadata,
-            savedCandidate: insertedCandidate.rows[0]
-        });
-    } catch (error) {
-        console.error('Analyze & Insert API error:', error.message);
-        res.status(500).json({ error: 'Unable to analyze document text or save candidate record.' });
-    }
-});
-
-app.get('/api/status', (_req, res) => {
-    res.json({ status: 'ok', service: 'document-search' });
 });
 
 app.get('/api/documents/:id/preview', async (req, res) => {
     try {
         const result = await pool.query(
-            'SELECT file_data, mime_type, extension, file_name FROM document_search_index WHERE id = $1',
+            'SELECT file_data, mime_type, extension, file_name FROM document_search_index WHERE cndid = $1',
             [req.params.id]
         );
         if (result.rows.length === 0) return res.status(404).json({ error: 'Document not found.' });
+        
         const doc = result.rows[0];
         if (!doc.file_data) return res.status(404).json({ error: 'No stored file bytes for this document.' });
 
-        const contentType = doc.mime_type || MIME_BY_EXT[doc.extension] || 'application/octet-stream';
+        const contentType = doc.mime_type || 'application/octet-stream';
         res.setHeader('Content-Type', contentType);
         res.setHeader('Content-Disposition', `inline; filename="${doc.file_name}"`);
         res.send(doc.file_data);
     } catch (error) {
-        console.error('Preview API error:', error.message);
-        res.status(500).json({ error: 'Unable to preview document.' });
+        console.error('Preview API error:', error);
+        res.status(500).json({ error: error.message });
     }
 });
 
 app.get('/api/documents/:id/download', async (req, res) => {
     try {
         const result = await pool.query(
-            'SELECT file_data, mime_type, extension, file_name FROM document_search_index WHERE id = $1',
+            'SELECT file_data, mime_type, extension, file_name FROM document_search_index WHERE cndid = $1',
             [req.params.id]
         );
         if (result.rows.length === 0) return res.status(404).json({ error: 'Document not found.' });
+        
         const doc = result.rows[0];
         if (!doc.file_data) return res.status(404).json({ error: 'No stored file bytes for this document.' });
 
-        const contentType = doc.mime_type || MIME_BY_EXT[doc.extension] || 'application/octet-stream';
+        const contentType = doc.mime_type || 'application/octet-stream';
         res.setHeader('Content-Type', contentType);
         res.setHeader('Content-Disposition', `attachment; filename="${doc.file_name}"`);
         res.send(doc.file_data);
     } catch (error) {
-        console.error('Download API error:', error.message);
-        res.status(500).json({ error: 'Unable to download document.' });
+        console.error('Download API error:', error);
+        res.status(500).json({ error: error.message });
     }
 });
 
 app.delete('/api/documents/:id', async (req, res) => {
     try {
-        const success = await deleteDocument(req.params.id);
-        res.json({ success });
+        await pool.query('DELETE FROM document_search_index WHERE cndid = $1', [req.params.id]);
+        res.json({ success: true });
     } catch (error) {
-        console.error('Delete API error:', error.message);
-        res.status(500).json({ error: 'Unable to delete document index.' });
+        console.error('Delete API error:', error);
+        res.status(500).json({ error: error.message });
     }
 });
 
-// ==========================================================================
 // EMAIL & MANAGER REQUEST MANAGEMENT
-// ==========================================================================
-
 app.post("/hireRadar/sendemail", async (req, res) => {
     try {
         const { candidateName, startTime, endTime, username, password, email } = req.body;
@@ -1043,10 +1094,7 @@ app.put("/hireRadar/managerrequeststatus/:requestid", async (req, res) => {
     }
 });
 
-// ==========================================================================
 // LOCAL OLLAMA JOB DESCRIPTION GENERATOR
-// ==========================================================================
-
 app.post("/hireRadar/generate-jd", async (req, res) => {
     const { jobTitle, department, experience, keySkills } = req.body;
 
@@ -1121,7 +1169,17 @@ app.post("/hireRadar/generate-jd", async (req, res) => {
 
 app.use("/hireRadar/managerrequest", managerRequestRoutes);
 
+
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+
+const server = app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
+});
+
+// 1. Force the server to lock the event loop open (fixes Rogue Unref)
+server.ref();
+
+// 2. Catch silent failures (fixes Port Binding issues)
+server.on('error', (err) => {
+    console.error('\n[🚨 EXPRESS SERVER ERROR 🚨] Failed to start:', err.message);
 });

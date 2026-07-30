@@ -22,12 +22,11 @@ function ImportDrive() {
   const [filteredDocuments, setFilteredDocuments] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Updated Upload States (Removed pendingAnalysis queue)
   const [isUploading, setIsUploading] = useState(false);
-  
-  // State to queue documents for isolated Ollama parsing
-  const [pendingAnalysis, setPendingAnalysis] = useState([]);
-  
   const [extractionStatus, setExtractionStatus] = useState(''); 
+  
   const [selectedExtension, setSelectedExtension] = useState('');
   const [selectedSize, setSelectedSize] = useState('');
   const [selectedSort, setSelectedSort] = useState('relevance');
@@ -82,6 +81,7 @@ function ImportDrive() {
       
       const normalizedData = data.map((doc) => ({
         id: doc.id,
+        cndid: doc.cndid, // Link to cndpermsave
         fileName: doc.fileName,
         extension: normalizeExt(doc.extension) || normalizeExt(doc.fileName?.split('.').pop()),
         size: doc.fileSizeLabel || formatFileSize(doc.file_size || doc.sizeBytes),
@@ -100,7 +100,6 @@ function ImportDrive() {
     }
   };
 
-  // Run on mount
   useEffect(() => {
     fetchBackendDocuments('', '', '', 'newest');
   }, []);
@@ -169,16 +168,31 @@ function ImportDrive() {
   };
 
   // ==========================================================================
-  // BACKEND UPLOAD WORKFLOW 
+  // UPDATED SYNCHRONOUS BACKEND UPLOAD WORKFLOW 
   // ==========================================================================
-  const handleFolderSelect = async (event) => {
+const handleFolderSelect = async (event) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
 
     setIsUploading(true);
-    setExtractionStatus('Uploading & Parsing Text on Backend...');
+    setExtractionStatus('Extracting text & running AI Analysis. Saving to database...');
+
+    // Asynchronously warm up Ollama model
+    fetch(`${API_BASE_URL}/api/warm-ollama`, { method: 'POST' }).catch(() => {});
+
+    // Resolve logged in user to send with upload payload
+    const currentUser = (() => {
+      try {
+        return JSON.parse(localStorage.getItem('user'));
+      } catch (e) {
+        return null;
+      }
+    })();
+    const username = currentUser?.name || currentUser?.email || 'HR Admin';
 
     const formData = new FormData();
+    formData.append('username', username);
+
     for (let i = 0; i < files.length; i++) {
       if (isValidFile(files[i].name)) {
         formData.append('file', files[i]);
@@ -192,69 +206,22 @@ function ImportDrive() {
       });
 
       if (response.ok) {
-        // Backend returns the DB records, which now contain the extracted text
-        const newlyUploadedData = await response.json(); 
-        
-        console.log('📄 Files uploaded and processed by PostgreSQL successfully.');
-        
-        // Refresh Table immediately to show Native View and Extracted Text View
+        setExtractionStatus('Upload & Database Sync Complete!');
         await fetchBackendDocuments('', '', '', 'newest'); 
-        
-        // Pass the raw text and file metadata into pending state for Ollama inference
-        setPendingAnalysis(newlyUploadedData);
+      } else {
+        const errorData = await response.json();
+        alert(errorData.message || 'Upload failed.');
       }
     } catch (uploadErr) {
       console.error('Failed uploading files to server backend:', uploadErr);
     } finally {
-      setIsUploading(false);
+      setTimeout(() => {
+        setIsUploading(false);
+        setExtractionStatus('');
+      }, 2000);
       if (event.target) event.target.value = '';
     }
   };
-
-  useEffect(() => {
-    const runOllamaPhase = async () => {
-      if (pendingAnalysis && pendingAnalysis.length > 0) {
-        setIsUploading(true); 
-        setExtractionStatus('Warming up AI model...');
-
-        // Preload once for the whole batch before entering processing loop
-        await fetch(`${API_BASE_URL}/api/warm-ollama`, { method: 'POST' }).catch(() => {});
-
-        setExtractionStatus('Running Ollama AI Background Analysis...');
-        
-        for (const doc of pendingAnalysis) {
-          try {
-            const response = await fetch(`${API_BASE_URL}/api/analyze-resume`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ 
-                rawText: doc.extractedText, 
-                fileName: doc.fileName || doc.originalname 
-              })
-            });
-            
-            if (response.ok) {
-              const aiResult = await response.json();
-              
-              console.log(`\n==============================================`);
-              console.log(`🤖 OLLAMA AI RESPONSE FOR: ${doc.fileName || doc.originalname}`);
-              console.log(`==============================================\n`);
-              console.log(aiResult);
-            }
-          } catch (err) {
-            console.error(`AI Analysis failed for ${doc.fileName || doc.originalname}`, err);
-          }
-        }
-        
-        // Clear flags and queue once finished
-        setIsUploading(false);
-        setExtractionStatus('');
-        setPendingAnalysis([]);
-      }
-    };
-
-    runOllamaPhase();
-  }, [pendingAnalysis]);
 
   // ==========================================================================
   // UI HANDLERS
@@ -262,7 +229,7 @@ function ImportDrive() {
   const handleDragOver = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    e.currentTarget.classList.add('bg-purple-50', 'border-purple-500', 'scale-[1.01]');
+    if (!isUploading) e.currentTarget.classList.add('bg-purple-50', 'border-purple-500', 'scale-[1.01]');
   };
 
   const handleDragLeave = (e) => {
@@ -275,7 +242,7 @@ function ImportDrive() {
     e.preventDefault();
     e.stopPropagation();
     e.currentTarget.classList.remove('bg-purple-50', 'border-purple-500', 'scale-[1.01]');
-    await handleFolderSelect(e);
+    if (!isUploading) await handleFolderSelect(e);
   };
 
   const openPreview = async (file) => {
@@ -299,6 +266,7 @@ function ImportDrive() {
   };
 
   const deleteFile = async (id) => {
+    if(!window.confirm("Delete this document? (Note: To delete the candidate completely, use the Candidates Dashboard)")) return;
     try {
       await fetch(`${API_BASE_URL}/api/documents/${id}`, { method: 'DELETE' });
     } catch (err) {
@@ -310,14 +278,11 @@ function ImportDrive() {
 
   const highlightSnippet = (text = '', searchKeyword = '') => {
     if (!searchKeyword.trim() || !text) return text.slice(0, 140) + '...';
-
     const index = text.toLowerCase().indexOf(searchKeyword.toLowerCase());
     if (index === -1) return text.slice(0, 140) + '...';
-
     const start = Math.max(0, index - 40);
     const end = Math.min(text.length, index + searchKeyword.length + 80);
     const snippet = text.slice(start, end);
-
     return (
       <span>
         ...{snippet.replace(new RegExp(`(${searchKeyword})`, 'gi'), '⭐$1⭐')}...
@@ -348,9 +313,7 @@ function ImportDrive() {
               <button
                 onClick={() => setViewMode('native')}
                 className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
-                  viewMode === 'native'
-                    ? 'bg-white text-purple-700 shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
+                  viewMode === 'native' ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 Native Image View
@@ -358,16 +321,13 @@ function ImportDrive() {
               <button
                 onClick={() => setViewMode('extracted')}
                 className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
-                  viewMode === 'extracted'
-                    ? 'bg-white text-purple-700 shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
+                  viewMode === 'extracted' ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 Extracted Text (DB)
               </button>
             </div>
           </div>
-
           <div className="flex-1 min-h-0 bg-slate-200/50 overflow-y-auto p-4 flex items-center justify-center">
             {viewMode === 'native' ? (
               previewLoading ? (
@@ -375,11 +335,7 @@ function ImportDrive() {
                   <LoaderCircle size={18} className="animate-spin" /> Loading preview…
                 </div>
               ) : previewSrc ? (
-                <img
-                  src={previewSrc}
-                  alt={selectedFile.fileName}
-                  className="max-w-full max-h-[58vh] object-contain rounded-lg shadow-sm select-none"
-                />
+                <img src={previewSrc} alt={selectedFile.fileName} className="max-w-full max-h-[58vh] object-contain rounded-lg shadow-sm select-none" />
               ) : (
                 <div className="flex flex-col items-center justify-center py-24 text-slate-400">
                   <p className="italic font-sans">Unable to load an inline preview for this image.</p>
@@ -388,9 +344,7 @@ function ImportDrive() {
             ) : (
               <div className="w-full h-fit min-h-full bg-white p-8 md:p-12 font-sans text-slate-800 text-sm max-w-2xl shadow-md border border-slate-200/80 rounded-lg">
                 {content ? (
-                  <div className="whitespace-pre-wrap break-words leading-relaxed text-left font-mono text-[13px] text-slate-700">
-                    {content}
-                  </div>
+                  <div className="whitespace-pre-wrap break-words leading-relaxed text-left font-mono text-[13px] text-slate-700">{content}</div>
                 ) : (
                   <div className="flex flex-col items-center justify-center py-24 text-slate-400">
                     <p className="italic font-sans">No text found inside this image layer.</p>
@@ -412,9 +366,7 @@ function ImportDrive() {
               <button
                 onClick={() => setViewMode('native')}
                 className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
-                  viewMode === 'native'
-                    ? 'bg-white text-purple-700 shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
+                  viewMode === 'native' ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 Native Document View
@@ -422,16 +374,13 @@ function ImportDrive() {
               <button
                 onClick={() => setViewMode('extracted')}
                 className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
-                  viewMode === 'extracted'
-                    ? 'bg-white text-purple-700 shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
+                  viewMode === 'extracted' ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 Extracted Text Layer
               </button>
             </div>
           </div>
-
           <div className="flex-1 min-h-0 bg-slate-200/50 overflow-y-auto p-4 flex justify-center">
             {viewMode === 'native' ? (
               previewLoading ? (
@@ -439,11 +388,7 @@ function ImportDrive() {
                   <LoaderCircle size={18} className="animate-spin" /> Loading document…
                 </div>
               ) : previewSrc ? (
-                <iframe
-                  src={`${previewSrc}#toolbar=1&navpanes=0`}
-                  title={selectedFile.fileName}
-                  className="w-full h-full border-none bg-slate-500 rounded-lg shadow-sm"
-                />
+                <iframe src={`${previewSrc}#toolbar=1&navpanes=0`} title={selectedFile.fileName} className="w-full h-full border-none bg-slate-500 rounded-lg shadow-sm" />
               ) : (
                 <div className="flex flex-col items-center justify-center py-24 text-slate-400 self-center">
                   <p className="italic font-sans">Unable to load an inline preview for this document.</p>
@@ -452,9 +397,7 @@ function ImportDrive() {
             ) : (
               <div className="w-full h-fit min-h-full bg-white p-8 md:p-12 font-sans text-slate-800 text-sm max-w-2xl shadow-md border border-slate-200/80 rounded-lg">
                 {content ? (
-                  <div className="whitespace-pre-wrap break-words leading-relaxed text-left font-mono text-[13px] text-slate-700">
-                    {content}
-                  </div>
+                  <div className="whitespace-pre-wrap break-words leading-relaxed text-left font-mono text-[13px] text-slate-700">{content}</div>
                 ) : (
                   <div className="flex flex-col items-center justify-center py-24 text-slate-400">
                     <p className="italic font-sans">No text found inside this PDF layer.</p>
@@ -470,7 +413,6 @@ function ImportDrive() {
     if (['xlsx', 'xls', 'csv'].includes(ext)) {
       const rows = content.split('\n').filter((row) => row.trim());
       const getExcelColLabel = (index) => String.fromCharCode(65 + (index % 26));
-
       return (
         <div className="w-full max-h-[66vh] overflow-auto bg-slate-50 rounded-xl border border-slate-200 shadow-inner flex flex-col">
           <div className="overflow-x-auto overflow-y-auto w-full">
@@ -479,13 +421,8 @@ function ImportDrive() {
                 <tr className="bg-slate-100 border-b border-slate-300 sticky top-0 z-20 shadow-[0_1px_0_rgba(0,0,0,0.05)]">
                   <th className="w-10 bg-slate-200 text-center border-r border-slate-300 p-1.5 text-[10px] font-bold text-slate-500 font-mono sticky left-0 z-30"></th>
                   {rows[0] &&
-                    rows[0]
-                      .split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/)
-                      .map((_, idx) => (
-                        <th
-                          key={idx}
-                          className="w-[160px] p-2 bg-slate-100 text-slate-600 font-semibold font-mono border-r border-slate-300 text-center tracking-wider text-[11px]"
-                        >
+                    rows[0].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map((_, idx) => (
+                        <th key={idx} className="w-[160px] p-2 bg-slate-100 text-slate-600 font-semibold font-mono border-r border-slate-300 text-center tracking-wider text-[11px]">
                           {getExcelColLabel(idx)}
                         </th>
                       ))}
@@ -502,13 +439,7 @@ function ImportDrive() {
                       {cells.map((cell, cIdx) => {
                         const formattedValue = cell.replace(/^"|font="/g, '').replace(/"$/g, '').trim();
                         return (
-                          <td
-                            key={cIdx}
-                            title={formattedValue}
-                            className={`p-2.5 border-r border-slate-200 truncate font-normal text-slate-700 tracking-wide ${
-                              rIdx === 0 ? 'bg-slate-50/80 font-medium text-slate-900' : ''
-                            }`}
-                          >
+                          <td key={cIdx} title={formattedValue} className={`p-2.5 border-r border-slate-200 truncate font-normal text-slate-700 tracking-wide ${rIdx === 0 ? 'bg-slate-50/80 font-medium text-slate-900' : ''}`}>
                             {formattedValue || <span className="text-slate-300 font-serif">-</span>}
                           </td>
                         );
@@ -527,7 +458,6 @@ function ImportDrive() {
       try {
         const parsed = typeof content === 'object' ? content : JSON.parse(content);
         const jsonStr = JSON.stringify(parsed, null, 2);
-
         return (
           <div className="w-full max-h-[65vh] overflow-auto bg-slate-950 p-6 rounded-xl font-mono text-xs shadow-xl leading-relaxed border border-slate-800">
             <pre className="text-slate-300 whitespace-pre-wrap break-all">
@@ -543,11 +473,7 @@ function ImportDrive() {
                     </span>
                   );
                 }
-                return (
-                  <div key={lIdx} className="hover:bg-slate-900/40 px-2 py-0.5 rounded transition-colors">
-                    {styledLine}
-                  </div>
-                );
+                return <div key={lIdx} className="hover:bg-slate-900/40 px-2 py-0.5 rounded transition-colors">{styledLine}</div>;
               })}
             </pre>
           </div>
@@ -562,19 +488,10 @@ function ImportDrive() {
           {paragraphs.map((para, idx) => {
             const trimmed = para.trim();
             if (!trimmed) return <div key={idx} className="h-3" />;
-
             if (trimmed.length < 75 && (trimmed.toUpperCase() === trimmed || trimmed.endsWith(':') || trimmed.startsWith('##'))) {
-              return (
-                <h4 key={idx} className="font-sans font-bold text-base text-slate-900 pt-4 tracking-tight border-b border-slate-100 pb-1">
-                  {trimmed.replace(/^##\s*/, '')}
-                </h4>
-              );
+              return <h4 key={idx} className="font-sans font-bold text-base text-slate-900 pt-4 tracking-tight border-b border-slate-100 pb-1">{trimmed.replace(/^##\s*/, '')}</h4>;
             }
-            return (
-              <p key={idx} className="text-slate-700 indent-2 tracking-wide font-normal">
-                {trimmed}
-              </p>
-            );
+            return <p key={idx} className="text-slate-700 indent-2 tracking-wide font-normal">{trimmed}</p>;
           })}
         </div>
       );
@@ -583,9 +500,7 @@ function ImportDrive() {
     return (
       <div className="text-center p-12 bg-white rounded-xl border border-slate-200 shadow-sm max-w-sm mx-auto">
         <p className="font-bold text-slate-800 text-base">Preview Not Supported</p>
-        <p className="text-xs text-slate-400 mt-1 mb-6">
-          This file node cannot be displayed inline inside your web app workspace window view.
-        </p>
+        <p className="text-xs text-slate-400 mt-1 mb-6">This file node cannot be displayed inline inside your web app workspace window view.</p>
         <button
           onClick={() => downloadFile(selectedFile)}
           className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2.5 rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 transition active:scale-95 shadow-sm"
@@ -638,12 +553,20 @@ function ImportDrive() {
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => !isUploading && fileInputRef.current?.click()}
           >
+            {isUploading && (
+               <div className="absolute inset-0 bg-white/90 backdrop-blur-sm z-10 flex flex-col items-center justify-center rounded-xl">
+                   <LoaderCircle size={40} className="text-purple-600 animate-spin mb-4" />
+                   <h3 className="font-bold text-lg text-slate-800 animate-pulse">{extractionStatus}</h3>
+                   <p className="text-sm text-slate-500 mt-2">Uploading and AI extraction in progress...</p>
+               </div>
+            )}
+            
             <CloudUpload size={44} className="text-purple-600 mx-auto mb-4 animate-[bounce_3s_infinite]" />
             <h2 className="text-xl font-bold mb-1">Import Server Database</h2>
             <p className="text-sm text-gray-500 mb-5">
-              Drag and drop files to process and store text directly in PostgreSQL
+              Drag and drop files to automatically run AI extraction and sync to database.
             </p>
 
             <button
@@ -653,14 +576,8 @@ function ImportDrive() {
                 fileInputRef.current?.click();
               }}
             >
-              {isUploading ? 'Uploading to Database...' : 'Browse Local Folder'}
+              Browse Local Folder
             </button>
-            
-            {isUploading && extractionStatus && (
-              <p className="text-xs text-purple-600 mt-4 font-medium animate-pulse">
-                {extractionStatus}
-              </p>
-            )}
 
             <input
               ref={fileInputRef}
@@ -759,6 +676,7 @@ function ImportDrive() {
                       <th className="pb-3 font-semibold">File Name & Content Matches</th>
                       <th className="pb-3 font-semibold">Type</th>
                       <th className="pb-3 font-semibold">Size</th>
+                      <th className="pb-3 font-semibold text-center">Linked DB ID</th>
                       <th className="pb-3 text-center font-semibold">Actions</th>
                     </tr>
                   </thead>
@@ -784,6 +702,9 @@ function ImportDrive() {
                           </span>
                         </td>
                         <td className="py-3 text-gray-500 text-xs">{doc.size}</td>
+                        <td className="py-3 text-center">
+                          <span className="text-slate-400 font-mono font-medium text-xs">#{doc.cndid || 'N/A'}</span>
+                        </td>
                         <td className="py-3 text-center">
                           <div className="inline-flex gap-2 justify-center">
                             <button
