@@ -5,13 +5,12 @@ import {
   Search,
   Edit3,
   Check,
+  X,
   ListChecks,
   Settings2,
   Trash2,
   Plus,
-  Briefcase,
   CheckCircle2,
-  Clock,
   Users,
 } from "lucide-react";
 
@@ -112,39 +111,48 @@ export default function FilterCandidate() {
       >
         {gender === "female" ? (
           <svg viewBox="0 0 100 100" className="w-9 h-9">
-            {/* Hair silhouette */}
             <path
               d="M50,6 C64,6 74,17 74,30 C74,36 71,41 67,45 C74,52 78,62 78,74 L70,74 C70,63 67,54 61,48 C58,50 54,51 50,51 C46,51 42,50 39,48 C33,54 30,63 30,74 L22,74 C22,62 26,52 33,45 C29,41 26,36 26,30 C26,17 36,6 50,6 Z"
               fill="white"
             />
-            {/* Head */}
             <circle cx="50" cy="29" r="15" fill="white" />
-            {/* Shoulders / blazer */}
             <path
               d="M28,96 C28,78 38,66 50,66 C62,66 72,78 72,96 Z"
               fill="white"
             />
-            {/* Blazer lapels */}
             <path d="M50,66 L40,74 L46,92 Z" fill={bgHex} />
             <path d="M50,66 L60,74 L54,92 Z" fill={bgHex} />
           </svg>
         ) : (
           <svg viewBox="0 0 100 100" className="w-9 h-9">
-            {/* Shoulders / suit */}
             <path
               d="M20,96 C20,72 33,58 50,58 C67,58 80,72 80,96 Z"
               fill="white"
             />
-            {/* Head */}
             <circle cx="50" cy="30" r="17" fill="white" />
-            {/* Suit lapels */}
             <path d="M50,58 L38,68 L44,90 Z" fill={bgHex} />
             <path d="M50,58 L62,68 L56,90 Z" fill={bgHex} />
-            {/* Tie */}
             <path d="M47,60 L53,60 L51,95 L49,95 Z" fill={bgHex} />
           </svg>
         )}
       </div>
+    );
+  };
+
+  // Small tag pill matching the reference design's rounded label chips
+  const Pill = ({ color, children }) => {
+    const colorMap = {
+      blue: "bg-blue-50 text-blue-600",
+      purple: "bg-purple-50 text-purple-600",
+      amber: "bg-amber-50 text-amber-700",
+      green: "bg-green-50 text-green-700",
+    };
+    return (
+      <span
+        className={`px-3 py-1 rounded-full text-xs font-semibold ${colorMap[color]}`}
+      >
+        {children}
+      </span>
     );
   };
 
@@ -156,6 +164,8 @@ export default function FilterCandidate() {
     setEditingStageId(candidate.id);
     setDraftStep(candidate.step);
   };
+
+  const cancelEditingStage = () => setEditingStageId(null);
 
   const handleSaveStage = (candidate) => {
     const currentStages = buildDynamicStages(candidate.rounds);
@@ -219,6 +229,13 @@ export default function FilterCandidate() {
     setEditingRoundsId(null);
   };
 
+  // ---------- Delete candidate ----------
+  const handleDeleteCandidate = (candidateId) => {
+    setCandidates((prev) => prev.filter((c) => c.id !== candidateId));
+    if (editingStageId === candidateId) setEditingStageId(null);
+    if (editingRoundsId === candidateId) setEditingRoundsId(null);
+  };
+
   const filteredCandidates = candidates.filter((candidate) =>
     candidate.name.toLowerCase().includes(search.toLowerCase())
   );
@@ -272,126 +289,126 @@ export default function FilterCandidate() {
             </div>
           </div>
 
-          {/* Candidate List */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 mt-8">
-            <div className="border-b border-slate-200 px-8 py-5 flex items-center justify-between">
-              <h2 className="text-xl font-bold text-slate-800">
-                Candidate List
-              </h2>
-              <span className="text-xs font-semibold bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full">
-                {filteredCandidates.length} total
-              </span>
-            </div>
+          {/* Candidate Count */}
+          <div className="flex items-center justify-between mt-8 mb-4 px-1">
+            <h2 className="text-xl font-bold text-slate-800">
+              Candidate List
+            </h2>
+            <span className="text-xs font-semibold bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full">
+              {filteredCandidates.length} total
+            </span>
+          </div>
 
-            <div className="divide-y divide-slate-100">
-              {filteredCandidates.map((candidate) => {
-                const isEditingStage = editingStageId === candidate.id;
-                const isEditingRounds = editingRoundsId === candidate.id;
+          {/* Candidate Cards */}
+          <div className="space-y-6">
+            {filteredCandidates.map((candidate, index) => {
+              const isEditingStage = editingStageId === candidate.id;
+              const isEditingRounds = editingRoundsId === candidate.id;
 
-                const roundsForTimeline = isEditingRounds
-                  ? draftRounds
-                  : candidate.rounds;
-                const dynamicStages = buildDynamicStages(roundsForTimeline);
+              const roundsForTimeline = isEditingRounds
+                ? draftRounds
+                : candidate.rounds;
+              const dynamicStages = buildDynamicStages(roundsForTimeline);
 
-                const displayStep = isEditingStage
-                  ? Math.min(draftStep, dynamicStages.length)
-                  : Math.min(candidate.step, dynamicStages.length);
+              const displayStep = isEditingStage
+                ? Math.min(draftStep, dynamicStages.length)
+                : Math.min(candidate.step, dynamicStages.length);
 
-                const isCompleted = displayStep >= dynamicStages.length;
+              const isCompleted = displayStep >= dynamicStages.length;
+              const currentStageLabel =
+                dynamicStages[displayStep - 1] || "In Progress";
 
-                return (
-                  <div
-                    key={candidate.id}
-                    className="p-6 hover:bg-slate-50/60 transition"
-                  >
-                    <div className="flex justify-between items-start gap-4">
-                      <div className="flex items-start gap-4">
-                        {/* Avatar */}
-                        <GenderAvatar
-                          gender={candidate.gender}
-                          completed={isCompleted}
-                        />
+              return (
+                <div
+                  key={candidate.id}
+                  className="relative bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition"
+                >
+                  {/* Left accent bar */}
+                  <div className="absolute left-0 top-0 h-full w-1.5 bg-purple-600" />
 
-                        <div>
-                          <div className="flex items-center gap-3 flex-wrap">
-                            <h3 className="text-xl font-bold text-slate-800">
-                              {candidate.name}
-                            </h3>
-                            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-600">
-                              {dynamicStages[displayStep - 1] || "In Progress"}
-                            </span>
-                          </div>
-                          <p className="text-slate-500 mt-1 flex items-center gap-1.5 text-sm">
-                            <Briefcase size={14} className="text-slate-400" />
-                            {candidate.role}
-                          </p>
-                        </div>
+                  <div className="pl-7 pr-6 py-6">
+                    {/* Top row: tag pills + action icons */}
+                    <div className="flex items-start justify-between gap-4 mb-5 flex-wrap">
+                      <div className="flex flex-wrap gap-2">
+                        <Pill color="blue">{candidate.role}</Pill>
+                        <Pill color="purple">{currentStageLabel}</Pill>
+                        <Pill color={isCompleted ? "green" : "amber"}>
+                          {isCompleted ? "Completed" : "In Progress"}
+                        </Pill>
                       </div>
 
-                      <span
-                        className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold shrink-0 ${
-                          isCompleted
-                            ? "bg-green-100 text-green-700"
-                            : "bg-indigo-100 text-indigo-700"
-                        }`}
-                      >
-                        {isCompleted ? (
-                          <CheckCircle2 size={15} />
-                        ) : (
-                          <Clock size={15} />
+                      <div className="flex items-center gap-2 shrink-0">
+                        {isEditingStage && (
+                          <select
+                            value={displayStep}
+                            onChange={(e) =>
+                              setDraftStep(Number(e.target.value))
+                            }
+                            className="px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-sm text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none font-medium cursor-pointer"
+                          >
+                            {dynamicStages.map((stg, idx) => (
+                              <option key={idx} value={idx + 1}>
+                                Step {idx + 1}: {stg}
+                              </option>
+                            ))}
+                          </select>
                         )}
-                        {isCompleted ? "Completed" : "In Progress"}
-                      </span>
-                    </div>
 
-                    {/* Stage Timeline */}
-                    <div className="mt-8 pt-6 border-t border-slate-100">
-                      <div className="flex justify-between items-center mb-6 flex-wrap gap-3">
-                        <h4 className="font-semibold text-slate-700 flex items-center gap-2">
-                          <span className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center">
-                            <Edit3 size={14} className="text-indigo-600" />
-                          </span>
-                          Hiring Progress
-                        </h4>
-
-                        <div className="flex items-center gap-3">
-                          {isEditingStage && (
-                            <select
-                              value={displayStep}
-                              onChange={(e) =>
-                                setDraftStep(Number(e.target.value))
-                              }
-                              className="px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-sm text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none font-medium cursor-pointer"
-                            >
-                              {dynamicStages.map((stg, idx) => (
-                                <option key={idx} value={idx + 1}>
-                                  Step {idx + 1}: {stg}
-                                </option>
-                              ))}
-                            </select>
-                          )}
-
-                          {isEditingStage ? (
+                        {isEditingStage ? (
+                          <>
                             <button
                               onClick={() => handleSaveStage(candidate)}
-                              className="flex items-center gap-1.5 bg-green-600 hover:bg-green-700 text-white px-4 py-1.5 rounded-lg text-sm font-semibold transition shadow-sm"
+                              className="text-green-600 hover:bg-green-50 p-1.5 rounded-lg transition"
+                              title="Save progress"
                             >
-                              <Check size={14} />
-                              Save
+                              <Check size={18} />
                             </button>
-                          ) : (
                             <button
-                              onClick={() => startEditingStage(candidate)}
-                              className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-1.5 rounded-lg text-sm font-semibold transition shadow-sm"
+                              onClick={cancelEditingStage}
+                              className="text-slate-400 hover:bg-slate-100 p-1.5 rounded-lg transition"
+                              title="Cancel"
                             >
-                              <Edit3 size={14} />
-                              Edit Progress
+                              <X size={18} />
                             </button>
-                          )}
-                        </div>
-                      </div>
+                          </>
+                        ) : (
+                          <button
+                            onClick={() => startEditingStage(candidate)}
+                            className="text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 p-1.5 rounded-lg transition"
+                            title="Edit progress"
+                          >
+                            <Edit3 size={18} />
+                          </button>
+                        )}
 
-                      {/* Visual Timeline Bar */}
+                        <button
+                          onClick={() => handleDeleteCandidate(candidate.id)}
+                          className="text-slate-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded-lg transition"
+                          title="Delete candidate"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Title row: avatar + name */}
+                    <div className="flex items-center gap-4 mb-6">
+                      <GenderAvatar
+                        gender={candidate.gender}
+                        completed={isCompleted}
+                      />
+                      <h3 className="text-xl font-bold text-slate-800">
+                        {String(index + 1).padStart(2, "0")}.{" "}
+                        {candidate.name}
+                      </h3>
+                    </div>
+
+                    {/* Hiring Progress Timeline */}
+                    <div className="mb-2">
+                      <h4 className="text-sm font-semibold text-slate-500 mb-4">
+                        Hiring Progress Timeline
+                      </h4>
+
                       <div className="relative pt-4 pb-2">
                         <div className="absolute top-9 left-0 right-0 h-1.5 bg-slate-200 rounded-full"></div>
 
@@ -412,23 +429,21 @@ export default function FilterCandidate() {
                             gridTemplateColumns: `repeat(${dynamicStages.length}, minmax(0, 1fr))`,
                           }}
                         >
-                          {dynamicStages.map((stage, index) => {
-                            const completed = index + 1 <= displayStep;
-                            const isCurrent = index + 1 === displayStep;
+                          {dynamicStages.map((stage, idx) => {
+                            const completed = idx + 1 <= displayStep;
+                            const isCurrent = idx + 1 === displayStep;
 
                             return (
                               <div
-                                key={index}
+                                key={idx}
                                 className={`flex flex-col items-center ${
                                   isEditingStage
                                     ? "cursor-pointer"
                                     : "cursor-default"
                                 }`}
-                                onClick={() => {
-                                  if (isEditingStage) {
-                                    setDraftStep(index + 1);
-                                  }
-                                }}
+                                onClick={() =>
+                                  isEditingStage && setDraftStep(idx + 1)
+                                }
                               >
                                 <div
                                   className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold border-4 border-white shadow-md transition-all ${
@@ -441,9 +456,8 @@ export default function FilterCandidate() {
                                       : ""
                                   }`}
                                 >
-                                  {index + 1}
+                                  {idx + 1}
                                 </div>
-
                                 <p
                                   className={`text-[11px] mt-3 text-center font-medium line-clamp-2 px-1 ${
                                     completed
@@ -460,13 +474,11 @@ export default function FilterCandidate() {
                       </div>
                     </div>
 
-                    {/* Interview Rounds Section */}
-                    <div className="mt-6 pt-6 border-t border-slate-100">
-                      <div className="flex justify-between items-center mb-4 flex-wrap gap-3">
-                        <h4 className="font-semibold text-slate-700 flex items-center gap-2">
-                          <span className="w-7 h-7 rounded-lg bg-purple-50 flex items-center justify-center">
-                            <ListChecks size={14} className="text-purple-600" />
-                          </span>
+                    {/* Interview Rounds Grid */}
+                    <div className="mt-6">
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-sm font-semibold text-slate-500 flex items-center gap-2">
+                          <ListChecks size={15} className="text-purple-600" />
                           Interview Rounds
                           <span className="text-xs font-normal text-slate-400">
                             ({roundsForTimeline.length}/{MAX_ROUNDS})
@@ -476,93 +488,115 @@ export default function FilterCandidate() {
                         {isEditingRounds ? (
                           <button
                             onClick={() => handleSaveRounds(candidate)}
-                            className="flex items-center gap-1.5 bg-green-600 hover:bg-green-700 text-white px-4 py-1.5 rounded-lg text-sm font-semibold transition shadow-sm"
+                            className="flex items-center gap-1.5 text-green-600 hover:bg-green-50 px-2.5 py-1 rounded-lg text-xs font-semibold transition"
+                            title="Save rounds"
                           >
                             <Check size={14} />
-                            Save Rounds
+                            Save
                           </button>
                         ) : (
                           <button
                             onClick={() => startEditingRounds(candidate)}
-                            className="flex items-center gap-1.5 bg-purple-600 hover:bg-purple-700 text-white px-4 py-1.5 rounded-lg text-sm font-semibold transition shadow-sm"
+                            className="text-slate-400 hover:text-purple-600 hover:bg-purple-50 p-1.5 rounded-lg transition"
+                            title="Manage rounds"
                           >
-                            <Settings2 size={14} />
-                            Manage Rounds
+                            <Settings2 size={16} />
                           </button>
                         )}
                       </div>
 
-                      {isEditingRounds && (
-                        <div className="space-y-2">
-                          {roundsForTimeline.map((round, idx) => (
+                      <div className="grid md:grid-cols-2 gap-3">
+                        {roundsForTimeline.map((round, idx) =>
+                          isEditingRounds ? (
                             <div
                               key={round.id}
-                              className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5"
+                              className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5"
                             >
-                              <div className="flex items-center gap-2 flex-1">
-                                <span className="w-16 shrink-0 text-xs font-semibold text-purple-600">
-                                  Round {idx + 1}
-                                </span>
-                                <input
-                                  type="text"
-                                  value={round.label}
-                                  onChange={(e) =>
-                                    handleRoundLabelChange(
-                                      round.id,
-                                      e.target.value
-                                    )
-                                  }
-                                  placeholder="e.g. Technical Round"
-                                  className="flex-1 bg-white text-sm font-medium text-slate-700 outline-none border border-slate-200 focus:border-purple-400 focus:ring-2 focus:ring-purple-100 rounded-md px-2 py-1.5 transition"
-                                />
-                              </div>
-
+                              <span className="text-xs font-bold text-purple-600 shrink-0">
+                                R{idx + 1}
+                              </span>
+                              <input
+                                type="text"
+                                value={round.label}
+                                onChange={(e) =>
+                                  handleRoundLabelChange(
+                                    round.id,
+                                    e.target.value
+                                  )
+                                }
+                                placeholder="e.g. Technical Round"
+                                className="flex-1 min-w-0 bg-white text-sm font-medium text-slate-700 outline-none border border-slate-200 focus:border-purple-400 focus:ring-2 focus:ring-purple-100 rounded-md px-2 py-1 transition"
+                              />
                               <button
                                 onClick={() => handleDeleteRound(round.id)}
-                                className="ml-3 text-red-500 hover:text-red-700 hover:bg-red-50 p-1.5 rounded-md transition"
+                                className="text-red-400 hover:text-red-600 hover:bg-red-50 p-1 rounded transition shrink-0"
                                 title="Remove round"
                               >
-                                <Trash2 size={16} />
+                                <Trash2 size={14} />
                               </button>
                             </div>
-                          ))}
+                          ) : (
+                            <div
+                              key={round.id}
+                              className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3"
+                            >
+                              <span className="text-xs font-bold text-purple-600">
+                                Round {idx + 1}
+                              </span>
+                              <p className="text-sm font-medium text-slate-700 mt-0.5">
+                                {round.label || "Interviewer not set"}
+                              </p>
+                            </div>
+                          )
+                        )}
 
-                          {roundsForTimeline.length === 0 && (
-                            <p className="text-sm text-slate-400 italic">
-                              No interview rounds recorded yet.
-                            </p>
-                          )}
+                        {roundsForTimeline.length === 0 && (
+                          <p className="col-span-2 text-sm text-slate-400 italic">
+                            No interview rounds recorded yet.
+                          </p>
+                        )}
 
-                          {roundsForTimeline.length < MAX_ROUNDS && (
+                        {isEditingRounds &&
+                          roundsForTimeline.length < MAX_ROUNDS && (
                             <button
                               onClick={handleAddRound}
-                              className="w-full mt-1 flex items-center justify-center gap-1.5 border-2 border-dashed border-purple-300 text-purple-600 hover:bg-purple-50 rounded-lg py-2 text-sm font-semibold transition"
+                              className="col-span-2 flex items-center justify-center gap-1.5 border-2 border-dashed border-purple-300 text-purple-600 hover:bg-purple-50 rounded-xl py-2.5 text-sm font-semibold transition"
                             >
                               <Plus size={14} />
                               Add Round
                             </button>
                           )}
-                        </div>
-                      )}
+                      </div>
+                    </div>
+
+                    {/* Current Stage banner */}
+                    <div className="mt-6 flex items-center gap-2 bg-green-50 border border-green-100 rounded-xl px-5 py-3">
+                      <CheckCircle2 size={16} className="text-green-600 shrink-0" />
+                      <span className="text-sm font-bold text-green-700">
+                        Current Stage:
+                      </span>
+                      <span className="text-sm text-green-700">
+                        {currentStageLabel}
+                      </span>
                     </div>
                   </div>
-                );
-              })}
-
-              {filteredCandidates.length === 0 && (
-                <div className="py-20 text-center">
-                  <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
-                    <Users size={24} className="text-slate-400" />
-                  </div>
-                  <h2 className="text-2xl font-bold text-slate-700">
-                    No Candidate Found
-                  </h2>
-                  <p className="text-slate-500 mt-2">
-                    Try searching with another candidate name.
-                  </p>
                 </div>
-              )}
-            </div>
+              );
+            })}
+
+            {filteredCandidates.length === 0 && (
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 py-20 text-center">
+                <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
+                  <Users size={24} className="text-slate-400" />
+                </div>
+                <h2 className="text-2xl font-bold text-slate-700">
+                  No Candidate Found
+                </h2>
+                <p className="text-slate-500 mt-2">
+                  Try searching with another candidate name.
+                </p>
+              </div>
+            )}
           </div>
         </main>
       </div>
