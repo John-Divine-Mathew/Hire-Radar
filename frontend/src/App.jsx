@@ -40,7 +40,7 @@ function App() {
         <Route path="/dashboard_v2" element={<Dashboard_v2 />} />
         <Route path="/manager-login" element={<ManagerLogin />} />
         <Route path="/interview-scheduler" element={<InterviewScheduler />} />
-        <route path="/filterCandidates" element={<FilterCandidates />} />
+        <Route path="/filterCandidates" element={<FilterCandidates />} />
       </Routes>
     </BrowserRouter>
   );
