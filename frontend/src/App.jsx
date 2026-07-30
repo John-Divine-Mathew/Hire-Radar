@@ -41,7 +41,6 @@ function App() {
         <Route path="/manager-login" element={<ManagerLogin />} />
         <Route path="/interview-scheduler" element={<InterviewScheduler />} />
         <Route path="/filterCandidates" element={<FilterCandidates />} />
-        <Route path="/filter-candidates" element={<FilterCandidates />} />
       </Routes>
     </BrowserRouter>
   );
