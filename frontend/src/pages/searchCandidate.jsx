@@ -22,7 +22,8 @@ function SearchCandidatePage() {
         SidebarExperience: '',
         SidebarJobStatus: '',
         SidebarOpenToWork: '',
-        SidebarSkills: ''
+        SidebarSkills: '',
+        Gender: '' // Added Gender filter state
     });
 
     // Pending state container for inputs
@@ -109,7 +110,8 @@ function SearchCandidatePage() {
             SidebarExperience: '',
             SidebarJobStatus: '',
             SidebarOpenToWork: '',
-            SidebarSkills: ''
+            SidebarSkills: '',
+            Gender: ''
         };
         
         setFilterValues((prev) => ({ ...prev, ...clearedSidebar }));
@@ -137,6 +139,61 @@ function SearchCandidatePage() {
                         </div>
 
                         <div className="space-y-5 overflow-y-auto pr-1 flex-1 min-h-0">
+                            
+                            {/* Gender Selection with Icons */}
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-600 mb-1.5">Gender</label>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {/* Male Option */}
+                                    <button
+                                        type="button"
+                                        onClick={() => handleSidebarChange('Gender', filterValues.Gender === 'male' ? '' : 'male')}
+                                        className={`flex flex-col items-center justify-center p-2 rounded-lg border text-xs font-medium transition ${
+                                            filterValues.Gender === 'male'
+                                                ? 'border-purple-600 bg-purple-50 text-purple-700'
+                                                : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+                                        }`}
+                                    >
+                                        <svg className="w-4 h-4 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 3h5v5m0-5l-6 6M10 14a5 5 0 110-10 5 5 0 010 10z" />
+                                        </svg>
+                                        Male
+                                    </button>
+
+                                    {/* Female Option */}
+                                    <button
+                                        type="button"
+                                        onClick={() => handleSidebarChange('Gender', filterValues.Gender === 'female' ? '' : 'female')}
+                                        className={`flex flex-col items-center justify-center p-2 rounded-lg border text-xs font-medium transition ${
+                                            filterValues.Gender === 'female'
+                                                ? 'border-purple-600 bg-purple-50 text-purple-700'
+                                                : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+                                        }`}
+                                    >
+                                        <svg className="w-4 h-4 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15a5 5 0 100-10 5 5 0 000 10zm0 0v6m-3-3h6" />
+                                        </svg>
+                                        Female
+                                    </button>
+
+                                    {/* Any / All Option */}
+                                    <button
+                                        type="button"
+                                        onClick={() => handleSidebarChange('Gender', '')}
+                                        className={`flex flex-col items-center justify-center p-2 rounded-lg border text-xs font-medium transition ${
+                                            filterValues.Gender === ''
+                                                ? 'border-purple-600 bg-purple-50 text-purple-700'
+                                                : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+                                        }`}
+                                    >
+                                        <svg className="w-4 h-4 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5 5 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                        </svg>
+                                        All
+                                    </button>
+                                </div>
+                            </div>
+
                             <div>
                                 <label className="block text-sm font-semibold text-gray-600 mb-1.5">Location</label>
                                 <input 

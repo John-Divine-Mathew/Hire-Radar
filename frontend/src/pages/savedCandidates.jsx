@@ -845,7 +845,7 @@ function SavedCandidates() {
         <Sidebar />
         <div className="flex min-w-0 flex-1 flex-col bg-slate-50 overflow-hidden">
           <div className="shrink-0 border-b border-slate-200 bg-slate-50 p-6">
-            <h1 className="text-4xl font-bold text-gray-900 mb-6">Saved Candidates</h1>
+            <h1 className="text-4xl font-bold text-gray-900 mb-6">Uploaded Candidates</h1>
 
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 flex flex-col gap-4">
               <div className="flex items-center justify-between gap-4">
