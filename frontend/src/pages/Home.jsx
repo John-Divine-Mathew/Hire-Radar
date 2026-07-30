@@ -1,28 +1,34 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Sparkles } from "lucide-react";
 
 const Home = () => {
   const [showSupport, setShowSupport] = useState(false);
   return (
     <div className="bg-slate-50 min-h-screen">
 
-      {/* Navbar removed from landing page (shown on admin dashboard only) */}
-
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-[#4F46E5] via-[#6D28D9] to-[#9333EA] text-white py-24">
+      <section className="relative overflow-hidden bg-gradient-to-br from-[#4F46E5] via-[#6D28D9] to-[#9333EA] text-white py-20">
 
         <div className="max-w-7xl mx-auto px-10">
 
           <div className="text-center">
-            
-            {/* Project Logo - Centered container wrapper with proper height bounds */}
+
+            {/* Project Logo - centered, professionally framed */}
             <div className="flex justify-center items-center mb-7">
-              <img
-                src="/Hire-Radar.png"
-                alt="Hire-Radar Logo"
-                className="w-40 h-auto object-contain drop-shadow-2xl"
-              />
+              <div className="p-3 bg-white/10 border border-white/20 rounded-2xl backdrop-blur shadow-xl">
+                <img
+                  src="/Hire-Radar.png"
+                  alt="Hire-Radar Logo"
+                  className="w-24 h-auto object-contain drop-shadow-2xl"
+                />
+              </div>
             </div>
+
+            <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 text-sm font-medium text-purple-100 mb-6">
+              <Sparkles className="w-4 h-4" />
+              AI-Powered Recruitment Intelligence
+            </span>
 
             <h1 className="text-6xl font-bold mb-6">
               Welcome to Hire-Radar
@@ -57,7 +63,7 @@ const Home = () => {
           About Hire-Radar
         </h2>
 
-        <div className="bg-white rounded-xl shadow-lg p-8">
+        <div className="bg-white rounded-xl shadow-lg p-8 border border-gray-100">
 
           <p className="text-gray-700 leading-8 text-lg">
             Hire-Radar is an intelligent recruitment platform developed
@@ -149,6 +155,30 @@ const Home = () => {
               </p>
             </div>
 
+            {/* NEW: AI Job Description Generator */}
+            <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 border border-gray-100">
+              <h3 className="text-xl font-bold text-purple-700 mb-3 flex items-center gap-2">
+                <Sparkles className="w-5 h-5" />
+                AI Job Description Generator
+              </h3>
+              <p className="text-gray-600">
+                Type in a job title and instantly get a professional
+                job description with responsibilities and the exact
+                technical skills to screen for.
+              </p>
+            </div>
+
+            {/* NEW: Recruiter Collaboration */}
+            <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 border border-gray-100">
+              <h3 className="text-xl font-bold text-purple-700 mb-3">
+                Recruiter Collaboration
+              </h3>
+              <p className="text-gray-600">
+                Share shortlists, leave candidate notes, and keep
+                hiring managers aligned in one shared workspace.
+              </p>
+            </div>
+
           </div>
 
         </div>
@@ -164,23 +194,23 @@ const Home = () => {
 
         <div className="grid md:grid-cols-5 gap-4 text-center">
 
-          <div className="bg-white rounded-xl shadow-lg p-6 hover:scale-105 transition-all">
+          <div className="bg-white rounded-xl shadow-lg p-6 hover:scale-105 transition-all border border-gray-100">
             Search Candidates
           </div>
 
-          <div className="bg-white rounded-xl shadow-lg p-6 hover:scale-105 transition-all">
+          <div className="bg-white rounded-xl shadow-lg p-6 hover:scale-105 transition-all border border-gray-100">
             Analyze Profiles
           </div>
 
-          <div className="bg-white rounded-xl shadow-lg p-6 hover:scale-105 transition-all">
+          <div className="bg-white rounded-xl shadow-lg p-6 hover:scale-105 transition-all border border-gray-100">
             Conduct Assessment
           </div>
 
-          <div className="bg-white rounded-xl shadow-lg p-6 hover:scale-105 transition-all">
+          <div className="bg-white rounded-xl shadow-lg p-6 hover:scale-105 transition-all border border-gray-100">
             Schedule Interview
           </div>
 
-          <div className="bg-white rounded-xl shadow-lg p-6 hover:scale-105 transition-all">
+          <div className="bg-white rounded-xl shadow-lg p-6 hover:scale-105 transition-all border border-gray-100">
             Hire Talent
           </div>
 
