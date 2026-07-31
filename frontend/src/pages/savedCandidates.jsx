@@ -457,6 +457,46 @@ function InlineCalendarBooking({ candidateName, onClose, onBookSlot, onSendEmail
   );
 }
 
+// Professional gender-based avatar icon — same design used on the
+// Filter Candidates page, used here as the photo placeholder / fallback.
+function GenderAvatar({ gender, completed = false, size = "h-12 w-12" }) {
+  const bgClass = completed ? "bg-green-600" : "bg-indigo-600";
+  const bgHex = completed ? "#16A34A" : "#4F46E5";
+
+  return (
+    <div
+      className={`${size} shrink-0 rounded-full flex items-center justify-center shadow-sm ring-2 ring-white ${bgClass}`}
+    >
+      {gender === "female" ? (
+        <svg viewBox="0 0 100 100" className="w-8 h-8">
+          <path
+            d="M50,6 C64,6 74,17 74,30 C74,36 71,41 67,45 C74,52 78,62 78,74 L70,74 C70,63 67,54 61,48 C58,50 54,51 50,51 C46,51 42,50 39,48 C33,54 30,63 30,74 L22,74 C22,62 26,52 33,45 C29,41 26,36 26,30 C26,17 36,6 50,6 Z"
+            fill="white"
+          />
+          <circle cx="50" cy="29" r="15" fill="white" />
+          <path
+            d="M28,96 C28,78 38,66 50,66 C62,66 72,78 72,96 Z"
+            fill="white"
+          />
+          <path d="M50,66 L40,74 L46,92 Z" fill={bgHex} />
+          <path d="M50,66 L60,74 L54,92 Z" fill={bgHex} />
+        </svg>
+      ) : (
+        <svg viewBox="0 0 100 100" className="w-8 h-8">
+          <path
+            d="M20,96 C20,72 33,58 50,58 C67,58 80,72 80,96 Z"
+            fill="white"
+          />
+          <circle cx="50" cy="30" r="17" fill="white" />
+          <path d="M50,58 L38,68 L44,90 Z" fill={bgHex} />
+          <path d="M50,58 L62,68 L56,90 Z" fill={bgHex} />
+          <path d="M47,60 L53,60 L51,95 L49,95 Z" fill={bgHex} />
+        </svg>
+      )}
+    </div>
+  );
+}
+
 function SavedCandidates() {
   const [candidates, setCandidates] = useState([]);
   const [openMenuId, setOpenMenuId] = useState(null);
@@ -838,6 +878,14 @@ function SavedCandidates() {
     );
   };
 
+  // A candidate reads as "completed" for avatar coloring once either
+  // status has landed on a passing / completed outcome.
+  const isCandidateCompleted = (candidate) => {
+    const t = (candidate.teststatus || '').toLowerCase();
+    const i = (candidate.interviewstatus || '').toLowerCase();
+    return ['pass', 'passed', 'completed'].includes(t) || ['pass', 'passed', 'completed'].includes(i);
+  };
+
   return (
     <div className="flex h-screen flex-col overflow-hidden">
       <Navbar />
@@ -1012,7 +1060,18 @@ function SavedCandidates() {
                       <tr key={candidate.cndid} className="hover:bg-gray-50 transition duration-150">
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
-                            <img src={candidate.cndphoto} alt={candidate.cndname} className="h-12 w-12 rounded-full object-cover" />
+                            {candidate.cndphoto ? (
+                              <img
+                                src={candidate.cndphoto}
+                                alt={candidate.cndname}
+                                className="h-12 w-12 rounded-full object-cover ring-2 ring-white shadow-sm"
+                              />
+                            ) : (
+                              <GenderAvatar
+                                gender={candidate.cndgender}
+                                completed={isCandidateCompleted(candidate)}
+                              />
+                            )}
                             <div>
                               <p className="font-semibold text-gray-900">{candidate.cndname}</p>
                               <p className="text-sm text-gray-600">{candidate.cndlocation}</p>
