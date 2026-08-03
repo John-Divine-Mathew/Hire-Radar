@@ -36,6 +36,10 @@ const AdminLogin = () => {
     let cndid;
     let result; 
     let email;
+    let role;
+    let teststart;
+    let testend;
+    let testdate;
 
     for (const i of credentialsList) {
 
@@ -48,7 +52,10 @@ const AdminLogin = () => {
         cndid = i.cndid;
         result = i.testresult ? true : false; 
         email = i.personalemail;
-
+        role = i.targetrole;
+        teststart = teststart;
+        testend = testend;
+        testdate = testdate;
       }
 
     }
@@ -64,7 +71,11 @@ const AdminLogin = () => {
         state: {
           cndid,
           result,
-          email
+          email,
+          role,
+          teststart,
+          testend,
+          testdate
         },
       });
 
