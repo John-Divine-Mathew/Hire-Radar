@@ -2,16 +2,19 @@ import Sidebar from '../components/sideBar/sideBar.jsx';
 import Navbar from "../components/navBar/navBar.jsx";
 import { ChevronLeft, Link, Download } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import React,{ useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { v4 as uuid } from "uuid";
+import { formatMatchScore } from '../utils/matchScore.js';
 
 function CandidateProfile(){
     const nav = useNavigate();
     const loc = useLocation();
     const id = loc.state.tempCndId ? String(loc.state.tempCndId) : String(loc.state.permCndId);
-    const permSave = loc.state.tempCndId ? false : true ;
 
     const [cndData,setCndData] = useState({});
+    const searchQuery = loc.state?.search || '';
+    const searchFilters = loc.state?.filterValues || {};
+
     const getData = async()=>{
         try {
             const response = loc.state.tempCndId ? await fetch(`http://localhost:5000/hireRadar/cndtempsave/${id}`) : await fetch(`http://localhost:5000/hireRadar/cndpermsave/${id}`);
@@ -85,10 +88,20 @@ function CandidateProfile(){
 
                         {/* Match Score Card */}
                         <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-6 border border-purple-200 text-center">
-                            <p className="text-gray-600 text-sm font-medium mb-1">Match Score</p>
-                            <p className="text-5xl font-bold text-purple-600 mb-2">92%</p>
-                            <div className="text-green-600 font-bold mb-2">High Match</div>
-                            <p className="text-sm text-gray-700">Great match for Design Engineer role</p>
+                            {(() => {
+                                const score = formatMatchScore(cndData, { search: searchQuery, filterValues: searchFilters, hideWhenNoCriteria: true });
+                                const displayScore = score || (cndData.matchScore ? String(cndData.matchScore).trim() : null) || 'N/A';
+                                const badgeText = score ? (Number(score.replace('%', '')) >= 75 ? 'High Match' : Number(score.replace('%', '')) >= 45 ? 'Partial Match' : 'Low Match') : 'No Search Match';
+
+                                return (
+                                    <>
+                                        <p className="text-gray-600 text-sm font-medium mb-1">Match Score</p>
+                                        <p className="text-5xl font-bold text-purple-600 mb-2">{displayScore}</p>
+                                        <div className="text-green-600 font-bold mb-2">{badgeText}</div>
+                                        <p className="text-sm text-gray-700">{score ? `Score based on current search criteria` : 'No active search criteria to compute relevance'}</p>
+                                    </>
+                                );
+                            })()}
                         </div>
                     </div>
                 </div>

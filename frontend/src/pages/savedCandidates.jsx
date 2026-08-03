@@ -5,6 +5,7 @@ import { useState, useEffect, useRef } from "react";
 import { format } from 'date-fns';
 import { useNavigate } from "react-router-dom";
 import { nanoid } from 'nanoid';
+import { formatMatchScore } from '../utils/matchScore.js';
 
 // Minutes-per-duration lookup, used to work out how many consecutive
 // 30-minute blocks a booking should span.
@@ -1082,7 +1083,7 @@ function SavedCandidates() {
                         <td className="px-6 py-4 text-gray-700">{`${candidate.cndexperience} years`}</td>
                         <td className="px-6 py-4">
                           <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800">
-                            {candidate.matchScore || '80%'}
+                            {formatMatchScore(candidate, { search: searchVar, filterValues })}
                           </span>
                         </td>
                         <td className="px-6 py-4 text-gray-700">{candidate.searchdate || candidate.searchDate || format(new Date(), 'dd/MM/yyyy')}</td>
