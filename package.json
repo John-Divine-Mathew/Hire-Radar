@@ -21,8 +21,8 @@
     "dev": "concurrently \"npm run backend\" \"npm run frontend\""
   },
   "dependencies": {
-    "@azure/msal-browser": "^5.17.1",
-    "@azure/msal-react": "^5.5.3",
+    "@azure/msal-browser": "^5.17.3",
+    "@azure/msal-react": "^5.5.4",
     "@google/genai": "^2.13.0",
     "@microsoft/microsoft-graph-client": "^3.0.7",
     "chokidar": "^5.0.0",
@@ -47,6 +47,6 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
-    "@react-email/ui": "6.7.0"
+    "@react-email/ui": "^6.9.1"
   }
 }
