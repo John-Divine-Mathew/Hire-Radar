@@ -6,6 +6,8 @@ const path = require('path');
 const React = require('react');
 const { Resend } = require('resend');
 const { render } = require('@react-email/components');
+const ReactDOM = require('react-dom/client');
+
 
 // Local extraction tools
 const pdfParse = require('pdf-parse');
