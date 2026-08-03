@@ -270,7 +270,7 @@ const Home = () => {
                 <h3 className="font-bold text-lg">Email</h3>
                 <p>mathewdivine95@gmail.com</p>
                 <p>vijayanandhaj@gmail.com</p>
-                <p>bharathjeeva549@gmail.com</p>
+                <p>bharathsnehan011@gmail.com</p>
               </div>
 
               <div>

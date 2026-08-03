@@ -1,7 +1,8 @@
 import { Bookmark, User, Check, Mars, Venus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { v4 as uuid } from "uuid";
+import { calculateMatchScore, formatMatchScore } from '../../utils/matchScore.js';
 
 // ── Gender-aware photo placeholder ──────────────────────────────────────────
 function CandidateAvatar({ photo, gender, name }) {
@@ -46,7 +47,7 @@ function CandidateAvatar({ photo, gender, name }) {
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
-function RenderList({ var1, activeFilters, filterValues }) {
+function RenderList({ var1, filterValues }) {
     const [list, setList] = useState([]);
     const [savedCandidateIds, setSavedCandidateIds] = useState(new Set());
 
@@ -118,7 +119,14 @@ function RenderList({ var1, activeFilters, filterValues }) {
 
     const nav = useNavigate();
     function navigateCandidateProfile(id) {
-        nav('/candidateProfile', { state: { tempCndId: id, permCndId: null } });
+        nav('/candidateProfile', {
+            state: {
+                tempCndId: id,
+                permCndId: null,
+                search: var1,
+                filterValues,
+            }
+        });
     }
 
     async function saveCandidate(cndid) {
@@ -166,14 +174,23 @@ function RenderList({ var1, activeFilters, filterValues }) {
         }
     }
 
+    const scoredList = [...list].map((candidate) => ({
+        candidate,
+        score: calculateMatchScore(candidate, { search: var1, filterValues })
+    })).sort((a, b) => {
+        const aScore = a.score === null ? -1 : a.score;
+        const bScore = b.score === null ? -1 : b.score;
+        return bScore - aScore;
+    });
+
     return (
         <div className="h-full w-full overflow-y-auto pr-2 space-y-4 minimal-scrollbar">
-            {list.length === 0 ? (
+            {scoredList.length === 0 ? (
                 <div className="text-center py-12 text-gray-500 font-medium bg-white rounded-lg border border-dashed border-gray-200">
                     No candidates match your search criteria.
                 </div>
             ) : (
-                list.map((i) => {
+                scoredList.map(({ candidate: i }) => {
                     const isSaved = savedCandidateIds.has(i.cndid);
 
                     return (
@@ -211,8 +228,16 @@ function RenderList({ var1, activeFilters, filterValues }) {
 
                                 <div className="flex items-center gap-6">
                                     <div className="text-center">
-                                        <p className="text-gray-600 text-sm font-medium mb-1">Match Score</p>
-                                        <p className="text-3xl font-bold text-purple-600">{i.matchScore || '80%'}</p>
+                                        {(() => {
+                                            const score = formatMatchScore(i, { search: var1, filterValues, hideWhenNoCriteria: true });
+                                            if (!score) return null;
+                                            return (
+                                                <>
+                                                    <p className="text-gray-600 text-sm font-medium mb-1">Match Score</p>
+                                                    <p className="text-3xl font-bold text-purple-600">{score}</p>
+                                                </>
+                                            );
+                                        })()}
                                     </div>
                                     <div className="flex gap-3 items-center">
                                         <button
