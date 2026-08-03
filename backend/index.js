@@ -680,10 +680,10 @@ app.delete("/hireRadar/deleteCandidate/:cndid", async (req, res) => {
 // TESTS & ASSESSMENT ROUTES
 app.post("/hireRadar/insertTestDetails", async (req, res) => {
     try {
-        const { cndid, username, password, starttime, endtime, email, name } = req.body;
+        const { cndid, username, password, starttime, endtime, email, name, role } = req.body;
         const newCndData = await pool.query(
-            "INSERT INTO testdetails(cndid, username, password, teststart, testend, personalemail, testdate, cndname) VALUES($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *",
-            [cndid, username, password, starttime, endtime, email, new Date(), name]
+            "INSERT INTO testdetails(cndid, username, password, teststart, testend, personalemail, testdate, cndname, targetrole) VALUES($1, $2, $3, $4, $5, $6, $7, $8 ,$9) RETURNING *",
+            [cndid, username, password, starttime, endtime, email, new Date(), name, role]
         );
         res.json(newCndData.rows[0]);
     } catch (err) {
@@ -726,13 +726,32 @@ app.get("/hireRadar/testquestions", async (req, res) => {
     }
 });
 
-app.get("/hireRadar/testquestions/:dept", async (req, res) => {
+app.get("/hireRadar/testquestions/:role", async (req, res) => {
     try {
-        const { dept } = req.params;
-        const allData = await pool.query("SELECT * FROM questions WHERE LOWER(dept)=$1", [dept.toLowerCase().trim()]);
+        const { role } = req.params;
+        let queryRole = role.toLowerCase().trim();
+        
+        let difficulty = 'beginner'; // Default to beginner
+        let baseDept = queryRole;
+
+        // Parse the role to determine difficulty and the base department
+        if (queryRole.startsWith('super senior ')) {
+            difficulty = 'advanced';
+            baseDept = queryRole.replace('super senior ', '').trim();
+        } else if (queryRole.startsWith('senior ')) {
+            difficulty = 'intermediate';
+            baseDept = queryRole.replace('senior ', '').trim();
+        }
+
+        // Query the database using both the base department and the question type
+        const allData = await pool.query(
+            "SELECT * FROM questions WHERE LOWER(dept) = $1 AND LOWER(questiontype) = $2", 
+            [baseDept, difficulty]
+        );
+        
         res.json(allData.rows);
     } catch (err) {
-        console.error("testquestions/dept error:", err.message);
+        console.error("testquestions/role error:", err.message);
         res.status(500).json({ error: err.message });
     }
 });

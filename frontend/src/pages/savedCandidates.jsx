@@ -47,16 +47,29 @@ function generateTimeSlots(startMinutes, endMinutes) {
   return slots;
 }
 
-function InlineCalendarBooking({ candidateName, onClose, onBookSlot, onSendEmail }) {
-  const [currentYear, setCurrentYear] = useState(2026);
-  const [currentMonth, setCurrentMonth] = useState(6); // 0-indexed, 6 = July 
-  const [selectedDate, setSelectedDate] = useState(14); // Matches context timeline layout
+// Dynamically generate roles with Senior and Super Senior variants
+const baseRoles = [
+  'Software Development', 'Automation', 'Meachanical',
+  'Quatily Assurance', 'Human Resource', 'Production'
+];
+
+const extendedRoles = baseRoles.flatMap(role => [
+  role,
+  `Senior ${role}`,
+  `Super Senior ${role}`
+]);
+
+function InlineCalendarBooking({ candidateName, onClose, onBookSlot, onSendEmail, isHR = true }) {
+  const [currentYear, setCurrentYear] = useState(new Date().getFullYear()); // Use current year as default
+  const [currentMonth, setCurrentMonth] = useState(new Date().getMonth()); 
+  const [selectedDate, setSelectedDate] = useState(new Date().getDate()); 
   const [selectedDuration, setSelectedDuration] = useState("60 minutes");
   const [selectedSlot, setSelectedSlot] = useState(null);
 
   const [isBooked, setIsBooked] = useState(false);
   const [showEmailPrompt, setShowEmailPrompt] = useState(false);
   const [emailStatus, setEmailStatus] = useState(null); // null | 'sent' | 'skipped'
+  const [selectedEmailRole, setSelectedEmailRole] = useState(""); // Holds the selected role for the email
 
   const monthNames = [
     "January", "February", "March", "April", "May", "June",
@@ -65,7 +78,8 @@ function InlineCalendarBooking({ candidateName, onClose, onBookSlot, onSendEmail
 
   const daysOfWeek = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
-  // Layout for July 2026
+  // Note: For a true dynamic calendar, you'd dynamically compute prefix and total days for 'currentMonth'.
+  // Keeping your static July array structure as per original implementation:
   const prefixDays = [28, 29, 30];
   const totalDays = 31;
   const suffixDays = [1, 2, 3, 4, 5, 6, 7, 8];
@@ -159,7 +173,8 @@ function InlineCalendarBooking({ candidateName, onClose, onBookSlot, onSendEmail
     const completeBookingDetails = {
       ...bookingDetails,
       startIsoString: startDateInstance.toISOString(),
-      endIsoString: endDateInstance.toISOString()
+      endIsoString: endDateInstance.toISOString(),
+      targetRole: selectedEmailRole // Attached safely here
     };
 
     onSendEmail?.(completeBookingDetails);
@@ -193,10 +208,14 @@ function InlineCalendarBooking({ candidateName, onClose, onBookSlot, onSendEmail
     const today = new Date();
     const targetDate = new Date(currentYear, currentMonth, selectedDate);
     
-    if (targetDate.setHours(0,0,0,0) < new Date().setHours(0,0,0,0)) {
+    // Normalize timestamps for pure date comparison
+    const targetTime = targetDate.setHours(0,0,0,0);
+    const todayTime = new Date().setHours(0,0,0,0);
+
+    if (targetTime < todayTime) {
       return true;
     }
-    if (targetDate.setHours(0,0,0,0) > new Date().setHours(0,0,0,0)) {
+    if (targetTime > todayTime) {
       return false;
     }
 
@@ -398,6 +417,28 @@ function InlineCalendarBooking({ candidateName, onClose, onBookSlot, onSendEmail
                   {selectedSlot} to {activeRange?.endLabel} has been booked. Would you like to email {candidateName} a
                   confirmation now?
                 </div>
+
+                {isHR && (
+                  <div className="mb-5">
+                    <label className="block text-xs font-semibold text-gray-700 mb-2">
+                      Assign Role (HR Only)
+                    </label>
+                    <div className="relative">
+                      <select
+                        value={selectedEmailRole}
+                        onChange={(e) => setSelectedEmailRole(e.target.value)}
+                        className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 appearance-none focus:outline-none focus:border-purple-700 focus:ring-1 focus:ring-purple-700 cursor-pointer"
+                      >
+                        <option value="">-- Optional: Select assigned role --</option>
+                        {extendedRoles.map(role => (
+                          <option key={role} value={role}>{role}</option>
+                        ))}
+                      </select>
+                      <ChevronDown size={16} className="absolute right-3 top-2.5 text-gray-400 pointer-events-none" />
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex justify-end gap-2">
                   <button
                     onClick={handleSkipSendEmail}
@@ -539,12 +580,7 @@ function SavedCandidates() {
       'Pune', 'Kochi', 'Coimbatore', 'Ahmedabad', 'Kolkata',
       'London', 'Berlin', 'Singapore', 'Tokyo', 'Amsterdam', 'Toronto'
     ],
-    Role: [
-      'Machine Learning Engineer', 'Data Engineer', 'Cloud Architect',
-      'Embedded Systems Developer', 'Fullstack Engineer', 'UI/UX Designer',
-      'QA Automation Engineer', 'DevOps Engineer', 'Backend Developer',
-      'Frontend Developer', 'IoT Systems Engineer'
-    ],
+    Role: extendedRoles,
     Status: ['NA', 'Pending', 'Scheduled', 'Completed', 'Passed', 'Failed']
   };
 
@@ -789,6 +825,9 @@ function SavedCandidates() {
       const generatedPassword = nanoid(10);
 
       try {
+        // Here role defaults to "Not specified" if the HR left the dropdown empty
+        const roleToSave = bookingDetails.targetRole || "Not specified";
+
         const response = await fetch("http://localhost:5000/hireRadar/insertTestDetails", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -799,7 +838,8 @@ function SavedCandidates() {
             starttime: bookingDetails.startIsoString,
             endtime: bookingDetails.endIsoString,
             email: bookingCandidate?.cndemail,
-            name: bookingCandidate?.cndname
+            name: bookingCandidate?.cndname,
+            role: roleToSave  // <--- Passes targetRole explicitly into the database route
           })
         });
 
@@ -840,7 +880,8 @@ function SavedCandidates() {
       endTime: bookingDetails.endIsoString,
       username: creds.username,
       password: creds.password,
-      email: bookingCandidate?.cndemail || "nomailfound@gmail.com"
+      email: bookingCandidate?.cndemail || "nomailfound@gmail.com",
+      targetRole: bookingDetails.targetRole || "Not specified"
     };
 
     try {
@@ -1201,6 +1242,7 @@ function SavedCandidates() {
             candidateName={bookingCandidate.cndname}
             onClose={closeCalendar} 
             onSendEmail={handleSendEmailAction}
+            isHR={true}
           />
         </div>
       )}

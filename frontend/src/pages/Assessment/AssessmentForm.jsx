@@ -1,11 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 
 function AssessmentForm() {
   const navigate = useNavigate();
   const location = useLocation();
   // Using optional chaining syntax to avoid crashing if state is null
-  const { cndid, result, email } = location.state || {};
+  const { cndid, result, email, role, teststart, testend, testdate } = location.state || {};
 
   const [candidate, setCandidate] = useState({
     name: "",
@@ -15,6 +15,45 @@ function AssessmentForm() {
 
   const [message, setMessage] = useState({ text: "", type: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isWindowOpen, setIsWindowOpen] = useState(false); // Track if test is active
+  const [isEarly, setIsEarly] = useState(false); // Track if user is early
+
+  // Setup the time checker
+  useEffect(() => {
+    // STRICT MODE: If the dates are missing from state, strictly block entry.
+    if (!teststart || !testend || !testdate) {
+      setIsWindowOpen(false); 
+      return;
+    }
+
+    const testStartObj = new Date(teststart.replace(" ", "T"));
+    const testEndObj = new Date(testend.replace(" ", "T"));
+    
+    const istDateFormatter = new Intl.DateTimeFormat('en-CA', { 
+      timeZone: 'Asia/Kolkata', 
+      year: 'numeric', 
+      month: '2-digit', 
+      day: '2-digit' 
+    });
+
+    const checkTime = () => {
+      const now = new Date();
+      const currentDateStr = istDateFormatter.format(now);
+      
+      const isDateValid = currentDateStr === testdate;
+      const isTimeValid = now >= testStartObj && now <= testEndObj;
+
+      setIsWindowOpen(isDateValid && isTimeValid);
+      
+      // Check if the current time is before the scheduled start time
+      setIsEarly(now < testStartObj); 
+    };
+
+    checkTime(); // Check immediately
+    const intervalId = setInterval(checkTime, 1000); // Re-evaluate every second
+
+    return () => clearInterval(intervalId);
+  }, [teststart, testend, testdate]);
 
   // Helper to trigger timed status notifications
   const showNotification = (text, type = "success") => {
@@ -68,6 +107,13 @@ function AssessmentForm() {
       return;
     }
 
+    // 1. CHECK TIME WINDOW FIRST
+    if (!isWindowOpen) {
+      showNotification("The test window is currently closed. You cannot start the assessment.", "error");
+      return;
+    }
+
+    // 2. THEN CHECK RESULT
     if (result) {
       showNotification("This candidate has already taken the assessment.", "error");
       return;
@@ -79,7 +125,8 @@ function AssessmentForm() {
     
     navigate("/assessment-test", {
       state: { 
-        cndid: cndid
+        cndid: cndid,
+        role: role,
       }
     });
   };
@@ -105,6 +152,48 @@ function AssessmentForm() {
               Candidate Registration
             </h1>
           </div>
+
+          {/* Dynamic Time Window Notification Banner */}
+          {testdate && (
+            <div className={`mb-4 flex items-start gap-3 border p-4 rounded-xl text-sm transition-colors duration-300 ${
+              isWindowOpen 
+                ? "bg-blue-50 border-blue-200 text-blue-800" 
+                : "bg-red-50 border-red-200 text-red-800"
+            }`}>
+              {isWindowOpen ? (
+                <svg className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5 text-red-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              )}
+              <div>
+                {isWindowOpen ? (
+                  <>
+                    <span className="font-semibold">Test Open:</span> You should take the test within given interval. Scheduled for: {testdate} between {teststart?.split(" ")[1]} and {testend?.split(" ")[1]}.
+                  </>
+                ) : (
+                  <>
+                    <span className="font-semibold">Test Closed:</span> The test window is not currently active. Scheduled for: {testdate} between {teststart?.split(" ")[1]} and {testend?.split(" ")[1]}.
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Contextual Banner if Too Early */}
+          {isEarly && !isWindowOpen && !result && (
+            <div className="mb-6 flex items-start gap-3 bg-sky-50 border border-sky-200 text-sky-800 p-4 rounded-xl text-sm">
+              <svg className="w-5 h-5 text-sky-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div>
+                <span className="font-semibold">Notice:</span> You have arrived early. Please wait and come back during your allotted time window.
+              </div>
+            </div>
+          )}
 
           {/* Contextual Banner if Already Evaluated */}
           {result && (
@@ -208,9 +297,13 @@ function AssessmentForm() {
               {/* Core CTA: Start Assessment */}
               <button
                 type="button"
-                disabled={isSubmitting || !!result}
+                // Button is disabled if submitting, already taken, OR window is closed
+                disabled={isSubmitting || !!result || !isWindowOpen}
                 onClick={startAssessment}
-                className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-semibold rounded-xl hover:from-violet-700 hover:to-indigo-700 active:transform active:scale-[0.99] transition shadow-md shadow-indigo-200 disabled:opacity-50 disabled:pointer-events-none text-sm"
+                className={`w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 text-white font-semibold rounded-xl active:transform active:scale-[0.99] transition shadow-md text-sm
+                  ${(!isSubmitting && !result && isWindowOpen) 
+                    ? "bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 shadow-indigo-200 cursor-pointer" 
+                    : "bg-gray-400 cursor-not-allowed opacity-70"}`}
               >
                 <span>Start Assessment</span>
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
