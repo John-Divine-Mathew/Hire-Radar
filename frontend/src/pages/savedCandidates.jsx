@@ -797,8 +797,7 @@ function SavedCandidates() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          teststatus: editStatusForm.teststatus,
-          interviewstatus: editStatusForm.interviewstatus
+          teststatus: editStatusForm.teststatus
         })
       });
 
@@ -1090,7 +1089,6 @@ function SavedCandidates() {
                     <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Match Score</th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Saved On</th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Test Status</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Interview Status</th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Action</th>
                   </tr>
                 </thead>
@@ -1151,30 +1149,6 @@ function SavedCandidates() {
                             renderStatusBadge(candidate.teststatus)
                           )}
                         </td>
-
-                        {/* Interview Status Column */}
-                        <td className="px-6 py-4">
-                          {isEditing ? (
-                            <div className="relative inline-block w-32">
-                              <select
-                                value={editStatusForm.interviewstatus}
-                                onChange={(e) => setEditStatusForm({ ...editStatusForm, interviewstatus: e.target.value })}
-                                className="w-full appearance-none px-3 py-1.5 border border-purple-300 rounded-lg text-xs font-semibold bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer shadow-sm pr-7"
-                              >
-                                <option value="NA">NA</option>
-                                <option value="Pass">Pass</option>
-                                <option value="Fail">Fail</option>
-                                <option value="Pending">Pending</option>
-                                <option value="Scheduled">Scheduled</option>
-                                <option value="Completed">Completed</option>
-                              </select>
-                              <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                            </div>
-                          ) : (
-                            renderStatusBadge(candidate.interviewstatus)
-                          )}
-                        </td>
-
                         {/* Actions Column */}
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">

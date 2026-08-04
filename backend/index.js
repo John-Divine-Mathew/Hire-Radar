@@ -25,9 +25,6 @@ const {
 
 const app = express();
 
-// ==========================================================================
-// MIDDLEWARES & INITIALIZATION
-// ==========================================================================
 
 app.use(cors({ origin: 'http://localhost:5173' }));
 app.use(express.json());
@@ -63,9 +60,6 @@ initializeSearchService()
 // Memory storage for incoming HTTP file uploads
 const upload = multer({ storage: multer.memoryStorage() });
 
-// ==========================================================================
-// HELPER FUNCTIONS 
-// ==========================================================================
 
 function formatFileSize(bytes) {
     if (!bytes && bytes !== 0) return '0 Bytes';
@@ -108,9 +102,7 @@ const MIME_BY_EXT = {
     '.webp': 'image/webp',
 };
 
-// ==========================================================================
-// LOCAL TEXT EXTRACTION & OLLAMA INFERENCE 
-// ==========================================================================
+
 
 async function extractTextLocally(fileBuffer, originalName, mimeType) {
     try {
@@ -397,14 +389,14 @@ app.post('/api/upload', upload.any(), async (req, res) => {
 app.put("/hireRadar/updateCandidateStatus/:cndid", async (req, res) => {
   try {
     const { cndid } = req.params;
-    const { teststatus, interviewstatus } = req.body;
+    const { teststatus } = req.body;
 
     const updateQuery = await pool.query(
       `UPDATE cndpermsave 
-       SET teststatus = $1, interviewstatus = $2 
-       WHERE cndid = $3 
+       SET teststatus = $1 
+       WHERE cndid = $2 
        RETURNING *`,
-      [teststatus, interviewstatus, cndid]
+      [teststatus, cndid]
     );
 
     if (updateQuery.rows.length === 0) {
