@@ -11,8 +11,6 @@ import {
 import Sidebar from "../components/sideBar/sideBar.jsx";
 import Navbar from "../components/navBar/navBar.jsx";
 
-
-
 // Define a color palette for dynamic file types
 const FILE_TYPE_COLORS = ["#7E22CE", "#A855F7", "#C084FC", "#6B21A8", "#d8b4fe"];
 

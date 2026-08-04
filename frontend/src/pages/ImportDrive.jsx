@@ -23,7 +23,6 @@ function ImportDrive() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   
-  // Updated Upload States (Removed pendingAnalysis queue)
   const [isUploading, setIsUploading] = useState(false);
   const [extractionStatus, setExtractionStatus] = useState(''); 
   
@@ -61,9 +60,6 @@ function ImportDrive() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(i === 0 ? 0 : 1)) + ' ' + sizes[i];
   };
 
-  // ==========================================================================
-  // FETCH FROM BACKEND DATABASE
-  // ==========================================================================
   const fetchBackendDocuments = async (searchQuery = '', ext = '', size = '', sortOrder = 'relevance') => {
     setIsLoading(true);
     try {
@@ -107,7 +103,6 @@ function ImportDrive() {
     fetchBackendDocuments('', '', '', 'newest');
   }, []);
 
-  // Handle Filtering & Sorting
   useEffect(() => {
     setIsLoading(true);
     let result = [...documents];
@@ -170,9 +165,6 @@ function ImportDrive() {
     }
   };
 
-  // ==========================================================================
-  // UPDATED SYNCHRONOUS BACKEND UPLOAD WORKFLOW 
-  // ==========================================================================
 const handleFolderSelect = async (event) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
@@ -180,10 +172,8 @@ const handleFolderSelect = async (event) => {
     setIsUploading(true);
     setExtractionStatus('Extracting text & running AI Analysis. Saving to database...');
 
-    // Asynchronously warm up Ollama model
     fetch(`${API_BASE_URL}/api/warm-ollama`, { method: 'POST' }).catch(() => {});
 
-    // Resolve logged in user to send with upload payload
     const currentUser = (() => {
       try {
         return JSON.parse(localStorage.getItem('user'));
@@ -195,6 +185,7 @@ const handleFolderSelect = async (event) => {
 
     const formData = new FormData();
     formData.append('username', username);
+    formData.append('documentStatus', 'Uploaded'); // Ensure status is explicitly mapped
 
     for (let i = 0; i < files.length; i++) {
       if (isValidFile(files[i].name)) {
@@ -226,9 +217,6 @@ const handleFolderSelect = async (event) => {
     }
   };
 
-  // ==========================================================================
-  // UI HANDLERS
-  // ==========================================================================
   const handleDragOver = (e) => {
     e.preventDefault();
     e.stopPropagation();

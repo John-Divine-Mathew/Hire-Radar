@@ -52,6 +52,20 @@ export default function ManagerRequest() {
         }
     };
 
+    // Handler to delete a request
+    const handleDeleteClick = async (id) => {
+        if (!window.confirm("Are you sure you want to delete this recruitment request?")) return;
+
+        try {
+            await axios.delete(`http://localhost:5000/hireRadar/managerrequest/${id}`);
+            // Instantly remove the deleted item from the frontend state
+            setRequests((prev) => prev.filter((item) => (item.request_id || item.requestid) !== id));
+        } catch (err) {
+            console.error("Error deleting request:", err);
+            alert("Failed to delete the request. Please try again.");
+        }
+    };
+
     const filtered = requests.filter((item) => {
         const jobTitle = item.job_title || item.jobtitle || "";
         const department = item.department || "";
@@ -139,7 +153,6 @@ export default function ManagerRequest() {
                                         <th className="py-4 px-6 text-sm font-semibold text-gray-600">Target Dept</th>
                                         <th className="py-4 px-6 text-sm font-semibold text-gray-600">Job Title</th>
                                         <th className="py-4 px-6 text-sm font-semibold text-gray-600">Experience</th>
-                                        <th className="py-4 px-6 text-sm font-semibold text-gray-600">Salary Range</th>
                                         <th className="py-4 px-6 text-sm font-semibold text-gray-600">Openings</th>
                                         <th className="py-4 px-6 text-sm font-semibold text-gray-600">Status</th>
                                         <th className="py-4 px-6 text-sm font-semibold text-gray-600">Action</th>
@@ -184,13 +197,6 @@ export default function ManagerRequest() {
                                                 <td className="py-5 px-6 text-gray-700">
                                                     {item.experience || "N/A"}
                                                 </td>
-                                                <td className="py-5 px-6 text-gray-700 text-sm">
-                                                    {item.salary_min && item.salary_max
-                                                        ? `₹${item.salary_min.toLocaleString()} - ₹${item.salary_max.toLocaleString()}`
-                                                        : item.salary_min
-                                                        ? `Min ₹${item.salary_min.toLocaleString()}`
-                                                        : "N/A"}
-                                                </td>
                                                 <td className="py-5 px-6 text-gray-700">
                                                     {item.openings ?? item.vacancies ?? 0}
                                                 </td>
@@ -206,12 +212,20 @@ export default function ManagerRequest() {
                                                     </span>
                                                 </td>
                                                 <td className="py-5 px-6">
-                                                    <button 
-                                                        onClick={() => handleViewClick(item)}
-                                                        className="bg-blue-700 text-white px-5 py-2 rounded-xl text-sm font-semibold hover:bg-blue-800 shadow-md shadow-blue-700/10 hover:shadow-lg transition flex items-center gap-1"
-                                                    >
-                                                        View
-                                                    </button>
+                                                    <div className="flex items-center gap-2">
+                                                        <button 
+                                                            onClick={() => handleViewClick(item)}
+                                                            className="bg-blue-700 text-white px-5 py-2 rounded-xl text-sm font-semibold hover:bg-blue-800 shadow-md shadow-blue-700/10 hover:shadow-lg transition flex items-center gap-1"
+                                                        >
+                                                            View
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => handleDeleteClick(item.request_id || item.requestid)}
+                                                            className="bg-red-50 text-red-600 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-red-100 hover:text-red-700 border border-red-100 transition flex items-center gap-1"
+                                                        >
+                                                            Delete
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))

@@ -16,9 +16,6 @@ export default function ManagerLogin() {
         experience: "",
         employmentType: "Full Time",
         openings: 1,
-        location: "",
-        salarymin: "", 
-        salarymax: "", 
         joiningDate: getTodayDate(), // Pre-filled with today's date by default
         jobPriority: "Medium",
         skills: "",
@@ -70,8 +67,6 @@ export default function ManagerLogin() {
                 employmentType: "Full Time",
                 openings: 1,
                 location: "",
-                salarymin: "",
-                salarymax: "",
                 joiningDate: getTodayDate(),
                 jobPriority: "Medium",
                 skills: "",
@@ -196,28 +191,6 @@ export default function ManagerLogin() {
                                 value={form.openings}
                                 onChange={handleChange}
                                 className="w-full border rounded-xl p-3 mt-2"
-                            />
-                        </div>
-                        <div>
-                            <label>Minimum Salary (Numeric)</label>
-                            <input
-                                type="number"
-                                name="salarymin"
-                                value={form.salarymin}
-                                onChange={handleChange}
-                                className="w-full border rounded-xl p-3 mt-2"
-                                placeholder="e.g. 50000"
-                            />
-                        </div>
-                        <div>
-                            <label>Maximum Salary (Numeric)</label>
-                            <input
-                                type="number"
-                                name="salarymax"
-                                value={form.salarymax}
-                                onChange={handleChange}
-                                className="w-full border rounded-xl p-3 mt-2"
-                                placeholder="e.g. 90000"
                             />
                         </div>
                         <div>
