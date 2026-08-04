@@ -13,11 +13,8 @@ import {
   Trash2,
   Plus,
   CheckCircle2,
-<<<<<<< Updated upstream
   Clock,
   Briefcase,
-=======
->>>>>>> Stashed changes
   Users,
   Video, // <-- Added for Teams Meeting
   LogIn, // <-- Added for MS Login
