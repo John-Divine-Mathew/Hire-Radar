@@ -13,8 +13,11 @@ import {
   Trash2,
   Plus,
   CheckCircle2,
+<<<<<<< Updated upstream
   Clock,
   Briefcase,
+=======
+>>>>>>> Stashed changes
   Users,
   Video, // <-- Added for Teams Meeting
   LogIn, // <-- Added for MS Login
@@ -158,7 +161,16 @@ export default function FilterCandidate() {
   // -----------------------------------------------------------------
 
   const [search, setSearch] = useState("");
-  const MAX_ROUNDS = 6;
+
+  // Freshly initialized with exactly the 6 requested rounds
+  const defaultRounds = [
+    { id: 1, label: "Written Test" },
+    { id: 2, label: "Technical Test" },
+    { id: 3, label: "Technical Interview" },
+    { id: 4, label: "HR" },
+    { id: 5, label: "HR Screening" },
+    { id: 6, label: "Hiring Manager Screening" },
+  ];
 
   const [candidates, setCandidates] = useState([
     {
@@ -166,80 +178,61 @@ export default function FilterCandidate() {
       name: "John David",
       role: "React Developer",
       gender: "male",
-      status: "Interview Round 1",
-      step: 5,
-      rounds: [
-        { id: 101, label: "Team Lead" },
-        { id: 102, label: "HR Manager" },
-      ],
+      status: "Technical Test",
+      step: 2,
+      rounds: defaultRounds,
     },
     {
       id: 2,
       name: "Arun Kumar",
       role: "UI/UX Designer",
       gender: "male",
-      status: "Candidate Filter",
-      step: 4,
-      rounds: [{ id: 201, label: "Design Lead" }],
+      status: "Written Test",
+      step: 1,
+      rounds: defaultRounds,
     },
     {
       id: 3,
       name: "Priya Sharma",
       role: "Software Tester",
       gender: "female",
-      status: "Assessment",
-      step: 6,
-      rounds: [
-        { id: 301, label: "QA Lead" },
-        { id: 302, label: "Team Lead" },
-        { id: 303, label: "HR" },
-      ],
+      status: "HR",
+      step: 4,
+      rounds: defaultRounds,
     },
     {
       id: 4,
       name: "Vignesh Kumar",
       role: "Java Full Stack Developer",
       gender: "male",
-      status: "Onboarding",
-      step: 7,
-      rounds: [
-        { id: 401, label: "Team Lead" },
-        { id: 402, label: "Architect" },
-        { id: 403, label: "HR" },
-        { id: 404, label: "CTO" },
-      ],
+      status: "Hiring Manager Screening",
+      step: 6,
+      rounds: defaultRounds,
     },
     {
       id: 5,
       name: "Karthik Raj",
       role: "Python Developer",
       gender: "male",
-      status: "Candidate Search",
+      status: "Technical Interview",
       step: 3,
-      rounds: [],
+      rounds: defaultRounds,
     },
   ]);
 
-  // Dynamic Timeline Generation based on Candidate Rounds
+  // Track which candidate's interview rounds panel is open
+  const [openRoundsCandidateId, setOpenRoundsCandidateId] = useState(null);
+
+  const toggleRoundsPanel = (candidateId) => {
+    setOpenRoundsCandidateId((prev) => (prev === candidateId ? null : candidateId));
+  };
+
+  // Dynamic Timeline Generation based solely on Candidate Rounds (Only round names displayed)
   const buildDynamicStages = (candidateRounds) => {
-    const preInterview = [
-      "HR Approval",
-      "Team Lead",
-      "Candidate Search",
-      "Candidate Filter",
-    ];
-    const postInterview = ["Assessment", "Onboarding"];
-
-    let roundStages = [];
     if (!candidateRounds || candidateRounds.length === 0) {
-      roundStages = ["Interview"];
-    } else {
-      roundStages = candidateRounds.map((r, idx) =>
-        r.label ? `Round ${idx + 1}: ${r.label}` : `Round ${idx + 1}`
-      );
+      return ["Written Test", "Technical Test", "Technical Interview", "HR", "HR Screening", "Hiring Manager Screening"];
     }
-
-    return [...preInterview, ...roundStages, ...postInterview];
+    return candidateRounds.map((r) => r.label || "Round");
   };
 
   // ---------- Stage editing ----------
@@ -277,13 +270,10 @@ export default function FilterCandidate() {
   };
 
   const handleAddRound = () => {
-    setDraftRounds((prev) => {
-      if (prev.length >= MAX_ROUNDS) return prev;
-      return [
-        ...prev,
-        { id: Date.now() + Math.floor(Math.random() * 1000), label: "" },
-      ];
-    });
+    setDraftRounds((prev) => [
+      ...prev,
+      { id: Date.now() + Math.floor(Math.random() * 1000), label: "" },
+    ]);
   };
 
   const handleRoundLabelChange = (roundId, value) => {
@@ -320,6 +310,7 @@ export default function FilterCandidate() {
     setCandidates((prev) => prev.filter((c) => c.id !== candidateId));
     if (editingStageId === candidateId) setEditingStageId(null);
     if (editingRoundsId === candidateId) setEditingRoundsId(null);
+    if (openRoundsCandidateId === candidateId) setOpenRoundsCandidateId(null);
   };
 
   const filteredCandidates = candidates.filter((candidate) =>
@@ -405,6 +396,7 @@ export default function FilterCandidate() {
               {filteredCandidates.map((candidate, index) => {
                 const isEditingStage = editingStageId === candidate.id;
                 const isEditingRounds = editingRoundsId === candidate.id;
+                const isRoundsOpen = openRoundsCandidateId === candidate.id;
 
                 const roundsForTimeline = isEditingRounds
                   ? draftRounds
@@ -505,21 +497,23 @@ export default function FilterCandidate() {
                       </div>
 
                       {/* Title row: avatar + name */}
-                      <div className="flex items-center gap-4 mb-6">
-                        <GenderAvatar
-                          gender={candidate.gender}
-                          completed={isCompleted}
-                        />
-                        <h3 className="text-xl font-bold text-slate-800">
-                          {String(index + 1).padStart(2, "0")}.{" "}
-                          {candidate.name}
-                        </h3>
+                      <div className="flex items-center justify-between gap-4 mb-6 flex-wrap">
+                        <div className="flex items-center gap-4">
+                          <GenderAvatar
+                            gender={candidate.gender}
+                            completed={isCompleted}
+                          />
+                          <h3 className="text-xl font-bold text-slate-800">
+                            {String(index + 1).padStart(2, "0")}.{" "}
+                            {candidate.name}
+                          </h3>
+                        </div>
                       </div>
 
                       {/* Hiring Progress Timeline */}
                       <div className="mb-2">
                         <h4 className="text-sm font-semibold text-slate-500 mb-4">
-                          Hiring Progress Timeline
+                          Hiring Progress Timeline (Touch any stage to open Interview Rounds)
                         </h4>
 
                         <div className="relative pt-4 pb-2">
@@ -549,19 +543,16 @@ export default function FilterCandidate() {
                               return (
                                 <div
                                   key={idx}
-                                  className={`flex flex-col items-center ${
-                                    isEditingStage
-                                      ? "cursor-pointer"
-                                      : "cursor-default"
-                                  }`}
-                                  onClick={() =>
-                                    isEditingStage && setDraftStep(idx + 1)
-                                  }
+                                  className="flex flex-col items-center cursor-pointer group"
+                                  onClick={() => {
+                                    if (isEditingStage) {
+                                      setDraftStep(idx + 1);
+                                    }
+                                    toggleRoundsPanel(candidate.id);
+                                  }}
                                 >
                                   <div
-                                    className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold border-4 border-white shadow-md transition-all ${
-                                      isEditingStage ? "hover:scale-105" : ""
-                                    } ${
+                                    className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold border-4 border-white shadow-md transition-all group-hover:scale-105 ${
                                       completed ? "bg-green-600" : "bg-gray-300"
                                     } ${
                                       isCurrent
@@ -588,99 +579,103 @@ export default function FilterCandidate() {
                       </div>
 
                       {/* Interview Rounds Grid */}
-                      <div className="mt-6">
-                        <div className="flex items-center justify-between mb-3">
-                          <h4 className="text-sm font-semibold text-slate-500 flex items-center gap-2">
-                            <ListChecks size={15} className="text-purple-600" />
-                            Interview Rounds
-                            <span className="text-xs font-normal text-slate-400">
-                              ({roundsForTimeline.length}/{MAX_ROUNDS})
-                            </span>
-                          </h4>
+                      {isRoundsOpen && (
+                        <div className="mt-6 border-t border-slate-100 pt-5 animate-fadeIn">
+                          <div className="flex items-center justify-between mb-3">
+                            <h4 className="text-sm font-semibold text-slate-500 flex items-center gap-2">
+                              <ListChecks size={15} className="text-purple-600" />
+                              Interview Rounds
+                              <span className="text-xs font-normal text-slate-400">
+                                ({roundsForTimeline.length})
+                              </span>
+                            </h4>
 
-                          {isEditingRounds ? (
-                            <button
-                              onClick={() => handleSaveRounds(candidate)}
-                              className="flex items-center gap-1.5 text-green-600 hover:bg-green-50 px-2.5 py-1 rounded-lg text-xs font-semibold transition"
-                              title="Save rounds"
-                            >
-                              <Check size={14} />
-                              Save
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => startEditingRounds(candidate)}
-                              className="text-slate-400 hover:text-purple-600 hover:bg-purple-50 p-1.5 rounded-lg transition"
-                              title="Manage rounds"
-                            >
-                              <Settings2 size={16} />
-                            </button>
-                          )}
-                        </div>
-
-                        <div className="grid md:grid-cols-2 gap-3">
-                          {roundsForTimeline.map((round, idx) =>
-                            isEditingRounds ? (
-                              <div
-                                key={round.id}
-                                className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5"
-                              >
-                                <span className="text-xs font-bold text-purple-600 shrink-0">
-                                  R{idx + 1}
-                                </span>
-                                <input
-                                  type="text"
-                                  value={round.label}
-                                  onChange={(e) =>
-                                    handleRoundLabelChange(
-                                      round.id,
-                                      e.target.value
-                                    )
-                                  }
-                                  placeholder="e.g. Technical Round"
-                                  className="flex-1 min-w-0 bg-white text-sm font-medium text-slate-700 outline-none border border-slate-200 focus:border-purple-400 focus:ring-2 focus:ring-purple-100 rounded-md px-2 py-1 transition"
-                                />
+                            <div className="flex items-center gap-2">
+                              {isEditingRounds && (
                                 <button
-                                  onClick={() => handleDeleteRound(round.id)}
-                                  className="text-red-400 hover:text-red-600 hover:bg-red-50 p-1 rounded transition shrink-0"
-                                  title="Remove round"
+                                  onClick={handleAddRound}
+                                  className="flex items-center gap-1 bg-purple-600 hover:bg-purple-700 text-white px-2.5 py-1 rounded-lg text-xs font-semibold transition"
+                                  title="Add new round"
                                 >
-                                  <Trash2 size={14} />
+                                  <Plus size={14} />
+                                  Add Round
                                 </button>
-                              </div>
-                            ) : (
-                              <div
-                                key={round.id}
-                                className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3"
-                              >
-                                <span className="text-xs font-bold text-purple-600">
-                                  Round {idx + 1}
-                                </span>
-                                <p className="text-sm font-medium text-slate-700 mt-0.5">
-                                  {round.label || "Interviewer not set"}
-                                </p>
-                              </div>
-                            )
-                          )}
+                              )}
 
-                          {roundsForTimeline.length === 0 && (
-                            <p className="col-span-2 text-sm text-slate-400 italic">
-                              No interview rounds recorded yet.
-                            </p>
-                          )}
+                              {isEditingRounds ? (
+                                <button
+                                  onClick={() => handleSaveRounds(candidate)}
+                                  className="flex items-center gap-1.5 text-green-600 hover:bg-green-50 px-2.5 py-1 rounded-lg text-xs font-semibold transition"
+                                  title="Save rounds"
+                                >
+                                  <Check size={14} />
+                                  Save
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => startEditingRounds(candidate)}
+                                  className="text-slate-400 hover:text-purple-600 hover:bg-purple-50 p-1.5 rounded-lg transition"
+                                  title="Manage rounds"
+                                >
+                                  <Settings2 size={16} />
+                                </button>
+                              )}
+                            </div>
+                          </div>
 
-                          {isEditingRounds &&
-                            roundsForTimeline.length < MAX_ROUNDS && (
-                              <button
-                                onClick={handleAddRound}
-                                className="col-span-2 flex items-center justify-center gap-1.5 border-2 border-dashed border-purple-300 text-purple-600 hover:bg-purple-50 rounded-xl py-2.5 text-sm font-semibold transition"
-                              >
-                                <Plus size={14} />
-                                Add Round
-                              </button>
+                          <div className="grid md:grid-cols-2 gap-3">
+                            {roundsForTimeline.map((round, idx) =>
+                              isEditingRounds ? (
+                                <div
+                                  key={round.id}
+                                  className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5"
+                                >
+                                  <span className="text-xs font-bold text-purple-600 shrink-0">
+                                    R{idx + 1}
+                                  </span>
+                                  <input
+                                    type="text"
+                                    value={round.label}
+                                    onChange={(e) =>
+                                      handleRoundLabelChange(
+                                        round.id,
+                                        e.target.value
+                                      )
+                                    }
+                                    placeholder="e.g. Technical Round"
+                                    className="flex-1 min-w-0 bg-white text-sm font-medium text-slate-700 outline-none border border-slate-200 focus:border-purple-400 focus:ring-2 focus:ring-purple-100 rounded-md px-2 py-1 transition"
+                                  />
+                                  <button
+                                    onClick={() => handleDeleteRound(round.id)}
+                                    className="text-red-400 hover:text-red-600 hover:bg-red-50 p-1 rounded transition shrink-0"
+                                    title="Remove round"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </div>
+                              ) : (
+                                <div
+                                  key={round.id}
+                                  className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3"
+                                >
+                                  <span className="text-xs font-bold text-purple-600">
+                                    Round {idx + 1}
+                                  </span>
+                                  <p className="text-sm font-medium text-slate-700 mt-0.5">
+                                    {round.label || "Interviewer not set"}
+                                  </p>
+                                </div>
+                              )
                             )}
+
+                            {roundsForTimeline.length === 0 && (
+                              <p className="col-span-2 text-sm text-slate-400 italic">
+                                No interview rounds recorded yet.
+                              </p>
+                            )}
+                          </div>
                         </div>
-                      </div>
+                      )}
 
                       {/* Current Stage banner */}
                       <div className="mt-6 flex items-center gap-2 bg-green-50 border border-green-100 rounded-xl px-5 py-3">
