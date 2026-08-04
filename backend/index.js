@@ -8,7 +8,6 @@ const { Resend } = require('resend');
 const { render } = require('@react-email/components');
 const ReactDOM = require('react-dom/client');
 
-
 // Local extraction tools
 const pdfParse = require('pdf-parse');
 const mammoth = require('mammoth');
@@ -87,7 +86,7 @@ function normalizeDocument(row) {
         fileSizeLabel: formatFileSize(row.file_size || row.fileSize),
         nlpEntities: row.nlp_entities || [],
         username: row.username,
-        documentStatus: row.document_status // Added new field
+        documentStatus: row.document_status
     };
 }
 
@@ -124,7 +123,6 @@ async function extractTextLocally(fileBuffer, originalName, mimeType) {
             const result = await mammoth.extractRawText({ buffer: fileBuffer });
             return result.value;
         } else {
-            // Fallback for txt, csv, json
             return fileBuffer.toString('utf-8');
         }
     } catch (err) {
@@ -134,11 +132,10 @@ async function extractTextLocally(fileBuffer, originalName, mimeType) {
 }
 
 async function analyzeResumeWithOllama(rawText, fileName) {
-    // UPDATED FALLBACK: Strictly mapped to cndpermsave columns
     const safeFilename = fileName.replace(/\.[^/.]+$/, "");
     const fallbackData = {
         cndname: `Unknown Candidate - ${safeFilename}`,
-        cndemail: `unknown@candidate.com`, // Required not-null by DB
+        cndemail: `unknown@candidate.com`,
         cndphone: null,
         cndage: null,
         cndgender: 'N/A',
@@ -157,7 +154,6 @@ async function analyzeResumeWithOllama(rawText, fileName) {
     const sanitizedText = rawText.replace(/[\x00-\x09\x0B-\x0C\x0E-\x1F\x7F]/g, '').trim();
     const truncatedText = sanitizedText.slice(0, 4000);
 
-    // UPDATED PROMPT: Requesting exact DB schema variables directly
     const promptText = `You are an expert HR Data Extraction AI. Extract candidate data from the resume below.
     Return EXACTLY 10 data points in this strictly valid JSON structure. Do NOT use markdown or explain.
     
@@ -180,7 +176,7 @@ async function analyzeResumeWithOllama(rawText, fileName) {
     ${truncatedText}`;
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 120_000); // Wait up to 120 seconds
+    const timeoutId = setTimeout(() => controller.abort(), 120_000); 
 
     try {
         const response = await fetch("http://localhost:11434/api/generate", {
@@ -214,11 +210,10 @@ async function analyzeResumeWithOllama(rawText, fileName) {
             try {
                 const parsedData = JSON.parse(rawContent);
 
-                // Phone numbers must be clean bigints for Postgres
                 let safePhone = null;
                 if (parsedData.cndphone && parsedData.cndphone !== 'N/A') {
                     const onlyNums = String(parsedData.cndphone).replace(/\D/g, '');
-                    if (onlyNums.length > 0) safePhone = onlyNums.slice(0, 15); // prevent bigint overflow
+                    if (onlyNums.length > 0) safePhone = onlyNums.slice(0, 15); 
                 }
 
                 return {
@@ -250,7 +245,6 @@ async function analyzeResumeWithOllama(rawText, fileName) {
     return fallbackData;
 }
 
-
 app.post('/api/warm-ollama', async (req, res) => {
     try {
         const response = await fetch("http://localhost:11434/api/generate", {
@@ -263,7 +257,6 @@ app.post('/api/warm-ollama', async (req, res) => {
         res.status(500).json({ warmed: false, error: err.message });
     }
 });
-
 
 app.post('/api/upload', upload.any(), async (req, res) => {
     try {
@@ -361,6 +354,22 @@ app.post('/api/upload', upload.any(), async (req, res) => {
 
             const docRes = await pool.query(insertDocQuery, docValues);
             console.log(`✅ Document Stored in DB -> cndid: ${docRes.rows[0].cndid}`);
+
+            // 5. NEW: Insert corresponding record into 'document_metadata'
+            const insertMetadataQuery = `
+                INSERT INTO document_metadata (
+                    file_name, file_size, uploaded_at, document_status, username
+                ) VALUES ($1, $2, NOW(), $3, $4)
+            `;
+            const metadataValues = [
+                file.originalname,
+                file.size,
+                'Indexed', // Aligning with the document_status used above
+                username
+            ];
+            
+            await pool.query(insertMetadataQuery, metadataValues);
+            console.log(`✅ Metadata Stored in DB for ${file.originalname}`);
 
             uploadedDocuments.push({
                 id: docRes.rows[0].cndid,
@@ -1016,7 +1025,7 @@ app.post("/hireRadar/managerrequest", async (req, res) => {
             managerid, managerName, managerEmail, department, jobTitle,
             targetDepartment, employmentType, experience, openings,
             location, joiningDate, jobPriority, skills, responsibilities,
-            education, minimumpercentage, salarymin, salarymax,
+            education, minimumpercentage,
             interviewprocess, remarks
         } = req.body;
 
@@ -1031,15 +1040,14 @@ app.post("/hireRadar/managerrequest", async (req, res) => {
                 managerid, manager_name, manager_email, department, job_title, 
                 target_department, employment_type, experience, vacancies, openings, 
                 location, joining_date, priority, skills, jobdescription, 
-                education, minimumpercentage, salary_min, salary_max, interviewprocess, 
+                education, minimumpercentage, interviewprocess, 
                 remarks, status
             ) 
             VALUES (
                 $1, $2, $3, $4, $5, 
                 $6, $7, $8, $9, $10, 
                 $11, $12, $13, $14, $15, 
-                $16, $17, $18, $19, $20, 
-                $21, $22
+                $16, $17, $18, $19, $20
             ) 
             RETURNING *;
         `;
@@ -1048,7 +1056,7 @@ app.post("/hireRadar/managerrequest", async (req, res) => {
             managerIdVal, managerName || null, managerEmail || null, department || null, jobTitle || null,
             targetDepartment || null, employmentType || 'Full Time', experience || null, parsedOpenings, parsedOpenings,
             location || null, targetJoiningDate, jobPriority || 'Medium', skills || null, responsibilities || null,
-            education || null, minimumpercentage || null, minSalary, maxSalary, interviewprocess || null,
+            education || null, minimumpercentage || null, interviewprocess || null,
             remarks || null, 'Pending'
         ];
 
@@ -1099,6 +1107,29 @@ app.get("/hireRadar/managerrequest/:managerid", async (req, res) => {
     }
 });
 
+
+app.delete("/hireRadar/managerrequest/:id", async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        // Execute delete query. 
+        // Note: Change 'request_id' to match your exact primary key column name if different.
+        const deleteData = await pool.query(
+            "DELETE FROM manager_requests WHERE request_id = $1", 
+            [id]
+        );
+
+        if (deleteData.rowCount === 0) {
+            return res.status(404).json({ success: false, message: "Request not found" });
+        }
+
+        res.json({ success: true, message: "Manager request deleted successfully." });
+    } catch (err) {
+        console.error("delete managerrequest error:", err.message);
+        res.status(500).json({ error: "Server error during deletion." });
+    }
+});
+
 app.put("/hireRadar/managerrequeststatus/:requestid", async (req, res) => {
     try {
         const { requestid } = req.params;
@@ -1125,18 +1156,18 @@ app.put("/hireRadar/managerrequeststatus/:requestid", async (req, res) => {
 });
 
 
-// Add this near your other API routes in server.js/index.js
 
 app.get('/api/dashboard-stats', async (req, res) => {
     try {
         // 1. Manifest Totals
+        // Removed extracted_text condition as it is not in document_metadata
         const manifestQuery = `
             SELECT
                 COUNT(*) as total,
-                COUNT(*) FILTER (WHERE document_status = 'Indexed' OR (extracted_text IS NOT NULL AND extracted_text != '')) as parsed,
+                COUNT(*) FILTER (WHERE document_status = 'Indexed') as parsed,
                 COUNT(*) FILTER (WHERE document_status = 'Failed' OR document_status = 'Error') as failed,
                 COUNT(*) FILTER (WHERE DATE(uploaded_at) = CURRENT_DATE) as today
-            FROM document_search_index;
+            FROM document_metadata;
         `;
 
         // 2. Trend (Uploads over the last 6 months)
@@ -1144,19 +1175,20 @@ app.get('/api/dashboard-stats', async (req, res) => {
             SELECT
                 TO_CHAR(DATE_TRUNC('month', uploaded_at), 'Mon') as month,
                 COUNT(*) as value
-            FROM document_search_index
+            FROM document_metadata
             WHERE uploaded_at >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '5 months'
             GROUP BY DATE_TRUNC('month', uploaded_at)
             ORDER BY DATE_TRUNC('month', uploaded_at) ASC;
         `;
 
         // 3. File Types Distribution
+        // Uses regex to extract the extension from file_name (e.g., "resume.pdf" -> "PDF")
         const fileTypesQuery = `
             SELECT
-                UPPER(extension) as label,
+                COALESCE(UPPER(SUBSTRING(file_name FROM '\\.([^\\.]+)$')), 'UNKNOWN') as label,
                 COUNT(*) as count
-            FROM document_search_index
-            GROUP BY UPPER(extension)
+            FROM document_metadata
+            GROUP BY label
             ORDER BY count DESC
             LIMIT 5;
         `;
@@ -1168,7 +1200,7 @@ app.get('/api/dashboard-stats', async (req, res) => {
                 username,
                 uploaded_at,
                 document_status
-            FROM document_search_index
+            FROM document_metadata
             ORDER BY uploaded_at DESC
             LIMIT 5;
         `;
