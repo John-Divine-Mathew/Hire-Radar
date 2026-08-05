@@ -1,6 +1,4 @@
 import React, { useState } from "react";
-import { useMsal } from "@azure/msal-react";
-import { msalConfig } from "../authconfig.js"; // Ensure this matches your authConfig.js export
 import Sidebar from "../components/sideBar/sideBar";
 import Navbar from "../components/navBar/navBar";
 import {
@@ -13,14 +11,7 @@ import {
   Trash2,
   Plus,
   CheckCircle2,
-<<<<<<< Updated upstream
-  Clock,
-  Briefcase,
-=======
->>>>>>> Stashed changes
   Users,
-  Video, // <-- Added for Teams Meeting
-  LogIn, // <-- Added for MS Login
 } from "lucide-react";
 
 // Moved outside to prevent unnecessary re-renders
@@ -80,86 +71,6 @@ const Pill = ({ color, children }) => {
 };
 
 export default function FilterCandidate() {
-  // ---------- Microsoft Authentication & Graph API Setup ----------
-  const { instance, accounts } = useMsal();
-  const isAuthenticated = accounts.length > 0;
-
-  const handleLogin = () => {
-    instance.loginPopup(loginRequest).catch((e) => console.error(e));
-  };
-
-  const scheduleTeamsMeeting = async (candidate) => {
-    if (!isAuthenticated) {
-      alert("Please connect your Microsoft account first!");
-      return;
-    }
-
-    try {
-      // 1. Silently acquire the token with Calendars.ReadWrite permission
-      const response = await instance.acquireTokenSilent({
-        ...loginRequest,
-        account: accounts[0],
-      });
-
-      // 2. Schedule for tomorrow at 10:00 AM (for demonstration purposes)
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      tomorrow.setHours(10, 0, 0, 0);
-      const endTime = new Date(tomorrow);
-      endTime.setHours(11, 0, 0, 0);
-
-      // 3. Define Graph API Payload
-      const eventPayload = {
-        subject: `Interview: ${candidate.name} - ${candidate.role}`,
-        body: {
-          contentType: "HTML",
-          content: `Please join this Teams meeting for your ${candidate.status}.`,
-        },
-        start: {
-          dateTime: tomorrow.toISOString(),
-          timeZone: "UTC",
-        },
-        end: {
-          dateTime: endTime.toISOString(),
-          timeZone: "UTC",
-        },
-        isOnlineMeeting: true,
-        onlineMeetingProvider: "teamsForBusiness",
-        isReminderOn: true,
-        reminderMinutesBeforeStart: 15, // 15 minute reminder
-      };
-
-      // 4. Send the request
-      const graphResponse = await fetch(
-        "https://graph.microsoft.com/v1.0/me/events",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${response.accessToken}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(eventPayload),
-        }
-      );
-
-      if (graphResponse.ok) {
-        const data = await graphResponse.json();
-        alert(`Meeting created successfully!\n\nJoin URL: ${data.onlineMeeting.joinUrl}`);
-      } else {
-        const error = await graphResponse.json();
-        console.error(error);
-        alert("Failed to create Teams meeting. Check console for details.");
-      }
-    } catch (error) {
-      console.error("Error scheduling meeting:", error);
-      // Fallback if silent token acquisition fails
-      if (error.name === "InteractionRequiredAuthError") {
-        instance.acquireTokenPopup(loginRequest);
-      }
-    }
-  };
-  // -----------------------------------------------------------------
-
   const [search, setSearch] = useState("");
 
   // Freshly initialized with exactly the 6 requested rounds
@@ -329,34 +240,15 @@ export default function FilterCandidate() {
         {/* Main Content Area */}
         <div className="flex flex-1 flex-col bg-slate-50 overflow-y-auto w-full">
           <div className="p-6 w-full flex flex-col gap-6">
-            
-            {/* Header with MSAL Auth */}
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-4">
-                <h1 className="text-4xl font-bold text-gray-900">
-                  Filter Candidates
-                </h1>
-                <div className="h-8 border-l-2 border-slate-300 hidden md:block"></div>
-                <span className="text-slate-500 text-sm font-medium bg-slate-200/60 px-3 py-1 rounded-full hidden md:inline-block">
-                  Smart Candidate Tracking
-                </span>
-              </div>
-
-              {/* Login Status & Button */}
-              {!isAuthenticated ? (
-                <button
-                  onClick={handleLogin}
-                  className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-xl text-sm font-semibold transition shadow-sm"
-                >
-                  <LogIn size={18} />
-                  Connect Microsoft
-                </button>
-              ) : (
-                <div className="text-sm font-medium text-slate-700 bg-white border border-slate-200 shadow-sm px-4 py-2 rounded-xl flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                  {accounts[0]?.name}
-                </div>
-              )}
+            {/* Header */}
+            <div className="flex items-center gap-4 mb-2">
+              <h1 className="text-4xl font-bold text-gray-900">
+                Filter Candidates
+              </h1>
+              <div className="h-8 border-l-2 border-slate-300 hidden md:block"></div>
+              <span className="text-slate-500 text-sm font-medium bg-slate-200/60 px-3 py-1 rounded-full hidden md:inline-block">
+                Smart Candidate Tracking
+              </span>
             </div>
 
             {/* Search Bar */}
@@ -465,25 +357,13 @@ export default function FilterCandidate() {
                               </button>
                             </>
                           ) : (
-                            <>
-                              {/* Graph API: Schedule Teams Meeting Button */}
-                              <button
-                                onClick={() => scheduleTeamsMeeting(candidate)}
-                                className="text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50 p-1.5 rounded-lg transition"
-                                title="Schedule Teams Meeting"
-                              >
-                                <Video size={18} />
-                              </button>
-
-                              {/* Edit Progress Button */}
-                              <button
-                                onClick={() => startEditingStage(candidate)}
-                                className="text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 p-1.5 rounded-lg transition"
-                                title="Edit progress"
-                              >
-                                <Edit3 size={18} />
-                              </button>
-                            </>
+                            <button
+                              onClick={() => startEditingStage(candidate)}
+                              className="text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 p-1.5 rounded-lg transition"
+                              title="Edit progress"
+                            >
+                              <Edit3 size={18} />
+                            </button>
                           )}
 
                           <button
@@ -679,10 +559,7 @@ export default function FilterCandidate() {
 
                       {/* Current Stage banner */}
                       <div className="mt-6 flex items-center gap-2 bg-green-50 border border-green-100 rounded-xl px-5 py-3">
-                        <CheckCircle2
-                          size={16}
-                          className="text-green-600 shrink-0"
-                        />
+                        <CheckCircle2 size={16} className="text-green-600 shrink-0" />
                         <span className="text-sm font-bold text-green-700">
                           Current Stage:
                         </span>

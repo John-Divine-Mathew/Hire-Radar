@@ -22,7 +22,9 @@ import {
   Info,
   Save,
   CheckCircle2,
+  Calendar,
 } from "lucide-react";
+import { InlineCalendarBooking } from "../../pages/savedCandidates";
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -38,6 +40,7 @@ const Navbar = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [activeTab, setActiveTab] = useState("company");
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [showNavBooking, setShowNavBooking] = useState(false);
 
   // 2. Fetch authenticated user from auth utility
   const authUser = getAuthUser();
@@ -118,6 +121,36 @@ const Navbar = () => {
     setTimeout(() => setSavedSuccess(false), 3000);
   };
 
+  // Quick booking from navbar - simple send email handler
+  const handleNavSendEmail = async (bookingDetails) => {
+    try {
+      const payload = {
+        candidateName: bookingDetails?.date ? bookingDetails.date : bookingDetails?.candidateName || 'Quick Booking',
+        startTime: bookingDetails.startIsoString || bookingDetails.startTime || null,
+        endTime: bookingDetails.endIsoString || bookingDetails.endTime || null,
+        email: bookingDetails.email || undefined,
+        username: bookingDetails.username || undefined,
+        password: bookingDetails.password || undefined,
+        targetRole: bookingDetails.targetRole || 'Not specified'
+      };
+
+      // Call same sendemail endpoint used by savedCandidates (best-effort)
+      await fetch("http://localhost:5000/hireRadar/sendemail", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      setShowNavBooking(false);
+      setSavedSuccess(true);
+      setTimeout(() => setSavedSuccess(false), 3000);
+    } catch (err) {
+      console.error('Navbar booking email error:', err.message || err);
+      setShowNavBooking(false);
+    }
+  };
+
+
   const navItems = [
     { id: "company", label: "Company Settings", icon: Building2 },
     { id: "profile", label: "User Profile", icon: User },
@@ -158,6 +191,16 @@ const Navbar = () => {
 
           {/* Controls */}
           <div className="flex items-center gap-3">
+            {/* Calendar quick-book button */}
+            <div>
+              <button
+                onClick={() => setShowNavBooking(true)}
+                title="Quick Book"
+                className="p-2 rounded-lg hover:bg-slate-100 transition text-slate-600"
+              >
+                <Calendar className="w-5 h-5" />
+              </button>
+            </div>
             
             {/* Search Input */}
             <div className="hidden sm:flex group relative h-10 w-10 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 transition-all duration-200 hover:w-56 focus-within:w-56 focus-within:border-purple-400 focus-within:bg-white">
@@ -222,6 +265,17 @@ const Navbar = () => {
           </div>
         </div>
       </nav>
+
+      {showNavBooking && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <InlineCalendarBooking
+            candidateName={"Quick Booking"}
+            onClose={() => setShowNavBooking(false)}
+            onSendEmail={handleNavSendEmail}
+            isHR={true}
+          />
+        </div>
+      )}
 
       {/* SETTINGS MODAL OVERLAY */}
       {showSettings && (
