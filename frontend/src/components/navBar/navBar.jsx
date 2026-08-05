@@ -22,9 +22,11 @@ import {
   Info,
   Save,
   CheckCircle2,
-  Calendar,
+  Calendar as CalendarIcon,
+  Clock,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
-import { InlineCalendarBooking } from "../../pages/savedCandidates";
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -40,7 +42,37 @@ const Navbar = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [activeTab, setActiveTab] = useState("company");
   const [savedSuccess, setSavedSuccess] = useState(false);
-  const [showNavBooking, setShowNavBooking] = useState(false);
+
+  // Calendar & Booking Modal States
+  const [showCalendarModal, setShowCalendarModal] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [selectedSlot, setSelectedSlot] = useState(null);
+  const [bookingConfirmed, setBookingConfirmed] = useState(false);
+
+  // Real-time Clock & Date State
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Format date and time
+  const formattedDate = currentTime.toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+
+  const formattedTime = currentTime.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
 
   // 2. Fetch authenticated user from auth utility
   const authUser = getAuthUser();
@@ -72,7 +104,7 @@ const Navbar = () => {
 
   const initial = displayName?.[0]?.toUpperCase() || "H";
 
-  // 5. Save incoming location.state user data to localStorage so it stays accessible on all subsequent page navigations
+  // 5. Save incoming location.state user data to localStorage
   useEffect(() => {
     if (name || email) {
       const existingUser = fallbackUser || {};
@@ -102,7 +134,6 @@ const Navbar = () => {
     designation: "Senior HR Manager",
   });
 
-  // Keep user profile settings inputs in sync if displayName resolves
   useEffect(() => {
     setUserProfile((prev) => ({
       ...prev,
@@ -113,43 +144,12 @@ const Navbar = () => {
 
   const handleSaveSettings = (e) => {
     e.preventDefault();
-    // Persist updated profile name to localStorage as well
     const updatedUser = { ...(fallbackUser || {}), name: userProfile.name, email: userProfile.email };
     localStorage.setItem("user", JSON.stringify(updatedUser));
     
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 3000);
   };
-
-  // Quick booking from navbar - simple send email handler
-  const handleNavSendEmail = async (bookingDetails) => {
-    try {
-      const payload = {
-        candidateName: bookingDetails?.date ? bookingDetails.date : bookingDetails?.candidateName || 'Quick Booking',
-        startTime: bookingDetails.startIsoString || bookingDetails.startTime || null,
-        endTime: bookingDetails.endIsoString || bookingDetails.endTime || null,
-        email: bookingDetails.email || undefined,
-        username: bookingDetails.username || undefined,
-        password: bookingDetails.password || undefined,
-        targetRole: bookingDetails.targetRole || 'Not specified'
-      };
-
-      // Call same sendemail endpoint used by savedCandidates (best-effort)
-      await fetch("http://localhost:5000/hireRadar/sendemail", {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      setShowNavBooking(false);
-      setSavedSuccess(true);
-      setTimeout(() => setSavedSuccess(false), 3000);
-    } catch (err) {
-      console.error('Navbar booking email error:', err.message || err);
-      setShowNavBooking(false);
-    }
-  };
-
 
   const navItems = [
     { id: "company", label: "Company Settings", icon: Building2 },
@@ -165,6 +165,27 @@ const Navbar = () => {
     { id: "security", label: "Security", icon: Lock },
     { id: "backup", label: "Backup & Restore", icon: Database },
     { id: "about", label: "About", icon: Info },
+  ];
+
+  // Calendar Helper Functions
+  const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
+  const getFirstDayOfMonth = (year, month) => new Date(year, month, 1).getDay();
+
+  const handlePrevMonth = () => {
+    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
+  };
+
+  const handleNextMonth = () => {
+    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
+  };
+
+  const availableSlots = [
+    "09:00 AM - 09:30 AM",
+    "10:00 AM - 10:30 AM",
+    "11:30 AM - 12:00 PM",
+    "02:00 PM - 02:30 PM",
+    "03:30 PM - 04:00 PM",
+    "04:30 PM - 05:00 PM",
   ];
 
   return (
@@ -191,16 +212,6 @@ const Navbar = () => {
 
           {/* Controls */}
           <div className="flex items-center gap-3">
-            {/* Calendar quick-book button */}
-            <div>
-              <button
-                onClick={() => setShowNavBooking(true)}
-                title="Quick Book"
-                className="p-2 rounded-lg hover:bg-slate-100 transition text-slate-600"
-              >
-                <Calendar className="w-5 h-5" />
-              </button>
-            </div>
             
             {/* Search Input */}
             <div className="hidden sm:flex group relative h-10 w-10 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 transition-all duration-200 hover:w-56 focus-within:w-56 focus-within:border-purple-400 focus-within:bg-white">
@@ -213,6 +224,25 @@ const Navbar = () => {
                 placeholder="Search candidates..."
                 className="h-full w-full bg-transparent pl-9 pr-3 text-sm opacity-0 outline-none transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
               />
+            </div>
+
+            {/* Real-time Calendar & Clock Widget (Clickable) */}
+            <div 
+              onClick={() => setShowCalendarModal(true)}
+              className="hidden md:flex items-center gap-3 px-3.5 py-1.5 bg-purple-50/70 border border-purple-200/60 rounded-xl shadow-2xs cursor-pointer hover:bg-purple-100/70 transition"
+            >
+              <div className="p-1.5 bg-purple-600 text-white rounded-lg shadow-2xs">
+                <CalendarIcon className="w-4 h-4" />
+              </div>
+              <div className="flex flex-col text-left">
+                <span className="text-xs font-bold text-purple-900 leading-tight">
+                  {formattedDate}
+                </span>
+                <span className="text-[11px] font-semibold text-purple-700/80 flex items-center gap-1 mt-0.5">
+                  <Clock className="w-3 h-3 text-purple-600" />
+                  {formattedTime}
+                </span>
+              </div>
             </div>
 
             {/* Profile Avatar Dropdown */}
@@ -235,7 +265,6 @@ const Navbar = () => {
                     <p className="text-xs text-slate-500 truncate">{displayEmail}</p>
                   </div>
 
-                  {/* TRIGGERS SETTINGS MODAL */}
                   <button
                     onClick={() => {
                       setShowUserMenu(false);
@@ -247,7 +276,6 @@ const Navbar = () => {
                     Settings
                   </button>
 
-                  {/* TRIGGERS LOGOUT CONFIRMATION */}
                   <button
                     onClick={() => {
                       setShowUserMenu(false);
@@ -266,14 +294,143 @@ const Navbar = () => {
         </div>
       </nav>
 
-      {showNavBooking && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <InlineCalendarBooking
-            candidateName={"Quick Booking"}
-            onClose={() => setShowNavBooking(false)}
-            onSendEmail={handleNavSendEmail}
-            isHR={true}
-          />
+      {/* CALENDAR & SLOT BOOKING MODAL */}
+      {showCalendarModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-slate-200">
+            
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-purple-100 rounded-xl text-purple-700">
+                  <CalendarIcon className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900">Schedule Interview Slot</h2>
+                  <p className="text-xs text-slate-500">Pick a date and choose an available time slot</p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setShowCalendarModal(false);
+                  setSelectedSlot(null);
+                  setBookingConfirmed(false);
+                }}
+                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-full transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
+              
+              {/* Left Column: Calendar View */}
+              <div className="border-r sm:pr-6 border-slate-100 flex flex-col">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="font-bold text-slate-800 text-sm">
+                    {currentMonth.toLocaleString("default", { month: "long" })} {currentMonth.getFullYear()}
+                  </h3>
+                  <div className="flex gap-1">
+                    <button onClick={handlePrevMonth} className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600">
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <button onClick={handleNextMonth} className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600">
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Weekdays Header */}
+                <div className="grid grid-cols-7 text-center text-[11px] font-bold text-slate-400 mb-2">
+                  <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
+                </div>
+
+                {/* Days Grid */}
+                <div className="grid grid-cols-7 gap-1 text-xs">
+                  {Array.from({ length: getFirstDayOfMonth(currentMonth.getFullYear(), currentMonth.getMonth()) }).map((_, i) => (
+                    <div key={`empty-${i}`} />
+                  ))}
+                  {Array.from({ length: getDaysInMonth(currentMonth.getFullYear(), currentMonth.getMonth()) }).map((_, i) => {
+                    const dayNum = i + 1;
+                    const dateObj = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), dayNum);
+                    const isSelected = selectedDate.toDateString() === dateObj.toDateString();
+
+                    return (
+                      <button
+                        key={dayNum}
+                        onClick={() => {
+                          setSelectedDate(dateObj);
+                          setSelectedSlot(null);
+                          setBookingConfirmed(false);
+                        }}
+                        className={`h-8 w-8 mx-auto rounded-full flex items-center justify-center font-semibold transition ${
+                          isSelected
+                            ? "bg-purple-600 text-white shadow-sm"
+                            : "hover:bg-purple-50 text-slate-700"
+                        }`}
+                      >
+                        {dayNum}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Right Column: Time Slots */}
+              <div className="flex flex-col justify-between">
+                <div>
+                  <h3 className="font-bold text-slate-800 text-sm mb-2">
+                    Available Slots for {selectedDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                  </h3>
+                  
+                  {bookingConfirmed ? (
+                    <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-center space-y-2 mt-6">
+                      <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto" />
+                      <p className="text-xs font-bold text-emerald-800">Slot Booked Successfully!</p>
+                      <p className="text-[11px] text-emerald-600">
+                        {selectedDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} at {selectedSlot}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2 mt-2 max-h-52 overflow-y-auto pr-1">
+                      {availableSlots.map((slot, idx) => {
+                        const isSlotSelected = selectedSlot === slot;
+                        return (
+                          <button
+                            key={idx}
+                            onClick={() => setSelectedSlot(slot)}
+                            className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-semibold border transition ${
+                              isSlotSelected
+                                ? "border-purple-600 bg-purple-50 text-purple-700"
+                                : "border-slate-200 hover:bg-slate-50 text-slate-700"
+                            }`}
+                          >
+                            {slot}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {!bookingConfirmed && (
+                  <button
+                    disabled={!selectedSlot}
+                    onClick={() => setBookingConfirmed(true)}
+                    className={`w-full mt-4 py-2.5 rounded-xl text-xs font-semibold transition ${
+                      selectedSlot
+                        ? "bg-purple-600 hover:bg-purple-700 text-white shadow-sm"
+                        : "bg-slate-100 text-slate-400 cursor-not-allowed"
+                    }`}
+                  >
+                    Confirm Booking Slot
+                  </button>
+                )}
+              </div>
+
+            </div>
+          </div>
         </div>
       )}
 
@@ -337,7 +494,6 @@ const Navbar = () => {
               <div className="md:col-span-3 p-6 overflow-y-auto bg-white">
                 <form onSubmit={handleSaveSettings} className="space-y-6">
                   
-                  {/* 1. Company Settings */}
                   {activeTab === "company" && (
                     <div className="space-y-4">
                       <h3 className="font-bold text-slate-800 text-base pb-2 border-b">Company Settings</h3>
@@ -362,7 +518,6 @@ const Navbar = () => {
                     </div>
                   )}
 
-                  {/* 2. User Profile */}
                   {activeTab === "profile" && (
                     <div className="space-y-4">
                       <h3 className="font-bold text-slate-800 text-base pb-2 border-b">User Profile</h3>
@@ -379,7 +534,6 @@ const Navbar = () => {
                     </div>
                   )}
 
-                  {/* 3. Roles & Permissions */}
                   {activeTab === "roles" && (
                     <div className="space-y-3">
                       <h3 className="font-bold text-slate-800 text-base pb-2 border-b">Roles & Permissions</h3>
@@ -392,7 +546,6 @@ const Navbar = () => {
                     </div>
                   )}
 
-                  {/* 4. Recruitment Settings */}
                   {activeTab === "recruitment" && (
                     <div className="space-y-4">
                       <h3 className="font-bold text-slate-800 text-base pb-2 border-b">Recruitment Settings</h3>
@@ -407,7 +560,6 @@ const Navbar = () => {
                     </div>
                   )}
 
-                  {/* Fallback for rest of features */}
                   {!["company", "profile", "roles", "recruitment"].includes(activeTab) && (
                     <div className="space-y-4">
                       <h3 className="font-bold text-slate-800 text-base pb-2 border-b capitalize">{activeTab} Settings</h3>
@@ -418,7 +570,6 @@ const Navbar = () => {
                     </div>
                   )}
 
-                  {/* Save Action */}
                   <div className="pt-4 border-t flex justify-end">
                     <button
                       type="submit"
@@ -454,7 +605,7 @@ const Navbar = () => {
               <button
                 onClick={() => {
                   logoutUser();
-                  localStorage.clear(); // Flushes cached localStorage user data on logout
+                  localStorage.clear();
                   setShowLogoutConfirm(false);
                   navigate("/");
                 }}

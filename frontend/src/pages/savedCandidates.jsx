@@ -1251,5 +1251,3 @@ function SavedCandidates() {
 }
 
 export default SavedCandidates;
-
-export { InlineCalendarBooking };
