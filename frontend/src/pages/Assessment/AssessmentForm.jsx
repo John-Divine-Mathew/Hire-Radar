@@ -63,7 +63,7 @@ function AssessmentForm() {
     }, 4000);
   };
 
-  // Submit Details (Returns true on success, false on failure)
+
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
     setIsSubmitting(true);
@@ -298,7 +298,7 @@ function AssessmentForm() {
               <button
                 type="button"
                 // Button is disabled if submitting, already taken, OR window is closed
-                disabled={isSubmitting || !!result || !isWindowOpen}
+                disabled={isSubmitting || result || !isWindowOpen}
                 onClick={startAssessment}
                 className={`w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 text-white font-semibold rounded-xl active:transform active:scale-[0.99] transition shadow-md text-sm
                   ${(!isSubmitting && !result && isWindowOpen) 
