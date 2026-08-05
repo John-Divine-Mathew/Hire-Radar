@@ -719,7 +719,7 @@ app.post("/hireRadar/updateTestDetails", async (req, res) => {
 
 app.get("/hireRadar/testquestions", async (req, res) => {
     try {
-        const allData = await pool.query("SELECT * FROM questions");
+        const allData = await pool.query("SELECT * FROM questions order by qno");
         res.json(allData.rows);
     } catch (err) {
         console.error("testquestions error:", err.message);
