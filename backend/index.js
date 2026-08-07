@@ -1004,7 +1004,7 @@ app.post("/hireRadar/sendemail", async (req, res) => {
 
         const { data, error } = await resend.emails.send({
             from: "Hirotec India <onboarding@resend.dev>", 
-            to: 'vijayanandhaj@gmail.com',
+            to: 'bharathsnehan011@gmail.com',
             subject: `${candidateName}, your Test is Scheduled`,
             html: emailHtml, 
         });
