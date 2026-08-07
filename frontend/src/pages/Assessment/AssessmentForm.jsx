@@ -17,43 +17,39 @@ function AssessmentForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isWindowOpen, setIsWindowOpen] = useState(false); // Track if test is active
   const [isEarly, setIsEarly] = useState(false); // Track if user is early
+  const [isLate, setIsLate] = useState(false); // Track if user is late
 
-  // Setup the time checker
+// Setup the time checker
   useEffect(() => {
     // STRICT MODE: If the dates are missing from state, strictly block entry.
-    if (!teststart || !testend || !testdate) {
+    if (!teststart || !testend) {
       setIsWindowOpen(false); 
       return;
     }
 
+    // Convert "YYYY-MM-DD HH:mm:ss" to "YYYY-MM-DDTHH:mm:ss" for accurate JS Date parsing
     const testStartObj = new Date(teststart.replace(" ", "T"));
     const testEndObj = new Date(testend.replace(" ", "T"));
-    
-    const istDateFormatter = new Intl.DateTimeFormat('en-CA', { 
-      timeZone: 'Asia/Kolkata', 
-      year: 'numeric', 
-      month: '2-digit', 
-      day: '2-digit' 
-    });
 
     const checkTime = () => {
       const now = new Date();
-      const currentDateStr = istDateFormatter.format(now);
       
-      const isDateValid = currentDateStr === testdate;
+      // Let the Date objects handle both Date and Time validation simultaneously
       const isTimeValid = now >= testStartObj && now <= testEndObj;
 
-      setIsWindowOpen(isDateValid && isTimeValid);
+      setIsWindowOpen(isTimeValid);
       
       // Check if the current time is before the scheduled start time
       setIsEarly(now < testStartObj); 
+      // Check if the current time is after the scheduled end time
+      setIsLate(now > testEndObj); 
     };
 
     checkTime(); // Check immediately
     const intervalId = setInterval(checkTime, 1000); // Re-evaluate every second
 
     return () => clearInterval(intervalId);
-  }, [teststart, testend, testdate]);
+  }, [teststart, testend]);
 
   // Helper to trigger timed status notifications
   const showNotification = (text, type = "success") => {
@@ -63,7 +59,7 @@ function AssessmentForm() {
     }, 4000);
   };
 
-  // Submit Details (Returns true on success, false on failure)
+
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
     setIsSubmitting(true);
@@ -141,6 +137,23 @@ function AssessmentForm() {
     showNotification("Form fields cleared.", "info");
   };
 
+
+
+  let displayDate = "TBD";
+  let displayStartTime = "";
+  let displayEndTime = "";
+
+  if (teststart && testend) {
+    const startD = new Date(teststart);
+    const endD = new Date(testend);
+    
+    // Formats to: "Aug 4, 2026"
+    displayDate = startD.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+    // Formats to: "12:00 PM"
+    displayStartTime = startD.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+    displayEndTime = endD.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 sm:p-6 lg:p-8 font-sans antialiased text-slate-800">
       <div className="w-full max-w-xl bg-white border border-slate-100 shadow-2xl rounded-2xl overflow-hidden transition-all duration-300">
@@ -172,11 +185,11 @@ function AssessmentForm() {
               <div>
                 {isWindowOpen ? (
                   <>
-                    <span className="font-semibold">Test Open:</span> You should take the test within given interval. Scheduled for: {testdate} between {teststart?.split(" ")[1]} and {testend?.split(" ")[1]}.
+                    <span className="font-semibold">Test Open:</span> You should take the test within given interval. Scheduled for: {displayDate} between {displayStartTime} and {displayEndTime}.
                   </>
                 ) : (
                   <>
-                    <span className="font-semibold">Test Closed:</span> The test window is not currently active. Scheduled for: {testdate} between {teststart?.split(" ")[1]} and {testend?.split(" ")[1]}.
+                    <span className="font-semibold">Test Closed:</span> The test window is not currently active. Scheduled for: {displayDate} between {displayStartTime} and {displayEndTime}.
                   </>
                 )}
               </div>
@@ -191,6 +204,17 @@ function AssessmentForm() {
               </svg>
               <div>
                 <span className="font-semibold">Notice:</span> You have arrived early. Please wait and come back during your allotted time window.
+              </div>
+            </div>
+          )}
+          {/* Contextual Banner if Too Late */}
+          {isLate && !isWindowOpen && !result && (
+            <div className="mb-6 flex items-start gap-3 bg-orange-50 border border-orange-200 text-orange-800 p-4 rounded-xl text-sm">
+              <svg className="w-5 h-5 text-orange-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div>
+                <span className="font-semibold">Notice:</span> You have arrived after your allotted time window. The assessment is no longer available.
               </div>
             </div>
           )}
@@ -298,7 +322,7 @@ function AssessmentForm() {
               <button
                 type="button"
                 // Button is disabled if submitting, already taken, OR window is closed
-                disabled={isSubmitting || !!result || !isWindowOpen}
+                disabled={isSubmitting || result || !isWindowOpen}
                 onClick={startAssessment}
                 className={`w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 text-white font-semibold rounded-xl active:transform active:scale-[0.99] transition shadow-md text-sm
                   ${(!isSubmitting && !result && isWindowOpen) 

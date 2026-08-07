@@ -41,23 +41,21 @@ const AdminLogin = () => {
     let testend;
     let testdate;
 
-    for (const i of credentialsList) {
-
+for (const i of credentialsList) {
       if (
         i.username === userName &&
         i.password === password
       ) {
-
         flag = 1;
         cndid = i.cndid;
         result = i.testresult ? true : false; 
         email = i.personalemail;
         role = i.targetrole;
-        teststart = teststart;
-        testend = testend;
-        testdate = testdate;
-      }
 
+        teststart = i.teststart;
+        testend = i.testend;
+        testdate = i.testdate;
+      }
     }
 
     if (

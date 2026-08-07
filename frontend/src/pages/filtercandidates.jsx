@@ -11,6 +11,8 @@ import {
   Trash2,
   Plus,
   CheckCircle2,
+  Clock,
+  Briefcase,
   Users,
 } from "lucide-react";
 
