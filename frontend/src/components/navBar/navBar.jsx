@@ -64,6 +64,18 @@ function generateTimeSlots(startMinutes, endMinutes) {
   return slots;
 }
 
+// --- DEPARTMENT ROLES ---
+const baseRoles = [
+  'Software Development', 'Automation', 'Mechanical',
+  'Quality Assurance', 'Human Resource', 'Production'
+];
+
+const extendedRoles = baseRoles.flatMap(role => [
+  role,
+  `Senior ${role}`,
+  `Super Senior ${role}`
+]);
+
 // --- GLOBAL CALENDAR MODAL COMPONENT ---
 function GlobalCalendarModal({ onClose }) {
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
@@ -79,10 +91,23 @@ function GlobalCalendarModal({ onClose }) {
   // Controls expanding/collapsing of the slots panel
   const [showSlots, setShowSlots] = useState(true); 
 
-  // Global specific states (Asked during email/department prompt)
-  const [manualCandidateName, setManualCandidateName] = useState("");
-  const [manualCandidateEmail, setManualCandidateEmail] = useState("");
-  const [manualDepartment, setManualDepartment] = useState("");
+  // --- NEW: Global specific states for Candidates and Departments ---
+  const [candidates, setCandidates] = useState([]);
+  const [selectedCandidateId, setSelectedCandidateId] = useState("");
+  const [selectedDepartment, setSelectedDepartment] = useState(extendedRoles[0]);
+
+  // Fetch candidates from cndpermsave on load
+  useEffect(() => {
+    fetch("http://localhost:5000/hireRadar/cndpermsave")
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.length > 0) {
+          setCandidates(data);
+          setSelectedCandidateId(data[0].cndid);
+        }
+      })
+      .catch(err => console.error("Error fetching candidates:", err));
+  }, []);
 
   const monthNames = [
     "January", "February", "March", "April", "May", "June",
@@ -132,10 +157,57 @@ function GlobalCalendarModal({ onClose }) {
     setShowEmailPrompt(true); // Triggers the prompt for Candidate Name & Department
   };
 
-  const handleConfirmSendEmail = () => {
-    console.log("Sending email to:", manualCandidateName, manualDepartment);
-    setEmailStatus('sent');
-    setIsBooked(true);
+  const handleConfirmSendEmail = async () => {
+    if (!selectedCandidateId) {
+        alert("Please select a candidate.");
+        return;
+    }
+
+    try {
+      const dateObj = new Date(currentYear, currentMonth, selectedDate);
+      
+      // Parse Start Time
+      const [startHourStr, startMinStr, startMod] = selectedSlot.split(/[:\s]/);
+      let startH = parseInt(startHourStr);
+      if (startMod === 'PM' && startH !== 12) startH += 12;
+      if (startMod === 'AM' && startH === 12) startH = 0;
+      
+      const startTime = new Date(dateObj);
+      startTime.setHours(startH, parseInt(startMinStr), 0);
+      
+      // Parse End Time
+      const [endHourStr, endMinStr, endMod] = activeRange.endLabel.split(/[:\s]/);
+      let endH = parseInt(endHourStr);
+      if (endMod === 'PM' && endH !== 12) endH += 12;
+      if (endMod === 'AM' && endH === 12) endH = 0;
+      
+      const endTime = new Date(dateObj);
+      endTime.setHours(endH, parseInt(endMinStr), 0);
+
+      const payload = {
+        cndid: selectedCandidateId,
+        department: selectedDepartment,
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+        date: dateObj.toISOString()
+      };
+
+      const res = await fetch("http://localhost:5000/hireRadar/sendemail", {
+         method: "POST",
+         headers: { "Content-Type": "application/json" },
+         body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+         setEmailStatus('sent');
+         setIsBooked(true);
+      } else {
+         console.error("Failed to send email.");
+         alert("Failed to send email. Please check server logs.");
+      }
+    } catch (e) {
+       console.error("Booking Error:", e);
+    }
   };
 
   const isPastDate = (day) => {
@@ -288,34 +360,31 @@ function GlobalCalendarModal({ onClose }) {
                   
                   <div className="space-y-4 mb-6">
                     <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-1">Candidate Name</label>
-                      <input 
-                        type="text" 
-                        value={manualCandidateName} 
-                        onChange={(e) => setManualCandidateName(e.target.value)} 
-                        className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:border-purple-700 focus:ring-1 focus:ring-purple-700" 
-                        placeholder="Enter candidate name" 
-                      />
+                      <label className="block text-xs font-semibold text-gray-700 mb-1">Select Candidate</label>
+                      <select 
+                        value={selectedCandidateId} 
+                        onChange={(e) => setSelectedCandidateId(e.target.value)} 
+                        className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:border-purple-700 focus:ring-1 focus:ring-purple-700"
+                      >
+                        <option value="" disabled>Select a candidate</option>
+                        {candidates.map(c => (
+                          <option key={c.cndid} value={c.cndid}>
+                            {c.cndname} ({c.cndemail})
+                          </option>
+                        ))}
+                      </select>
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-gray-700 mb-1">Department / Role</label>
-                      <input 
-                        type="text" 
-                        value={manualDepartment} 
-                        onChange={(e) => setManualDepartment(e.target.value)} 
-                        className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:border-purple-700 focus:ring-1 focus:ring-purple-700" 
-                        placeholder="Enter department or role" 
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-1">Candidate Email</label>
-                      <input 
-                        type="email" 
-                        value={manualCandidateEmail} 
-                        onChange={(e) => setManualCandidateEmail(e.target.value)} 
-                        className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:border-purple-700 focus:ring-1 focus:ring-purple-700" 
-                        placeholder="Enter email to send confirmation" 
-                      />
+                      <select 
+                        value={selectedDepartment} 
+                        onChange={(e) => setSelectedDepartment(e.target.value)} 
+                        className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:border-purple-700 focus:ring-1 focus:ring-purple-700"
+                      >
+                        {extendedRoles.map(role => (
+                          <option key={role} value={role}>{role}</option>
+                        ))}
+                      </select>
                     </div>
                   </div>
 
@@ -329,7 +398,7 @@ function GlobalCalendarModal({ onClose }) {
               {emailStatus === 'sent' && (
                 <>
                   <div className="flex items-center gap-2 mb-2 text-purple-700"><CheckCircle2 size={20} /><h4 className="text-base font-bold text-gray-900">Email sent</h4></div>
-                  <div className="text-sm text-gray-500 mb-5">A confirmation email for the booked slot has been sent.</div>
+                  <div className="text-sm text-gray-500 mb-5">A confirmation email for the booked slot has been sent to the candidate.</div>
                   <div className="flex justify-end"><button onClick={onClose} className="px-4 py-2 text-xs font-semibold text-white bg-purple-700 hover:bg-purple-800 rounded-lg shadow-sm transition-colors">Done</button></div>
                 </>
               )}
