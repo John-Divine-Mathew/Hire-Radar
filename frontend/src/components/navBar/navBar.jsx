@@ -22,10 +22,11 @@ import {
   Info,
   Save,
   CheckCircle2,
-  Calendar as CalendarIcon,
-  Clock,
+  Calendar,
   ChevronLeft,
   ChevronRight,
+  ChevronsRight,
+  ChevronsLeft
 } from "lucide-react";
 
 // --- GLOBAL CALENDAR HELPER FUNCTIONS ---
@@ -85,10 +86,10 @@ function GlobalCalendarModal({ onClose }) {
 
   const [isBooked, setIsBooked] = useState(false);
   const [showEmailPrompt, setShowEmailPrompt] = useState(false);
-  const [emailStatus, setEmailStatus] = useState(null); 
-  
+  const [emailStatus, setEmailStatus] = useState(null);
+ 
   // Controls expanding/collapsing of the slots panel
-  const [showSlots, setShowSlots] = useState(true); 
+  const [showSlots, setShowSlots] = useState(true);
 
   // --- NEW: Global specific states for Candidates and Departments ---
   const [candidates, setCandidates] = useState([]);
@@ -164,22 +165,22 @@ function GlobalCalendarModal({ onClose }) {
 
     try {
       const dateObj = new Date(currentYear, currentMonth, selectedDate);
-      
+     
       // Parse Start Time
       const [startHourStr, startMinStr, startMod] = selectedSlot.split(/[:\s]/);
       let startH = parseInt(startHourStr);
       if (startMod === 'PM' && startH !== 12) startH += 12;
       if (startMod === 'AM' && startH === 12) startH = 0;
-      
+     
       const startTime = new Date(dateObj);
       startTime.setHours(startH, parseInt(startMinStr), 0);
-      
+     
       // Parse End Time
       const [endHourStr, endMinStr, endMod] = activeRange.endLabel.split(/[:\s]/);
       let endH = parseInt(endHourStr);
       if (endMod === 'PM' && endH !== 12) endH += 12;
       if (endMod === 'AM' && endH === 12) endH = 0;
-      
+     
       const endTime = new Date(dateObj);
       endTime.setHours(endH, parseInt(endMinStr), 0);
 
@@ -239,7 +240,7 @@ function GlobalCalendarModal({ onClose }) {
         </button>
 
         <div className={`grid grid-cols-1 ${showSlots ? 'md:grid-cols-12 gap-8' : 'gap-0'}`}>
-          
+         
           {/* Left Side: Calendar */}
           <div className={`${showSlots ? 'md:col-span-5 border-r border-gray-100 pr-0 md:pr-6' : ''}`}>
             <div className="flex items-center justify-between mb-6">
@@ -251,11 +252,11 @@ function GlobalCalendarModal({ onClose }) {
                 <button onClick={() => setCurrentMonth(prev => prev === 11 ? 0 : prev + 1)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors">
                   <ChevronRight size={18} />
                 </button>
-                
+               
                 {/* Expand / Collapse Button */}
                 <div className="w-px h-5 bg-gray-200 mx-1"></div>
-                <button 
-                  onClick={() => setShowSlots(!showSlots)} 
+                <button
+                  onClick={() => setShowSlots(!showSlots)}
                   className="p-1.5 rounded-lg hover:bg-purple-100 text-purple-700 transition-colors"
                   title={showSlots ? "Collapse Slots" : "Expand Slots"}
                 >
@@ -356,13 +357,13 @@ function GlobalCalendarModal({ onClose }) {
                     <Mail size={20} />
                     <h4 className="text-base font-bold text-gray-900">Finalize Booking details</h4>
                   </div>
-                  
+                 
                   <div className="space-y-4 mb-6">
                     <div>
                       <label className="block text-xs font-semibold text-gray-700 mb-1">Select Candidate</label>
-                      <select 
-                        value={selectedCandidateId} 
-                        onChange={(e) => setSelectedCandidateId(e.target.value)} 
+                      <select
+                        value={selectedCandidateId}
+                        onChange={(e) => setSelectedCandidateId(e.target.value)}
                         className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:border-purple-700 focus:ring-1 focus:ring-purple-700"
                       >
                         <option value="" disabled>Select a candidate</option>
@@ -375,9 +376,9 @@ function GlobalCalendarModal({ onClose }) {
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-gray-700 mb-1">Department / Role</label>
-                      <select 
-                        value={selectedDepartment} 
-                        onChange={(e) => setSelectedDepartment(e.target.value)} 
+                      <select
+                        value={selectedDepartment}
+                        onChange={(e) => setSelectedDepartment(e.target.value)}
                         className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:border-purple-700 focus:ring-1 focus:ring-purple-700"
                       >
                         {extendedRoles.map(role => (
@@ -424,68 +425,6 @@ const Navbar = () => {
   const [activeTab, setActiveTab] = useState("company");
   const [savedSuccess, setSavedSuccess] = useState(false);
 
-  // Calendar & Booking Modal States
-  const [showCalendarModal, setShowCalendarModal] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [selectedSlot, setSelectedSlot] = useState(null);
-  const [bookingConfirmed, setBookingConfirmed] = useState(false);
-
-  // Real-time Clock & Date State
-  const [currentTime, setCurrentTime] = useState(new Date());
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  // Format date and time
-  const formattedDate = currentTime.toLocaleDateString("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-
-  const formattedTime = currentTime.toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
-
-  // Calendar & Booking Modal States
-  const [showCalendarModal, setShowCalendarModal] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [selectedSlot, setSelectedSlot] = useState(null);
-  const [bookingConfirmed, setBookingConfirmed] = useState(false);
-
-  // Real-time Clock & Date State
-  const [currentTime, setCurrentTime] = useState(new Date());
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  // Format date and time
-  const formattedDate = currentTime.toLocaleDateString("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-
-  const formattedTime = currentTime.toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
-
   const authUser = getAuthUser();
 
   const fallbackUser = (() => {
@@ -500,7 +439,6 @@ const Navbar = () => {
   const displayEmail = email || authUser?.email || fallbackUser?.email || "admin@hireradar.com";
   const initial = displayName?.[0]?.toUpperCase() || "H";
 
-  // 5. Save incoming location.state user data to localStorage
   useEffect(() => {
     if (name || email) {
       const existingUser = fallbackUser || {};
@@ -533,7 +471,7 @@ const Navbar = () => {
     e.preventDefault();
     const updatedUser = { ...(fallbackUser || {}), name: userProfile.name, email: userProfile.email };
     localStorage.setItem("user", JSON.stringify(updatedUser));
-    
+   
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 3000);
   };
@@ -554,32 +492,11 @@ const Navbar = () => {
     { id: "about", label: "About", icon: Info },
   ];
 
-  // Calendar Helper Functions
-  const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
-  const getFirstDayOfMonth = (year, month) => new Date(year, month, 1).getDay();
-
-  const handlePrevMonth = () => {
-    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
-  };
-
-  const handleNextMonth = () => {
-    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
-  };
-
-  const availableSlots = [
-    "09:00 AM - 09:30 AM",
-    "10:00 AM - 10:30 AM",
-    "11:30 AM - 12:00 PM",
-    "02:00 PM - 02:30 PM",
-    "03:30 PM - 04:00 PM",
-    "04:30 PM - 05:00 PM",
-  ];
-
   return (
     <>
       <nav className="sticky top-0 z-40 w-full bg-white border-b border-slate-200 shadow-sm">
         <div className="w-full px-4 sm:px-6 py-3 flex justify-between items-center gap-4">
-          
+         
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate("/dashboard")}>
             <img
               src="/hirotec-logo.webp"
@@ -596,7 +513,7 @@ const Navbar = () => {
           </div>
 
           <div className="flex items-center gap-4">
-            
+           
             <div className="hidden sm:flex group relative h-10 w-10 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 transition-all duration-200 hover:w-56 focus-within:w-56 focus-within:border-purple-400 focus-within:bg-white">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
                 <Search className="h-4 w-4" />
@@ -607,44 +524,6 @@ const Navbar = () => {
                 placeholder="Search candidates..."
                 className="h-full w-full bg-transparent pl-9 pr-3 text-sm opacity-0 outline-none transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
               />
-            </div>
-
-            {/* Real-time Calendar & Clock Widget (Clickable) */}
-            <div 
-              onClick={() => setShowCalendarModal(true)}
-              className="hidden md:flex items-center gap-3 px-3.5 py-1.5 bg-purple-50/70 border border-purple-200/60 rounded-xl shadow-2xs cursor-pointer hover:bg-purple-100/70 transition"
-            >
-              <div className="p-1.5 bg-purple-600 text-white rounded-lg shadow-2xs">
-                <CalendarIcon className="w-4 h-4" />
-              </div>
-              <div className="flex flex-col text-left">
-                <span className="text-xs font-bold text-purple-900 leading-tight">
-                  {formattedDate}
-                </span>
-                <span className="text-[11px] font-semibold text-purple-700/80 flex items-center gap-1 mt-0.5">
-                  <Clock className="w-3 h-3 text-purple-600" />
-                  {formattedTime}
-                </span>
-              </div>
-            </div>
-
-            {/* Real-time Calendar & Clock Widget (Clickable) */}
-            <div 
-              onClick={() => setShowCalendarModal(true)}
-              className="hidden md:flex items-center gap-3 px-3.5 py-1.5 bg-purple-50/70 border border-purple-200/60 rounded-xl shadow-2xs cursor-pointer hover:bg-purple-100/70 transition"
-            >
-              <div className="p-1.5 bg-purple-600 text-white rounded-lg shadow-2xs">
-                <CalendarIcon className="w-4 h-4" />
-              </div>
-              <div className="flex flex-col text-left">
-                <span className="text-xs font-bold text-purple-900 leading-tight">
-                  {formattedDate}
-                </span>
-                <span className="text-[11px] font-semibold text-purple-700/80 flex items-center gap-1 mt-0.5">
-                  <Clock className="w-3 h-3 text-purple-600" />
-                  {formattedTime}
-                </span>
-              </div>
             </div>
 
             {/* --- GLOBAL CALENDAR BUTTON --- */}
@@ -695,151 +574,16 @@ const Navbar = () => {
         </div>
       </nav>
 
-      {/* CALENDAR & SLOT BOOKING MODAL */}
-      {showCalendarModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-slate-200">
-            
-            {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-purple-100 rounded-xl text-purple-700">
-                  <CalendarIcon className="w-5 h-5" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-bold text-slate-900">Schedule Interview Slot</h2>
-                  <p className="text-xs text-slate-500">Pick a date and choose an available time slot</p>
-                </div>
-              </div>
-              <button
-                onClick={() => {
-                  setShowCalendarModal(false);
-                  setSelectedSlot(null);
-                  setBookingConfirmed(false);
-                }}
-                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-full transition"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
-              
-              {/* Left Column: Calendar View */}
-              <div className="border-r sm:pr-6 border-slate-100 flex flex-col">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-bold text-slate-800 text-sm">
-                    {currentMonth.toLocaleString("default", { month: "long" })} {currentMonth.getFullYear()}
-                  </h3>
-                  <div className="flex gap-1">
-                    <button onClick={handlePrevMonth} className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600">
-                      <ChevronLeft className="w-4 h-4" />
-                    </button>
-                    <button onClick={handleNextMonth} className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600">
-                      <ChevronRight className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Weekdays Header */}
-                <div className="grid grid-cols-7 text-center text-[11px] font-bold text-slate-400 mb-2">
-                  <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
-                </div>
-
-                {/* Days Grid */}
-                <div className="grid grid-cols-7 gap-1 text-xs">
-                  {Array.from({ length: getFirstDayOfMonth(currentMonth.getFullYear(), currentMonth.getMonth()) }).map((_, i) => (
-                    <div key={`empty-${i}`} />
-                  ))}
-                  {Array.from({ length: getDaysInMonth(currentMonth.getFullYear(), currentMonth.getMonth()) }).map((_, i) => {
-                    const dayNum = i + 1;
-                    const dateObj = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), dayNum);
-                    const isSelected = selectedDate.toDateString() === dateObj.toDateString();
-
-                    return (
-                      <button
-                        key={dayNum}
-                        onClick={() => {
-                          setSelectedDate(dateObj);
-                          setSelectedSlot(null);
-                          setBookingConfirmed(false);
-                        }}
-                        className={`h-8 w-8 mx-auto rounded-full flex items-center justify-center font-semibold transition ${
-                          isSelected
-                            ? "bg-purple-600 text-white shadow-sm"
-                            : "hover:bg-purple-50 text-slate-700"
-                        }`}
-                      >
-                        {dayNum}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Right Column: Time Slots */}
-              <div className="flex flex-col justify-between">
-                <div>
-                  <h3 className="font-bold text-slate-800 text-sm mb-2">
-                    Available Slots for {selectedDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                  </h3>
-                  
-                  {bookingConfirmed ? (
-                    <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-center space-y-2 mt-6">
-                      <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto" />
-                      <p className="text-xs font-bold text-emerald-800">Slot Booked Successfully!</p>
-                      <p className="text-[11px] text-emerald-600">
-                        {selectedDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} at {selectedSlot}
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-2 mt-2 max-h-52 overflow-y-auto pr-1">
-                      {availableSlots.map((slot, idx) => {
-                        const isSlotSelected = selectedSlot === slot;
-                        return (
-                          <button
-                            key={idx}
-                            onClick={() => setSelectedSlot(slot)}
-                            className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-semibold border transition ${
-                              isSlotSelected
-                                ? "border-purple-600 bg-purple-50 text-purple-700"
-                                : "border-slate-200 hover:bg-slate-50 text-slate-700"
-                            }`}
-                          >
-                            {slot}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-
-                {!bookingConfirmed && (
-                  <button
-                    disabled={!selectedSlot}
-                    onClick={() => setBookingConfirmed(true)}
-                    className={`w-full mt-4 py-2.5 rounded-xl text-xs font-semibold transition ${
-                      selectedSlot
-                        ? "bg-purple-600 hover:bg-purple-700 text-white shadow-sm"
-                        : "bg-slate-100 text-slate-400 cursor-not-allowed"
-                    }`}
-                  >
-                    Confirm Booking Slot
-                  </button>
-                )}
-              </div>
-
-            </div>
-          </div>
-        </div>
+      {/* --- GLOBAL CALENDAR MODAL OVERLAY --- */}
+      {showGlobalCalendar && (
+        <GlobalCalendarModal onClose={() => setShowGlobalCalendar(false)} />
       )}
 
       {/* SETTINGS MODAL OVERLAY */}
       {showSettings && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-6 animate-in fade-in">
           <div className="bg-white w-full max-w-5xl h-[85vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-slate-200">
-            
+           
             <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-purple-100 rounded-xl text-purple-700">
@@ -882,7 +626,6 @@ const Navbar = () => {
 
               <div className="md:col-span-3 p-6 overflow-y-auto bg-white">
                 <form onSubmit={handleSaveSettings} className="space-y-6">
-                  
                   {activeTab === "company" && (
                     <div className="space-y-4">
                       <h3 className="font-bold text-slate-800 text-base pb-2 border-b">Company Settings</h3>
@@ -978,23 +721,8 @@ const Navbar = () => {
             <h3 className="text-lg font-bold text-slate-800 mb-2">Confirm Logout</h3>
             <p className="text-slate-600 text-sm mb-6">Are you sure you want to log out of Hire Radar?</p>
             <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setShowLogoutConfirm(false)}
-                className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-100 text-xs font-semibold"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  logoutUser();
-                  localStorage.clear();
-                  setShowLogoutConfirm(false);
-                  navigate("/");
-                }}
-                className="px-4 py-2 rounded-xl bg-red-600 text-white hover:bg-red-700 text-xs font-semibold"
-              >
-                Logout
-              </button>
+              <button onClick={() => setShowLogoutConfirm(false)} className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-100 text-xs font-semibold">Cancel</button>
+              <button onClick={() => { logoutUser(); localStorage.clear(); setShowLogoutConfirm(false); navigate("/"); }} className="px-4 py-2 rounded-xl bg-red-600 text-white hover:bg-red-700 text-xs font-semibold">Logout</button>
             </div>
           </div>
         </div>
