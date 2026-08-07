@@ -960,11 +960,42 @@ app.delete('/api/documents/:id', async (req, res) => {
 // EMAIL & MANAGER REQUEST MANAGEMENT
 app.post("/hireRadar/sendemail", async (req, res) => {
     try {
-        const { candidateName, startTime, endTime, username, password, email } = req.body;
+        const { cndid, startTime, endTime, date, department } = req.body;
+
+        // 1. Fetch Candidate from cndpermsave (replaces manual email/name params)
+        const cndRes = await pool.query("SELECT * FROM cndpermsave WHERE cndid = $1", [cndid]);
+        if (cndRes.rows.length === 0) return res.status(404).json({ error: "Candidate not found" });
+        const candidate = cndRes.rows[0];
+        const candidateName = candidate.cndname;
+        const candidateEmail = candidate.cndemail;
+
+        // 2. Check if a username/password already exists in testdetails
+        const testRes = await pool.query("SELECT * FROM testdetails WHERE cndid = $1", [cndid]);
+        let username, password;
+        
+        if (testRes.rows.length > 0) {
+            // Already created: use existing credentials & just update the test times and targetrole
+            username = testRes.rows[0].username;
+            password = testRes.rows[0].password;
+            await pool.query(
+                "UPDATE testdetails SET teststart = $1, testend = $2, testdate = $3, targetrole = $4 WHERE cndid = $5",
+                [startTime, endTime, date, department, cndid]
+            );
+        } else {
+            // Needs generating: Create new unique credentials
+            username = candidateName.replace(/\s+/g, '').toLowerCase() + Math.floor(Math.random() * 1000);
+            password = Math.random().toString(36).slice(-8); // Random 8 character string
+            await pool.query(
+                "INSERT INTO testdetails(cndid, username, password, teststart, testend, personalemail, testdate, cndname, targetrole) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+                [cndid, username, password, startTime, endTime, candidateEmail, date, candidateName, department]
+            );
+        }
+
+        // 3. Render and Send Email Using Discovered/Created Credentials
         const emailHtml = await render(
             React.createElement(TestScheduledEmail, { 
                 candidateName: candidateName, 
-                dateString: new Date(startTime).toLocaleDateString(), 
+                dateString: new Date(date).toLocaleDateString(), 
                 timeString: `${new Date(startTime).toLocaleTimeString()} – ${new Date(endTime).toLocaleTimeString()}`, 
                 username: username, 
                 password: password
@@ -972,16 +1003,22 @@ app.post("/hireRadar/sendemail", async (req, res) => {
         );
 
         const { data, error } = await resend.emails.send({
-            from: "Hirotec India <onboarding@resend.dev>",
-            to: "vijayanandhaj@gmail.com",
+            from: "Hirotec India <onboarding@resend.dev>", 
+            to: 'vijayanandhaj@gmail.com',
             subject: `${candidateName}, your Test is Scheduled`,
             html: emailHtml, 
         });
-        console.log('email sent');
-        if (error) console.error("Resend error:", error.message);
-        res.status(200).json({ data });
+
+        console.log(`Email successfully sent to ${candidateEmail}`);
+        
+        if (error) {
+            console.error("Resend error:", error.message);
+            return res.status(400).json({ error: error.message });
+        }
+        
+        res.status(200).json({ data, message: "Email processed properly" });
     } catch (err) {
-        console.error("sendemail error:", err);
+        console.error("sendemail backend error:", err);
         res.status(500).json({ error: "Internal server error rendering email" });
     }
 });
