@@ -86,10 +86,10 @@ function GlobalCalendarModal({ onClose }) {
 
   const [isBooked, setIsBooked] = useState(false);
   const [showEmailPrompt, setShowEmailPrompt] = useState(false);
-  const [emailStatus, setEmailStatus] = useState(null); 
-  
+  const [emailStatus, setEmailStatus] = useState(null);
+ 
   // Controls expanding/collapsing of the slots panel
-  const [showSlots, setShowSlots] = useState(true); 
+  const [showSlots, setShowSlots] = useState(true);
 
   // --- NEW: Global specific states for Candidates and Departments ---
   const [candidates, setCandidates] = useState([]);
@@ -165,22 +165,22 @@ function GlobalCalendarModal({ onClose }) {
 
     try {
       const dateObj = new Date(currentYear, currentMonth, selectedDate);
-      
+     
       // Parse Start Time
       const [startHourStr, startMinStr, startMod] = selectedSlot.split(/[:\s]/);
       let startH = parseInt(startHourStr);
       if (startMod === 'PM' && startH !== 12) startH += 12;
       if (startMod === 'AM' && startH === 12) startH = 0;
-      
+     
       const startTime = new Date(dateObj);
       startTime.setHours(startH, parseInt(startMinStr), 0);
-      
+     
       // Parse End Time
       const [endHourStr, endMinStr, endMod] = activeRange.endLabel.split(/[:\s]/);
       let endH = parseInt(endHourStr);
       if (endMod === 'PM' && endH !== 12) endH += 12;
       if (endMod === 'AM' && endH === 12) endH = 0;
-      
+     
       const endTime = new Date(dateObj);
       endTime.setHours(endH, parseInt(endMinStr), 0);
 
@@ -240,7 +240,7 @@ function GlobalCalendarModal({ onClose }) {
         </button>
 
         <div className={`grid grid-cols-1 ${showSlots ? 'md:grid-cols-12 gap-8' : 'gap-0'}`}>
-          
+         
           {/* Left Side: Calendar */}
           <div className={`${showSlots ? 'md:col-span-5 border-r border-gray-100 pr-0 md:pr-6' : ''}`}>
             <div className="flex items-center justify-between mb-6">
@@ -252,11 +252,11 @@ function GlobalCalendarModal({ onClose }) {
                 <button onClick={() => setCurrentMonth(prev => prev === 11 ? 0 : prev + 1)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors">
                   <ChevronRight size={18} />
                 </button>
-                
+               
                 {/* Expand / Collapse Button */}
                 <div className="w-px h-5 bg-gray-200 mx-1"></div>
-                <button 
-                  onClick={() => setShowSlots(!showSlots)} 
+                <button
+                  onClick={() => setShowSlots(!showSlots)}
                   className="p-1.5 rounded-lg hover:bg-purple-100 text-purple-700 transition-colors"
                   title={showSlots ? "Collapse Slots" : "Expand Slots"}
                 >
@@ -357,13 +357,13 @@ function GlobalCalendarModal({ onClose }) {
                     <Mail size={20} />
                     <h4 className="text-base font-bold text-gray-900">Finalize Booking details</h4>
                   </div>
-                  
+                 
                   <div className="space-y-4 mb-6">
                     <div>
                       <label className="block text-xs font-semibold text-gray-700 mb-1">Select Candidate</label>
-                      <select 
-                        value={selectedCandidateId} 
-                        onChange={(e) => setSelectedCandidateId(e.target.value)} 
+                      <select
+                        value={selectedCandidateId}
+                        onChange={(e) => setSelectedCandidateId(e.target.value)}
                         className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:border-purple-700 focus:ring-1 focus:ring-purple-700"
                       >
                         <option value="" disabled>Select a candidate</option>
@@ -376,9 +376,9 @@ function GlobalCalendarModal({ onClose }) {
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-gray-700 mb-1">Department / Role</label>
-                      <select 
-                        value={selectedDepartment} 
-                        onChange={(e) => setSelectedDepartment(e.target.value)} 
+                      <select
+                        value={selectedDepartment}
+                        onChange={(e) => setSelectedDepartment(e.target.value)}
                         className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:border-purple-700 focus:ring-1 focus:ring-purple-700"
                       >
                         {extendedRoles.map(role => (
@@ -471,7 +471,7 @@ const Navbar = () => {
     e.preventDefault();
     const updatedUser = { ...(fallbackUser || {}), name: userProfile.name, email: userProfile.email };
     localStorage.setItem("user", JSON.stringify(updatedUser));
-    
+   
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 3000);
   };
@@ -496,7 +496,7 @@ const Navbar = () => {
     <>
       <nav className="sticky top-0 z-40 w-full bg-white border-b border-slate-200 shadow-sm">
         <div className="w-full px-4 sm:px-6 py-3 flex justify-between items-center gap-4">
-          
+         
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate("/dashboard")}>
             <img
               src="/hirotec-logo.webp"
@@ -513,7 +513,7 @@ const Navbar = () => {
           </div>
 
           <div className="flex items-center gap-4">
-            
+           
             <div className="hidden sm:flex group relative h-10 w-10 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 transition-all duration-200 hover:w-56 focus-within:w-56 focus-within:border-purple-400 focus-within:bg-white">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
                 <Search className="h-4 w-4" />
@@ -583,7 +583,7 @@ const Navbar = () => {
       {showSettings && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-6 animate-in fade-in">
           <div className="bg-white w-full max-w-5xl h-[85vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-slate-200">
-            
+           
             <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-purple-100 rounded-xl text-purple-700">

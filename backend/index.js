@@ -38,7 +38,7 @@ async function warmOllamaModel() {
         const response = await fetch("http://localhost:11434/api/generate", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ model: "qwen2.5:7b-instruct-q4_K_M", keep_alive: "30m" })
+            body: JSON.stringify({ model: "qwen2.5:7b", keep_alive: "30m" })
         });
         if (response.ok) {
             console.log('[Ollama] Model preloaded and warm.');
@@ -1004,7 +1004,7 @@ app.post("/hireRadar/sendemail", async (req, res) => {
 
         const { data, error } = await resend.emails.send({
             from: "Hirotec India <onboarding@resend.dev>", 
-            to: 'vijayanandhaj@gmail.com',
+            to: 'bharathsnehan011@gmail.com',
             subject: `${candidateName}, your Test is Scheduled`,
             html: emailHtml, 
         });

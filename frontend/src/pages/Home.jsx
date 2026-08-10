@@ -261,23 +261,23 @@ const Home = () => {
                 <h3 className="font-bold text-lg">Developers</h3>
                 <ul className="list-disc ml-6 mt-2">
                   <li>John Divine Mathew J</li>
-                  <li>Vijayanandha J</li>
-                  <li>Bharathsnehan</li>
+                  <li>bharathsnehan</li>
+                  <li>vijayanandha j</li>
                 </ul>
               </div>
 
               <div>
                 <h3 className="font-bold text-lg">Email</h3>
                 <p>mathewdivine95@gmail.com</p>
-                <p>vijayanandhaj@gmail.com</p>
                 <p>bharathsnehan011@gmail.com</p>
+                <p>vijayanandhaj@gmail.com</p>
               </div>
 
               <div>
                 <h3 className="font-bold text-lg">Phone & WhatsApp</h3>
                 <p>+91 9626749641</p>
-                <p>+91 7373774847</p>
                 <p>+91 7448540072</p>
+                <p>+91 7373774847</p>
               </div>
 
               <div>
