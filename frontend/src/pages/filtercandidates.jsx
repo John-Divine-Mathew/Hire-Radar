@@ -114,9 +114,7 @@ const parseScheduledDate = (scheduledDate) => {
 
   const match = String(scheduledDate)
     .trim()
-    .match(
-      /^([A-Za-z]+)\s+(\d{1,2}),\s*(\d{4})$/
-    );
+    .match(/^([A-Za-z]+)\s+(\d{1,2}),\s*(\d{4})$/);
 
   if (!match) {
     return new Date(NaN);
@@ -205,9 +203,7 @@ const createScheduledDateTime = (
 
   const timeParts = String(scheduledTime || "")
     .trim()
-    .match(
-      /^(\d{1,2}):(\d{2})\s*(AM|PM)$/i
-    );
+    .match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
 
   if (!timeParts) {
     return date;
@@ -217,7 +213,12 @@ const createScheduledDateTime = (
   const minutes = Number(timeParts[2]);
   const period = timeParts[3].toUpperCase();
 
-  if (hours < 1 || hours > 12 || minutes < 0 || minutes > 59) {
+  if (
+    hours < 1 ||
+    hours > 12 ||
+    minutes < 0 ||
+    minutes > 59
+  ) {
     return date;
   }
 
@@ -262,20 +263,6 @@ const calculateTiming = (
     now.getTime() - scheduled.getTime();
 
   const isDelayed = differenceInMs > 0;
-
-  /*
-   * IMPORTANT:
-   * Delay is calculated based on calendar days,
-   * not simply 24-hour blocks.
-   *
-   * Example:
-   * Scheduled: August 11, 10:30 AM
-   * Current:   August 11, 11:00 AM
-   * Result: Delayed, 0 days
-   *
-   * Current: August 12
-   * Result: Delayed, 1 day
-   */
 
   let delayDays = 0;
 
@@ -323,6 +310,7 @@ const ScheduleTimeline = ({ candidate }) => {
       }`}
     >
       {/* HEADER */}
+
       <div className="flex items-center justify-between mb-5 gap-3 flex-wrap">
         <div className="flex items-center gap-2">
           <Clock
@@ -340,22 +328,25 @@ const ScheduleTimeline = ({ candidate }) => {
         </div>
 
         <TimingBadge
-          timingStatus={
-            candidate.timingStatus
-          }
+          timingStatus={candidate.timingStatus}
           delayDays={candidate.delayDays}
         />
       </div>
 
       {/* TIMELINE */}
+
       <div className="relative">
+
         <div className="absolute left-[7px] top-2 bottom-2 w-[2px] bg-slate-200" />
 
         {/* SCHEDULED */}
+
         <div className="relative flex gap-4 pb-5">
+
           <div className="relative z-10 w-4 h-4 mt-1 rounded-full bg-indigo-600 ring-4 ring-white shrink-0" />
 
           <div>
+
             <p className="text-xs font-bold text-slate-500 uppercase">
               Scheduled
             </p>
@@ -372,11 +363,15 @@ const ScheduleTimeline = ({ candidate }) => {
             <p className="text-xs text-slate-400 mt-1">
               Expected interview date & time
             </p>
+
           </div>
+
         </div>
 
         {/* CURRENT */}
+
         <div className="relative flex gap-4">
+
           <div
             className={`relative z-10 w-4 h-4 mt-1 rounded-full ring-4 ring-white shrink-0 ${
               isDelayed
@@ -386,6 +381,7 @@ const ScheduleTimeline = ({ candidate }) => {
           />
 
           <div>
+
             <p className="text-xs font-bold text-slate-500 uppercase">
               Current Date & Time
             </p>
@@ -411,6 +407,7 @@ const ScheduleTimeline = ({ candidate }) => {
             </p>
 
             <div className="flex items-center gap-2 mt-2">
+
               {isDelayed ? (
                 <>
                   <AlertCircle
@@ -441,9 +438,13 @@ const ScheduleTimeline = ({ candidate }) => {
                   </span>
                 </>
               )}
+
             </div>
+
           </div>
+
         </div>
+
       </div>
     </div>
   );
@@ -571,7 +572,9 @@ const INITIAL_CANDIDATES = [
 // ============================================================
 
 export default function FilterCandidate() {
+
   const [search, setSearch] = useState("");
+
   const [timingFilter, setTimingFilter] =
     useState("All");
 
@@ -583,11 +586,14 @@ export default function FilterCandidate() {
   // ==========================================================
 
   useEffect(() => {
+
     const updateTimingAutomatically = () => {
+
       setCandidates(
         (previousCandidates) =>
           previousCandidates.map(
             (candidate) => {
+
               const timing =
                 calculateTiming(
                   candidate.scheduledDate,
@@ -624,6 +630,7 @@ export default function FilterCandidate() {
     return () => {
       clearInterval(interval);
     };
+
   }, []);
 
   // ==========================================================
@@ -643,6 +650,7 @@ export default function FilterCandidate() {
   const toggleSchedulePanel = (
     candidateId
   ) => {
+
     setOpenScheduleCandidateId(
       (previousId) =>
         previousId === candidateId
@@ -654,6 +662,7 @@ export default function FilterCandidate() {
   const toggleRoundsPanel = (
     candidateId
   ) => {
+
     setOpenRoundsCandidateId(
       (previousId) =>
         previousId === candidateId
@@ -669,6 +678,7 @@ export default function FilterCandidate() {
   const buildDynamicStages = (
     candidateRounds
   ) => {
+
     if (
       !Array.isArray(candidateRounds) ||
       candidateRounds.length === 0
@@ -680,8 +690,7 @@ export default function FilterCandidate() {
       .filter(
         (round) =>
           round &&
-          typeof round.label ===
-            "string" &&
+          typeof round.label === "string" &&
           round.label.trim().length > 0
       )
       .map((round) =>
@@ -702,6 +711,7 @@ export default function FilterCandidate() {
   const startEditingStage = (
     candidate
   ) => {
+
     const stages = buildDynamicStages(
       candidate.rounds
     );
@@ -730,6 +740,7 @@ export default function FilterCandidate() {
   const handleSaveStage = (
     candidate
   ) => {
+
     const currentStages =
       buildDynamicStages(
         candidate.rounds
@@ -749,13 +760,13 @@ export default function FilterCandidate() {
     );
 
     const isCompleted =
-      validStep >=
-      currentStages.length;
+      validStep >= currentStages.length;
 
     setCandidates(
       (previousCandidates) =>
         previousCandidates.map(
           (currentCandidate) => {
+
             if (
               currentCandidate.id !==
               candidate.id
@@ -798,6 +809,7 @@ export default function FilterCandidate() {
   const startEditingRounds = (
     candidate
   ) => {
+
     setEditingRoundsId(candidate.id);
 
     setDraftRounds(
@@ -812,6 +824,7 @@ export default function FilterCandidate() {
   };
 
   const handleAddRound = () => {
+
     setDraftRounds(
       (previousRounds) => [
         ...previousRounds,
@@ -831,6 +844,7 @@ export default function FilterCandidate() {
     roundId,
     value
   ) => {
+
     setDraftRounds(
       (previousRounds) =>
         previousRounds.map(
@@ -848,6 +862,7 @@ export default function FilterCandidate() {
   const handleDeleteRound = (
     roundId
   ) => {
+
     setDraftRounds(
       (previousRounds) =>
         previousRounds.filter(
@@ -860,13 +875,13 @@ export default function FilterCandidate() {
   const handleSaveRounds = (
     candidate
   ) => {
+
     const cleanedRounds =
       draftRounds
         .map((round) => ({
           ...round,
           label:
-            typeof round.label ===
-            "string"
+            typeof round.label === "string"
               ? round.label.trim()
               : "",
         }))
@@ -881,6 +896,7 @@ export default function FilterCandidate() {
       );
 
     if (newStages.length === 0) {
+
       setCandidates(
         (previousCandidates) =>
           previousCandidates.map(
@@ -913,8 +929,7 @@ export default function FilterCandidate() {
     );
 
     const isCompleted =
-      adjustedStep >=
-      newStages.length;
+      adjustedStep >= newStages.length;
 
     setCandidates(
       (previousCandidates) =>
@@ -951,46 +966,38 @@ export default function FilterCandidate() {
   const handleDeleteCandidate = (
     candidateId
   ) => {
+
     setCandidates(
       (previousCandidates) =>
         previousCandidates.filter(
           (candidate) =>
-            candidate.id !==
-            candidateId
+            candidate.id !== candidateId
         )
     );
 
     if (
-      editingStageId ===
-      candidateId
+      editingStageId === candidateId
     ) {
       setEditingStageId(null);
     }
 
     if (
-      editingRoundsId ===
-      candidateId
+      editingRoundsId === candidateId
     ) {
       setEditingRoundsId(null);
       setDraftRounds([]);
     }
 
     if (
-      openRoundsCandidateId ===
-      candidateId
+      openRoundsCandidateId === candidateId
     ) {
-      setOpenRoundsCandidateId(
-        null
-      );
+      setOpenRoundsCandidateId(null);
     }
 
     if (
-      openScheduleCandidateId ===
-      candidateId
+      openScheduleCandidateId === candidateId
     ) {
-      setOpenScheduleCandidateId(
-        null
-      );
+      setOpenScheduleCandidateId(null);
     }
   };
 
@@ -999,11 +1006,13 @@ export default function FilterCandidate() {
   // ==========================================================
 
   const filteredCandidates = useMemo(() => {
+
     const searchValue =
       search.trim().toLowerCase();
 
     return candidates.filter(
       (candidate) => {
+
         const candidateName =
           String(
             candidate.name || ""
@@ -1034,6 +1043,7 @@ export default function FilterCandidate() {
         );
       }
     );
+
   }, [
     candidates,
     search,
@@ -1063,36 +1073,52 @@ export default function FilterCandidate() {
   // ==========================================================
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-slate-50">
-      {/* ======================================================
-          SIDEBAR
-      ====================================================== */}
-
-      <Sidebar />
+    <div className="min-h-screen w-full bg-slate-50 overflow-hidden">
 
       {/* ======================================================
-          MAIN AREA
+          NAVBAR
+          FULL WIDTH
       ====================================================== */}
 
-      <div className="flex-1 flex flex-col min-w-0 h-full">
-        {/* ====================================================
-            NAVBAR
-        ==================================================== */}
-
+      <div className="fixed top-0 left-0 right-0 z-50 w-full">
         <Navbar />
+      </div>
+
+      {/* ======================================================
+          BODY
+      ====================================================== */}
+
+      <div className="min-h-screen w-full pt-[80px]">
 
         {/* ====================================================
-            PAGE CONTENT
+            SIDEBAR
+
+            Screenshot style:
+            Sidebar = 80px
         ==================================================== */}
 
-        <div className="flex-1 overflow-y-auto min-w-0">
-          <div className="p-6 w-full flex flex-col gap-6">
+        <aside className="fixed left-0 top-[80px] bottom-0 z-40 w-[80px] bg-white">
+          <Sidebar />
+        </aside>
+
+        {/* ====================================================
+            MAIN CONTENT
+
+            Sidebar 80px
+            + 28px visual gap
+            = content starts at 108px
+        ==================================================== */}
+
+        <main className="ml-[80px] h-[calc(100vh-80px)] overflow-y-auto">
+
+          <div className="w-full px-7 py-7">
 
             {/* ==================================================
                 HEADER
             ================================================== */}
 
-            <div className="flex items-center gap-4 mb-2 flex-wrap">
+            <div className="flex items-center gap-4 mb-6 flex-wrap">
+
               <h1 className="text-4xl font-bold text-gray-900">
                 Filter Candidates
               </h1>
@@ -1102,6 +1128,7 @@ export default function FilterCandidate() {
               <span className="text-slate-500 text-sm font-medium bg-slate-200/60 px-3 py-1 rounded-full">
                 Smart Candidate Tracking
               </span>
+
             </div>
 
             {/* ==================================================
@@ -1109,11 +1136,13 @@ export default function FilterCandidate() {
             ================================================== */}
 
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 w-full">
+
               <div className="flex gap-4 flex-wrap">
 
                 {/* SEARCH */}
 
                 <div className="relative flex-1 min-w-[250px]">
+
                   <Search
                     size={20}
                     className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
@@ -1130,16 +1159,14 @@ export default function FilterCandidate() {
                     }
                     className="w-full pl-12 pr-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition text-base"
                   />
+
                 </div>
 
                 {/* SEARCH BUTTON */}
 
                 <button
                   type="button"
-                  onClick={() => {
-                    // Search is already live through the input.
-                    // This button intentionally remains for UI.
-                  }}
+                  onClick={() => {}}
                   className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 rounded-xl font-semibold transition duration-200 shadow-sm"
                 >
                   Search
@@ -1148,6 +1175,7 @@ export default function FilterCandidate() {
                 {/* FILTER */}
 
                 <div className="relative">
+
                   <select
                     value={timingFilter}
                     onChange={(event) =>
@@ -1157,6 +1185,7 @@ export default function FilterCandidate() {
                     }
                     className="appearance-none h-full min-w-[170px] pl-4 pr-10 rounded-xl border border-slate-300 bg-white text-sm font-semibold text-slate-700 outline-none cursor-pointer focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   >
+
                     <option value="All">
                       All Candidates
                     </option>
@@ -1168,19 +1197,24 @@ export default function FilterCandidate() {
                     <option value="Delayed">
                       Delayed
                     </option>
+
                   </select>
 
                   <ChevronDown
                     size={17}
                     className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400"
                   />
+
                 </div>
+
               </div>
 
               {/* STATUS SUMMARY */}
 
               <div className="flex gap-3 mt-4 flex-wrap">
+
                 <div className="flex items-center gap-2 bg-green-50 border border-green-100 px-3 py-2 rounded-lg">
+
                   <Clock
                     size={15}
                     className="text-green-600"
@@ -1189,9 +1223,11 @@ export default function FilterCandidate() {
                   <span className="text-xs font-semibold text-green-700">
                     {onTimeCount} On Time
                   </span>
+
                 </div>
 
                 <div className="flex items-center gap-2 bg-red-50 border border-red-100 px-3 py-2 rounded-lg">
+
                   <AlertCircle
                     size={15}
                     className="text-red-600"
@@ -1200,15 +1236,19 @@ export default function FilterCandidate() {
                   <span className="text-xs font-semibold text-red-700">
                     {delayedCount} Delayed
                   </span>
+
                 </div>
+
               </div>
+
             </div>
 
             {/* ==================================================
                 CANDIDATE COUNT
             ================================================== */}
 
-            <div className="flex items-center justify-between mt-1 mb-2 px-1">
+            <div className="flex items-center justify-between mt-6 mb-3 px-1">
+
               <h2 className="text-xl font-bold text-slate-800">
                 Candidate List
               </h2>
@@ -1216,6 +1256,7 @@ export default function FilterCandidate() {
               <span className="text-xs font-semibold bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full">
                 {filteredCandidates.length} total
               </span>
+
             </div>
 
             {/* ==================================================
@@ -1223,8 +1264,10 @@ export default function FilterCandidate() {
             ================================================== */}
 
             <div className="space-y-6">
+
               {filteredCandidates.map(
                 (candidate, index) => {
+
                   const isEditingStage =
                     editingStageId ===
                     candidate.id;
@@ -1287,10 +1330,12 @@ export default function FilterCandidate() {
                   const isCompleted =
                     candidate.status ===
                       "Completed" ||
-                    (dynamicStages.length >
-                      0 &&
+                    (
+                      dynamicStages.length >
+                        0 &&
                       displayStep >=
-                        dynamicStages.length);
+                        dynamicStages.length
+                    );
 
                   const currentStageLabel =
                     isCompleted
@@ -1305,16 +1350,18 @@ export default function FilterCandidate() {
                       ? 0
                       : dynamicStages.length === 1
                       ? 100
-                      : ((displayStep - 1) /
-                          (dynamicStages.length -
-                            1)) *
+                      : (
+                          (displayStep - 1) /
+                          (
+                            dynamicStages.length -
+                            1
+                          )
+                        ) *
                         100;
 
                   return (
                     <div
-                      key={
-                        candidate.id
-                      }
+                      key={candidate.id}
                       className={`relative bg-white rounded-2xl shadow-sm border overflow-hidden hover:shadow-md transition ${
                         candidate.timingStatus ===
                         "Delayed"
@@ -1322,6 +1369,7 @@ export default function FilterCandidate() {
                           : "border-slate-200"
                       }`}
                     >
+
                       {/* LEFT ACCENT */}
 
                       <div
@@ -1340,7 +1388,9 @@ export default function FilterCandidate() {
                         ================================================== */}
 
                         <div className="flex items-start justify-between gap-4 mb-5 flex-wrap">
+
                           <div className="flex flex-wrap gap-2">
+
                             <Pill color="blue">
                               {candidate.role}
                             </Pill>
@@ -1371,11 +1421,13 @@ export default function FilterCandidate() {
                                 candidate.delayDays
                               }
                             />
+
                           </div>
 
                           {/* ACTIONS */}
 
                           <div className="flex items-center gap-2 shrink-0">
+
                             {isEditingStage && (
                               <select
                                 value={
@@ -1394,6 +1446,7 @@ export default function FilterCandidate() {
                                 }
                                 className="px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-sm text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none font-medium cursor-pointer max-w-[220px]"
                               >
+
                                 {dynamicStages.map(
                                   (
                                     stage,
@@ -1414,6 +1467,7 @@ export default function FilterCandidate() {
                                     </option>
                                   )
                                 )}
+
                               </select>
                             )}
 
@@ -1430,9 +1484,7 @@ export default function FilterCandidate() {
                                   title="Save progress"
                                 >
                                   <Check
-                                    size={
-                                      18
-                                    }
+                                    size={18}
                                   />
                                 </button>
 
@@ -1445,9 +1497,7 @@ export default function FilterCandidate() {
                                   title="Cancel"
                                 >
                                   <X
-                                    size={
-                                      18
-                                    }
+                                    size={18}
                                   />
                                 </button>
                               </>
@@ -1463,9 +1513,7 @@ export default function FilterCandidate() {
                                 title="Edit progress"
                               >
                                 <Edit3
-                                  size={
-                                    18
-                                  }
+                                  size={18}
                                 />
                               </button>
                             )}
@@ -1481,12 +1529,12 @@ export default function FilterCandidate() {
                               title="Delete candidate"
                             >
                               <Trash2
-                                size={
-                                  18
-                                }
+                                size={18}
                               />
                             </button>
+
                           </div>
+
                         </div>
 
                         {/* ==================================================
@@ -1494,7 +1542,9 @@ export default function FilterCandidate() {
                         ================================================== */}
 
                         <div className="flex items-center justify-between gap-4 mb-6 flex-wrap">
+
                           <div className="flex items-center gap-4">
+
                             <GenderAvatar
                               gender={
                                 candidate.gender
@@ -1505,29 +1555,39 @@ export default function FilterCandidate() {
                             />
 
                             <div>
+
                               <h3 className="text-xl font-bold text-slate-800">
+
                                 {String(
                                   index + 1
                                 ).padStart(
                                   2,
                                   "0"
                                 )}
+
                                 .{" "}
+
                                 {
                                   candidate.name
                                 }
+
                               </h3>
 
                               <p className="text-xs text-slate-400 mt-1">
+
                                 Candidate ID: #
+
                                 {String(
                                   candidate.id
                                 ).padStart(
                                   4,
                                   "0"
                                 )}
+
                               </p>
+
                             </div>
+
                           </div>
 
                           {/* BIG STATUS */}
@@ -1540,24 +1600,22 @@ export default function FilterCandidate() {
                                 : "bg-green-50 border border-green-100"
                             }`}
                           >
+
                             {candidate.timingStatus ===
                             "Delayed" ? (
                               <AlertCircle
-                                size={
-                                  18
-                                }
+                                size={18}
                                 className="text-red-600"
                               />
                             ) : (
                               <CheckCircle2
-                                size={
-                                  18
-                                }
+                                size={18}
                                 className="text-green-600"
                               />
                             )}
 
                             <div>
+
                               <p
                                 className={`text-xs font-bold ${
                                   candidate.timingStatus ===
@@ -1574,8 +1632,11 @@ export default function FilterCandidate() {
                               <p className="text-[10px] text-slate-400">
                                 Interview Schedule
                               </p>
+
                             </div>
+
                           </div>
+
                         </div>
 
                         {/* ==================================================
@@ -1583,15 +1644,16 @@ export default function FilterCandidate() {
                         ================================================== */}
 
                         <div className="mb-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
+
                           <div className="flex items-center gap-3 bg-indigo-50 border border-indigo-100 rounded-xl px-4 py-3">
+
                             <Clock
-                              size={
-                                18
-                              }
+                              size={18}
                               className="text-indigo-600 shrink-0"
                             />
 
                             <div>
+
                               <p className="text-[10px] uppercase font-bold text-slate-400">
                                 Scheduled Date
                               </p>
@@ -1601,18 +1663,20 @@ export default function FilterCandidate() {
                                   candidate.scheduledDate
                                 }
                               </p>
+
                             </div>
+
                           </div>
 
                           <div className="flex items-center gap-3 bg-purple-50 border border-purple-100 rounded-xl px-4 py-3">
+
                             <Clock
-                              size={
-                                18
-                              }
+                              size={18}
                               className="text-purple-600 shrink-0"
                             />
 
                             <div>
+
                               <p className="text-[10px] uppercase font-bold text-slate-400">
                                 Scheduled Time
                               </p>
@@ -1622,8 +1686,11 @@ export default function FilterCandidate() {
                                   candidate.scheduledTime
                                 }
                               </p>
+
                             </div>
+
                           </div>
+
                         </div>
 
                         {/* ==================================================
@@ -1631,6 +1698,7 @@ export default function FilterCandidate() {
                         ================================================== */}
 
                         <div className="border-t border-slate-100 pt-5 flex justify-center mb-5">
+
                           <button
                             type="button"
                             onClick={() =>
@@ -1644,10 +1712,9 @@ export default function FilterCandidate() {
                                 : "bg-white border-slate-200 text-slate-600 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-700"
                             }`}
                           >
+
                             <Clock
-                              size={
-                                16
-                              }
+                              size={16}
                             />
 
                             <span>
@@ -1655,16 +1722,16 @@ export default function FilterCandidate() {
                             </span>
 
                             <ChevronDown
-                              size={
-                                15
-                              }
+                              size={15}
                               className={`transition-transform duration-200 ${
                                 isScheduleOpen
                                   ? "rotate-180"
                                   : ""
                               }`}
                             />
+
                           </button>
+
                         </div>
 
                         {/* ==================================================
@@ -1684,15 +1751,19 @@ export default function FilterCandidate() {
                         ================================================== */}
 
                         <div className="mb-2 mt-5">
+
                           <h4 className="text-sm font-semibold text-slate-500 mb-4">
+
                             Hiring Progress Timeline
 
                             <span className="font-normal text-slate-400 ml-1">
                               (Touch any stage to open Interview Rounds)
                             </span>
+
                           </h4>
 
                           <div className="relative pt-4 pb-2">
+
                             {/* BASE LINE */}
 
                             {dynamicStages.length >
@@ -1720,6 +1791,7 @@ export default function FilterCandidate() {
                                 gridTemplateColumns: `repeat(${safeStageLength}, minmax(0, 1fr))`,
                               }}
                             >
+
                               {dynamicStages.length >
                               0 ? (
                                 dynamicStages.map(
@@ -1727,6 +1799,7 @@ export default function FilterCandidate() {
                                     stage,
                                     stageIndex
                                   ) => {
+
                                     const completed =
                                       stageIndex +
                                         1 <=
@@ -1742,6 +1815,7 @@ export default function FilterCandidate() {
                                         key={`${candidate.id}-${stageIndex}`}
                                         className="flex flex-col items-center cursor-pointer group"
                                         onClick={() => {
+
                                           if (
                                             isEditingStage
                                           ) {
@@ -1754,8 +1828,10 @@ export default function FilterCandidate() {
                                           toggleRoundsPanel(
                                             candidate.id
                                           );
+
                                         }}
                                       >
+
                                         <div
                                           className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold border-4 border-white shadow-md transition-all group-hover:scale-105 ${
                                             completed
@@ -1780,6 +1856,7 @@ export default function FilterCandidate() {
                                         >
                                           {stage}
                                         </p>
+
                                       </div>
                                     );
                                   }
@@ -1789,8 +1866,11 @@ export default function FilterCandidate() {
                                   No hiring stages available.
                                 </div>
                               )}
+
                             </div>
+
                           </div>
+
                         </div>
 
                         {/* ==================================================
@@ -1799,12 +1879,13 @@ export default function FilterCandidate() {
 
                         {isRoundsOpen && (
                           <div className="mt-6 border-t border-slate-100 pt-5">
+
                             <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
+
                               <h4 className="text-sm font-semibold text-slate-500 flex items-center gap-2">
+
                                 <ListChecks
-                                  size={
-                                    15
-                                  }
+                                  size={15}
                                   className="text-purple-600"
                                 />
 
@@ -1817,9 +1898,11 @@ export default function FilterCandidate() {
                                   }
                                   )
                                 </span>
+
                               </h4>
 
                               <div className="flex items-center gap-2 flex-wrap">
+
                                 {isEditingRounds && (
                                   <button
                                     type="button"
@@ -1828,17 +1911,19 @@ export default function FilterCandidate() {
                                     }
                                     className="flex items-center gap-1 bg-purple-600 hover:bg-purple-700 text-white px-2.5 py-1 rounded-lg text-xs font-semibold transition"
                                   >
+
                                     <Plus
-                                      size={
-                                        14
-                                      }
+                                      size={14}
                                     />
+
                                     Add Round
+
                                   </button>
                                 )}
 
                                 {isEditingRounds ? (
                                   <>
+
                                     <button
                                       type="button"
                                       onClick={() =>
@@ -1848,33 +1933,39 @@ export default function FilterCandidate() {
                                       }
                                       className="flex items-center gap-1.5 text-green-600 hover:bg-green-50 px-2.5 py-1 rounded-lg text-xs font-semibold transition"
                                     >
+
                                       <Check
-                                        size={
-                                          14
-                                        }
+                                        size={14}
                                       />
+
                                       Save
+
                                     </button>
 
                                     <button
                                       type="button"
                                       onClick={() => {
+
                                         setEditingRoundsId(
                                           null
                                         );
+
                                         setDraftRounds(
                                           []
                                         );
+
                                       }}
                                       className="flex items-center gap-1.5 text-slate-500 hover:bg-slate-100 px-2.5 py-1 rounded-lg text-xs font-semibold transition"
                                     >
+
                                       <X
-                                        size={
-                                          14
-                                        }
+                                        size={14}
                                       />
+
                                       Cancel
+
                                     </button>
+
                                   </>
                                 ) : (
                                   <button
@@ -1888,16 +1979,17 @@ export default function FilterCandidate() {
                                     title="Manage rounds"
                                   >
                                     <Settings2
-                                      size={
-                                        16
-                                      }
+                                      size={16}
                                     />
                                   </button>
                                 )}
+
                               </div>
+
                             </div>
 
                             <div className="grid md:grid-cols-2 gap-3">
+
                               {roundsForTimeline.map(
                                 (
                                   round,
@@ -1910,6 +2002,7 @@ export default function FilterCandidate() {
                                       }
                                       className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5"
                                     >
+
                                       <span className="text-xs font-bold text-purple-600 shrink-0">
                                         R
                                         {roundIndex +
@@ -1946,11 +2039,10 @@ export default function FilterCandidate() {
                                         title="Delete round"
                                       >
                                         <Trash2
-                                          size={
-                                            14
-                                          }
+                                          size={14}
                                         />
                                       </button>
+
                                     </div>
                                   ) : (
                                     <div
@@ -1959,6 +2051,7 @@ export default function FilterCandidate() {
                                       }
                                       className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3"
                                     >
+
                                       <span className="text-xs font-bold text-purple-600">
                                         Round{" "}
                                         {roundIndex +
@@ -1969,6 +2062,7 @@ export default function FilterCandidate() {
                                         {round.label ||
                                           "Interviewer not set"}
                                       </p>
+
                                     </div>
                                   )
                               )}
@@ -1979,7 +2073,9 @@ export default function FilterCandidate() {
                                   No interview rounds recorded yet.
                                 </p>
                               )}
+
                             </div>
+
                           </div>
                         )}
 
@@ -1988,10 +2084,9 @@ export default function FilterCandidate() {
                         ================================================== */}
 
                         <div className="mt-6 flex items-center gap-2 rounded-xl px-5 py-3 bg-green-50 border border-green-100">
+
                           <CheckCircle2
-                            size={
-                              16
-                            }
+                            size={16}
                             className="text-green-600 shrink-0"
                           />
 
@@ -2004,8 +2099,11 @@ export default function FilterCandidate() {
                               currentStageLabel
                             }
                           </span>
+
                         </div>
+
                       </div>
+
                     </div>
                   );
                 }
@@ -2018,13 +2116,14 @@ export default function FilterCandidate() {
               {filteredCandidates.length ===
                 0 && (
                 <div className="bg-white rounded-2xl shadow-sm border border-slate-200 py-20 text-center">
+
                   <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
+
                     <Users
-                      size={
-                        24
-                      }
+                      size={24}
                       className="text-slate-400"
                     />
+
                   </div>
 
                   <h2 className="text-2xl font-bold text-slate-700">
@@ -2032,16 +2131,20 @@ export default function FilterCandidate() {
                   </h2>
 
                   <p className="text-slate-500 mt-2">
-                    Try changing the
-                    search or timing
-                    filter.
+                    Try changing the search or timing filter.
                   </p>
+
                 </div>
               )}
+
             </div>
+
           </div>
-        </div>
+
+        </main>
+
       </div>
+
     </div>
   );
 }
