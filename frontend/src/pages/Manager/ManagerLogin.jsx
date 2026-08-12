@@ -108,7 +108,7 @@ export default function ManagerLogin() {
                                 value={form.managerName}
                                 onChange={handleChange}
                                 className="w-full border rounded-xl p-3 mt-2"
-                                placeholder="e.g. Mathew"
+                                placeholder="e.g. morgan"
                             />
                         </div>
                         <div>
@@ -119,7 +119,7 @@ export default function ManagerLogin() {
                                 value={form.managerEmail}
                                 onChange={handleChange}
                                 className="w-full border rounded-xl p-3 mt-2"
-                                placeholder="mathew@hirotecindia.com"
+                                placeholder="alysia@hirotecindia.com"
                             />
                         </div>
                         <div>
